@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>课程管理 · 教务管理员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-admin" data-role="admin" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap wide">
+
+  <div class="pg-head">
+    <span class="eyebrow" id="eyebrow">—</span>
+    <h1>课程管理</h1>
+    <p class="sub">课程绑定关卡 —— 改课程等于改学员能学什么。</p>
+  </div>
+
+  <div class="kpis" id="kpis" style="margin-bottom:var(--s5)"></div>
+
+  <div id="gapNote"></div>
+
+  <!-- 工具条 -->
+  <div class="card tight">
+    <div class="filterbar" style="margin:0">
+      <div class="search">
+        <span class="ic" data-ic="i-search"></span>
+        <input type="text" id="q" placeholder="课程名 / 学科 / 关卡…" autocomplete="off" aria-label="搜索课程">
+      </div>
+      <div class="jump" id="chips"></div>
+      <span class="spacer"></span>
+      <span class="hint" style="margin:0">当前显示 <b id="filterCount">0</b> / <b id="totalCount">0</b> 门</span>
+    </div>
+  </div>
+
+  <!-- 课程列表 -->
+  <div class="card">
+    <div class="card-h">
+      <h2>课程列表（按关卡序）</h2>
+      <span class="tag ghost">点行展开章节管理</span>
+    </div>
+    <div id="courses"></div>
+    <div id="noCourseNote"></div>
+    <div id="empty"></div>
+  </div>
+
+  <!-- 资源说明（2026-10-05 收口：只保留管理员实际要用的操作信息，
+       开发细节（存储实现/凭证/学习记录表）不再展示） -->
+  <div class="card">
+    <div class="card-h"><h2>资源说明</h2><span class="tag ghost">视频 / PDF 怎么放</span></div>
+    <div class="tblwrap">
+      <table style="min-width:0">
+        <thead><tr><th>类型</th><th>怎么上传</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><b>视频</b></td>
+            <td>在课程列表对应章节点「上传视频 / 换视频」</td>
+            <td>直传云端存储，学员端支持拖进度条；建议 mp4、单文件 ≤ 500MB</td></tr>
+          <tr><td><b>PDF</b></td>
+            <td>在章节行点「换 PDF」，填资料地址</td>
+            <td>填站点目录文件名（如 <code>/assets/docs/xxx.pdf</code>）或外链</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 危险操作 -->
+  <div class="card" style="border-color:var(--danger)">
+    <div class="card-h">
+      <h2>危险操作</h2>
+      <span class="tag danger">影响全体学员</span>
+    </div>
+    <p class="hint" style="margin-bottom:var(--s4)">这些操作不可逆或会锁死学员进度，每一步都需二次确认。</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn danger" id="delCourseBtn">删除课程…</button>
+      <button class="btn ghost danger" onclick="UI.openGateConfirm()">强制解锁开关…</button>
+    </div>
+    <div class="note danger" style="margin-top:var(--s4)">
+      <b><svg class="ic"><use href="#i-alert"/></svg> 两个高危开关（务必谨慎）：</b><br>
+      <svg class="ic"><use href="#i-num1"/></svg> <b>强制解锁</b>（当前状态：<b id="gateState">—</b>）—— 关掉后学员能跳关，平时必须保持关闭。<br>
+      <svg class="ic"><use href="#i-num2"/></svg> <b>批量代录</b> —— 会直接写闯关记录，如果勾错关卡/环节，学员会拿到"假通关"。
+    </div>
+  </div>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<!--
+  本页交互清单：
+  1. 整页数据驱动。旧版硬编码了 9 门课的章节明细 + 4 个 KPI 数字，
+     且至少 4 处与真实数据不符：
+       - "34 个视频章节" -> 真实 26 章
+       - "5 个配套 PDF"  -> 真实 0 个
+       - "2 门待传视频课程（C5 / C6）" -> 真实是 C5 / C6 整课待传，**外加** C11 有 1 章空 src
+       - "C5 对应第 2 关 / C6 对应第 3 关" -> 真实 C11 在第 2 关、C5 在第 3 关
+  2. 每门课一个 <details>：点行展开章节列表（标题、时长、存储位置、PDF、操作按钮）。
+     有未上传视频的课程用红描边 + 红底，整块一眼可辨。
+  3. 章节操作：「上传视频 / 换视频 / 换 PDF / 删」走真实链路；「预览」在弹层内直接
+     播放该章视频（不离开列表页），无视频地址的章节预览按钮置灰、点击给提示。
+  4. 搜索 + 筛选 chip（全部 / 已就绪 / 有缺口 / 含 PDF）叠加，计数实时更新。
+  5. 危险操作：删除课程走 MOCKAPI.mockDeleteCourse（要求完整输入课程名）；
+     强制解锁走 UI.openGateConfirm（基线既有链路）。
+
+  数据来源：window.MOCK / window.MOCKAPI / window.UI（proto/assets/*.js）
+-->
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* ============================================================
+   课程管理 · 数据驱动（#37）
+   ============================================================ */
+
+let FILTER = 'all';
+let Q = '';
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-courses.html');
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+  buildChips();
+  render();
+  bind();
+  document.getElementById('delCourseBtn').onclick = ()=>openDeleteCourse();
+  /* 【2026-10-05 收口】「新增章节」表单与拖拽占位区已下线：
+     后端没有对应保存接口，表单点了只能弹"保存接口尚未开放"。
+     章节的维护走课程列表里每章的「上传视频 / 换 PDF / 删」真实操作。 */
+  /* 预览视频兜底：点遮罩关闭弹层时停掉视频（app.js 的监听先执行 closeModal，
+     这里检测到 .on 已被移除，就把 #pvVideo 停掉并释放；普通弹层无此元素，安全空跑） */
+  document.getElementById('mask').addEventListener('click',()=>{
+    const m=document.getElementById('mask');
+    if(m && !m.classList.contains('on')) stopPreview();
+  });
+});
+
+/* ---------- 派生数据（全站唯一口径） ---------- */
+
+/* 一门课的缺口：整课 videoPending，或任一视频章节 src 为空 */
+function courseGaps(cid){
+  const c = MOCK.courseOf(cid); if(!c) return { pending:false, empties:[] };
+  const empties = (c.chapters||[]).filter(ch=>ch.type==='video' && !ch.src).map(ch=>ch.id);
+  return { pending: !!(c.videoPending || empties.length), empties };
+}
+function coursePdfs(cid){
+  const c = MOCK.courseOf(cid); if(!c) return 0;
+  return (c.chapters||[]).filter(ch=>ch.pdf).length;
+}
+function fmtDur(sec){
+  if(!sec && sec!==0) return '';
+  const m = Math.floor(sec/60), s = sec%60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+function totalDur(cid){
+  const c = MOCK.courseOf(cid); if(!c) return 0;
+  return (c.chapters||[]).reduce((a,ch)=>a+(ch.dur||0),0);
+}
+
+/* 按关卡序排课（levelOfCourseIn 与 gate 开关无关，恒返回真实关卡）。
+   2026-10-05 用户拍板：列表就按关卡顺序排（第 1 关的课在最上）。 */
+function sortedCourses(){
+  return MOCK.DB.courses.slice().sort((a,b)=>{
+    const la = MOCK.levelOfCourseIn(a.id), lb = MOCK.levelOfCourseIn(b.id);
+    return (la?la.no:999) - (lb?lb.no:999);
+  });
+}
+
+/* ---------- 渲染 ---------- */
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  renderKpis();
+  renderGapNote();
+  renderCourses();
+  renderNoCourseNote();
+  renderGateState();
+  if(typeof injectIcons==='function') injectIcons();
+}
+
+function renderKpis(){
+  const list = MOCK.DB.courses;
+  const chapters = list.reduce((a,c)=>a+(c.chapters||[]).length,0);
+  const vids = list.reduce((a,c)=>a+(c.chapters||[]).filter(x=>x.type==='video').length,0);
+  const pdfs = list.reduce((a,c)=>a+coursePdfs(c.id),0);
+  const gapCourses = list.filter(c=>courseGaps(c.id).pending).length;
+  const emptyCh = list.reduce((a,c)=>a+courseGaps(c.id).empties.length,0);
+
+  // 注意： 零值不上绿底（--wash 绿 = 有进展）
+  const gapCls = gapCourses > 0 ? 'kpi hot' : 'kpi plain';
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi plain"><b>${list.length}</b><span>在架课程</span></div>
+    <div class="kpi plain"><b>${vids}</b><span>视频章节（共 ${chapters} 章）</span></div>
+    <div class="${gapCls}"><b>${gapCourses}</b><span>有视频缺口的课程${emptyCh?`（${emptyCh} 章空）`:''}</span></div>
+    <div class="kpi plain"><b>${pdfs}</b><span>配套 PDF</span></div>`;
+}
+
+function renderGapNote(){
+  const box = document.getElementById('gapNote');
+  const gaps = sortedCourses().filter(c=>courseGaps(c.id).pending);
+  if(!gaps.length){ box.innerHTML=''; return; }
+  const detail = gaps.map(c=>{
+    const g = courseGaps(c.id);
+    const lv = MOCK.levelOfCourseIn(c.id);
+    return `<b>${esc(c.id)} ${esc(c.title)}</b>（第 ${lv?lv.no:'—'} 关）·
+      ${g.empties.length} 章未上传${c.videoPending?'（整课待传）':''}`;
+  }).join('<br>');
+  box.innerHTML = `<div class="note danger" style="margin-bottom:var(--s5)">
+    <b><svg class='ic'><use href='#i-alert'/></svg> 内容缺口：共 ${gaps.length} 门课程的视频没传完。</b><br>
+    ${detail}<br>
+    对应关卡的「学」环节无法完成 <svg class='ic'><use href='#i-arrow-r'/></svg> 学员卡在那一关就过不去。
+    <b>视频走 COS 上传</b>（站点域不转发 Range 请求，视频不能放站点域）；<b>PDF 走站点域</b> <code>/assets/docs/</code>。
+  </div>`;
+}
+
+function renderGateState(){
+  document.getElementById('gateState').textContent =
+    (MOCK.DB.settings && MOCK.DB.settings.enforceGate === true) ? '开启' : '关闭';
+}
+
+function buildChips(){
+  const defs = [
+    { k:'all', label:'全部' },
+    { k:'ok',  label:'已就绪' },
+    { k:'gap', label:'有缺口' },
+    { k:'pdf', label:'含 PDF' },
+  ];
+  document.getElementById('chips').innerHTML = defs.map(d=>
+    `<a href="#" data-f="${d.k}" class="${d.k==='all'?'on':''}">${d.label}</a>`).join('');
+}
+
+function bind(){
+  document.getElementById('q').addEventListener('input',e=>{
+    Q=(e.target.value||'').trim().toLowerCase(); renderCourses();
+  });
+  /* 「新增章节」表单已下线，标题实时校验一并移除（2026-10-05 收口） */
+  document.getElementById('chips').addEventListener('click',e=>{
+    const a = e.target.closest('a[data-f]'); if(!a) return;
+    e.preventDefault();
+    FILTER = a.dataset.f;
+    document.querySelectorAll('#chips a').forEach(x=>x.classList.toggle('on', x.dataset.f===FILTER));
+    renderCourses();
+  });
+  document.getElementById('empty').addEventListener('click',e=>{
+    if(!e.target.closest('#resetFilters')) return;
+    Q=''; FILTER='all';
+    document.getElementById('q').value='';
+    document.querySelectorAll('#chips a').forEach(x=>x.classList.toggle('on', x.dataset.f==='all'));
+    renderCourses();
+  });
+}
+
+/* ============================================================
+   上传视频/ 换 PDF / 删章节（2026-10-05 接线，此前是 data-toast 占位）
+   ============================================================
+   后端 4 个上传 action（uploadInit/Sign/Complete/Clear）2026-10-04 就已存在且
+   带 admin 权限校验，只是前端一直没接线 —— 按钮点开只是「暂未开放」的说明弹层。
+   本段把线接上：选文件 -> 5MB 分片直传 COS -> 后端写 ch.src。
+
+   注意： 沙盒口径：?sandbox=1 / etrainLive='0' 时无法真上传（没有后端），
+      按钮会明确提示「沙盒不能真上传」而不是静默失败 —— 避免误以为传成功了。 */
+const isLive = ()=>!!(window.LIVE && window.LIVE.enabled);
+
+/* ---- 1. 上传 / 换视频：弹层选文件 + 进度条 ---- */
+function pickVideo(cid, chid){
+  if(!isLive()){ toast('沙盒模式不能真正上传视频（数据不落库）。请用真实后端模式打开本页。','err'); return; }
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='video/mp4,.mp4';
+  inp.style.display='none';
+  document.body.appendChild(inp);
+  inp.onchange=()=>{
+    const f=inp.files && inp.files[0];
+    inp.remove();                       // 选完即移除：同一文件再选一次也能触发 change
+    if(f) doUpload(cid,chid,f);
+  };
+  inp.click();
+}
+
+/* 真正执行上传。分片进度由 liveUploadVideo 回调给出（片数级，不是字节级）。
+   注意： 不用 UI.openModal —— 它只收一个 html 参数（app.js L: function openModal(html)），
+   没有 options/onOk/返回值；带按钮的弹层要用 confirmBox(title, body, onOk, okLabel)。
+   进度要动态刷新，故这里自己拼 html 调 openModal，再直接改 DOM 节点。 */
+async function doUpload(cid,chid,file){
+  const mb=(file.size/1048576).toFixed(1);
+  openModal(
+    '<div class="m-h"><h2>正在上传</h2><span class="x" onclick="closeModal()">×</span></div>'+
+    '<div class="m-b">'+
+      '<p class="hint" id="upName"></p>'+
+      '<div style="height:10px;border:2px solid var(--line);border-radius:6px;overflow:hidden;background:var(--bg)">'+
+        '<div id="upBar" style="height:100%;width:0;background:var(--ok);transition:width .2s"></div>'+
+      '</div>'+
+      '<p class="hint" style="margin-top:var(--s3)"><span id="upPct">0%</span> · 正在分片上传到 COS（每片 5MB）。请不要关闭本页。</p>'+
+    '</div>'
+  );
+  document.getElementById('upName').textContent = file.name + ' · ' + mb + ' MB';
+  const bar=document.getElementById('upBar'), pct=document.getElementById('upPct');
+  try{
+    const r = await window.liveUploadVideo(cid, chid, file, (done,total)=>{
+      const p = Math.round(done/total*100);
+      bar.style.width = p + '%';
+      pct.textContent = p + '%';
+    });
+    closeModal();
+    toast('上传完成：' + file.name + (r && r.size ? '（' + (r.size/1048576).toFixed(1) + ' MB）' : ''));
+    render();
+  }catch(e){
+    closeModal();
+    toast('上传失败：' + (e && e.message ? e.message : e),'err');
+  }
+}
+
+/* ---- 2. 换 PDF：写课程级 docs（真实结构里 PDF 在课程上，不在章节上） ----
+   用 confirmBox：body 里放表单，onOk 是普通函数名（confirmBox 会拼进 onclick），
+   所以不能写 async 箭头函数 —— 必须挂到 window 上再传函数名。 */
+function editPdf(cid, chid){
+  const c=MOCK.courseOf(cid); if(!c) return;
+  const cur=(c.docs && c.docs[0]) || {};
+  if(!isLive()){ toast('沙盒模式不能写入资料（数据不落库）。请用真实后端模式打开本页。','err'); return; }
+  confirmBox('换配套资料（PDF）',
+    '<p class="hint" style="margin-bottom:var(--s3)">填资料的<b>地址</b>。支持：站点域绝对路径'+
+    '（<code>/assets/docs/x.pdf</code>）、外链（飞书文档等）、或 COS 绝对地址。<br>'+
+    '本平台<b>不代传 PDF 文件</b> —— PDF 走站点域静态目录，只有视频才走 COS 分片上传。</p>'+
+    '<div class="fld"><label>资料名称</label><input id="pdName" value="'+UI.esc(cur.name||'')+'" placeholder="如：流量团队新人启动课堂"></div>'+
+    '<div class="fld"><label>资料地址</label><input id="pdUrl" value="'+UI.esc(cur.url||'')+'" placeholder="/assets/docs/xxx.pdf"></div>',
+    'savePdf(' + JSON.stringify(cid) + ')', '保存');
+}
+async function savePdf(cid){
+  const name=(document.getElementById('pdName')||{}).value||'';
+  const url =(document.getElementById('pdUrl') ||{}).value||'';
+  if(!url.trim()){ toast('请填资料地址','err'); return; }
+  try{
+    await window.liveSetChapterPdf(cid, name.trim(), url.trim());
+    toast('已更新配套资料');
+    render();
+  }catch(e){ toast('保存失败：'+(e&&e.message?e.message:e),'err'); }
+}
+
+/* ---- 3. 删章节：二次确认，说明连带影响 ---- */
+function delChapter(cid, chid, title){
+  const c=MOCK.courseOf(cid); if(!c) return;
+  const n=(c.chapters||[]).length;
+  if(n<=1){ toast('这门课只有 1 个章节，删掉就没有内容了','err'); return; }
+  if(!isLive()){ toast('沙盒模式不能删章节（数据不落库）。请用真实后端模式打开本页。','err'); return; }
+  confirmBox('删除章节',
+    '<p class="hint">确定删除「<b>'+UI.esc(title||chid)+'</b>」？连带影响：<br>'+
+    '<svg class="ic"><use href="#i-num1"/></svg> 该章节的 <b>COS 视频对象会被删除</b>（省空间，但文件找不回来）；<br>'+
+    '<svg class="ic"><use href="#i-num2"/></svg> 从课程里移除，<b>剩 '+(n-1)+' 个章节</b>；<br>'+
+    '<svg class="ic"><use href="#i-num3"/></svg> <b>已学完该章节的学员记录保留</b>（不会把已学过的抹掉）。</p>',
+    'doDelChapter(' + JSON.stringify(cid) + ',' + JSON.stringify(chid) + ')', '确认删除');
+}
+async function doDelChapter(cid, chid){
+  try{
+    await window.liveDelChapter(cid, chid);
+    toast('已删除章节');
+    render();
+  }catch(e){ toast('删除失败：'+(e&&e.message?e.message:e),'err'); }
+}
+
+/* ---- 4. 预览视频：弹层直接播放，不离开列表页（2026-10-05） ----
+   数据字段：章节的 ch.src（与学员端播放器同源，COS 地址 / 站点相对路径均可）。
+   注意： closeModal 只隐藏弹层、**不清内容** —— 视频不会自己停。
+   关闭必须走 closePreview（× 按钮）；点遮罩关闭由 DOMContentLoaded 里的
+   mask 监听兜底（app.js 的监听先移除 .on，这里检测到已关就停视频）。 */
+function previewVideo(cid, chid){
+  const c=MOCK.courseOf(cid); if(!c) return;
+  const ch=(c.chapters||[]).find(x=>x.id===chid);
+  if(!ch || ch.type!=='video' || !ch.src){ pvEmpty(cid,chid); return; }
+  openModal(
+    '<div class="m-h"><h2>预览视频 · '+esc(ch.title||chid)+'</h2><span class="x" onclick="closePreview()">×</span></div>'+
+    '<div class="m-b">'+
+      '<video id="pvVideo" controls playsinline preload="metadata" '+
+      'style="display:block;width:100%;aspect-ratio:16/9;background:#000;border:2px solid var(--line);border-radius:10px" '+
+      'src="'+esc(ch.src)+'"></video>'+
+      '<p class="hint" style="margin:var(--s3) 0 0">'+esc(c.id)+' · '+esc(ch.title||chid)+
+      (ch.dur?' · 时长 '+fmtDur(ch.dur):'')+'。学员端播放的就是这份文件。</p>'+
+    '</div>'
+  );
+  const v=document.getElementById('pvVideo');
+  if(v){ const p=v.play(); if(p && p.catch) p.catch(()=>{}); }  /* 浏览器拦自动播放就让用户手动点 */
+}
+/* 置灰按钮的点击出口：说得清"为什么不能预览"，而不是毫无反应 */
+function pvEmpty(cid, chid){
+  const c=MOCK.courseOf(cid); if(!c) return;
+  const ch=(c.chapters||[]).find(x=>x.id===chid);
+  if(ch && ch.type!=='video') toast('该章节不是视频，没有可预览的内容','warn');
+  else toast('暂无视频：这一章还没上传，先点「上传视频」','warn');
+}
+function stopPreview(){
+  const v=document.getElementById('pvVideo');
+  if(v){ try{ v.pause(); v.removeAttribute('src'); v.load(); }catch(e){} }
+}
+function closePreview(){ stopPreview(); closeModal(); }
+
+function matchFilter(c){
+  if(FILTER==='ok')  return !courseGaps(c.id).pending;
+  if(FILTER==='gap') return courseGaps(c.id).pending;
+  if(FILTER==='pdf') return coursePdfs(c.id) > 0;
+  return true;
+}
+function matchQ(c){
+  if(!Q) return true;
+  const lv = MOCK.levelOfCourseIn(c.id);
+  const hay = [c.id, c.title, c.teacher||'', c.subject||'',
+    lv?('第'+lv.no+'关'):'', lv?(lv.title||''):''].join(' ').toLowerCase();
+  return hay.includes(Q);
+}
+
+function renderCourses(){
+  const all = sortedCourses();
+  const hit = all.filter(c=>matchFilter(c) && matchQ(c));
+
+  document.getElementById('totalCount').textContent = all.length;
+  document.getElementById('filterCount').textContent = hit.length;
+
+  const box = document.getElementById('courses');
+  const empty = document.getElementById('empty');
+
+  if(!all.length){
+    box.innerHTML = '';
+    empty.innerHTML = `<div class="empty-note"><b>课程库为空</b>
+      <span>至少保留 1 门课程 —— 课程列表彻底为空会让种子重写整份 courses.json。</span></div>`;
+    return;
+  }
+  if(!hit.length){
+    box.innerHTML = '';
+    const cn = { ok:'已就绪', gap:'有缺口', pdf:'含 PDF' }[FILTER];
+    empty.innerHTML = `<div class="empty-note">
+      <b>没有匹配的课程</b>
+      <span>当前筛选：${FILTER==='all'?'全部':cn}${Q?` · 关键词「${esc(Q)}」`:''}</span>
+      <button class="btn sm ghost" id="resetFilters">清空筛选</button></div>`;
+    return;
+  }
+  empty.innerHTML = '';
+  box.innerHTML = hit.map(courseBlock).join('');
+}
+
+function courseBlock(c){
+  const lv = MOCK.levelOfCourseIn(c.id);
+  const g = courseGaps(c.id);
+  const chs = c.chapters||[];
+  const vids = chs.filter(x=>x.type==='video');
+  const pdfs = coursePdfs(c.id);
+  const mins = Math.round(totalDur(c.id)/60);
+  const edge = g.pending ? 'var(--danger)' : 'var(--line)';
+  const bg = g.pending ? 'background:var(--danger-bg)' : '';
+
+  const tags = [
+    g.pending
+      ? `<span class="tag danger pulse">${c.videoPending?'视频待上传':`${g.empties.length} 章待上传`}</span>`
+      : `<span class="tag ok">已就绪</span>`,
+    `<span class="tag ghost">${vids.length} 章</span>`,
+    pdfs ? `<span class="tag link">${pdfs} PDF</span>` : `<span class="tag ghost">无 PDF</span>`,
+  ].join('');
+
+  const body = chs.length ? chs.map((ch,i)=>{
+    const miss = ch.type==='video' && !ch.src;
+    const canPv = ch.type==='video' && !!ch.src;   /* 预览按钮：只有视频章节且已有 src 才可点 */
+    return `<div class="rowitem chrow"${i===chs.length-1?' style="margin-bottom:0"':''}>
+      <span class="ico">${esc(String(i+1))}</span>
+      <span class="mid"><b>${esc(ch.title)}</b>
+        <span class="d">${ch.type==='video'?'视频':'附件'}${ch.dur?` · ${fmtDur(ch.dur)}`:''} ·
+          ${miss?'<b style="color:var(--danger-ink)">未上传</b>':(ch.src?'<code>'+esc(ch.src)+'</code>':'已就绪')}
+          ${ch.pdf?` · 配套 PDF《${esc(ch.pdf)}》`:''}</span></span>
+      <span class="acts">
+        ${canPv
+          ? `<button class="btn sm ghost" onclick="previewVideo('${esc(c.id)}','${esc(ch.id)}')">预览</button>`
+          : `<button class="btn sm ghost dim" aria-disabled="true" onclick="pvEmpty('${esc(c.id)}','${esc(ch.id)}')">预览</button>`}
+        ${miss
+          ? `<button class="btn sm ghost" onclick="pickVideo('${esc(c.id)}','${esc(ch.id)}')">上传视频</button>`
+          : `<button class="btn sm ghost" onclick="pickVideo('${esc(c.id)}','${esc(ch.id)}')">换视频</button>`}
+        <button class="btn sm ghost" onclick="editPdf('${esc(c.id)}','${esc(ch.id)}')">换 PDF</button>
+        <button class="btn sm ghost danger" onclick="delChapter('${esc(c.id)}','${esc(ch.id)}','${esc(ch.title)}')">删</button>
+      </span></div>`;
+  }).join('') : `<p class="hint" style="margin:0">这门课还没有章节。</p>`;
+
+  return `
+  <details class="lvd" data-cid="${esc(c.id)}"
+    style="border:2px solid ${edge};${bg}border-radius:var(--radius-btn);padding:var(--s4);margin-bottom:8px">
+    <summary>
+      <span class="cover">${esc(c.id)}</span>
+      <span class="lvs">
+        <b>${esc(c.id)} · ${esc(c.title)}</b>
+        <span class="hint">第 ${lv?lv.no:'—'} 关 · ${esc(lv?lv.title:'未绑定关卡')} ·
+          ${vids.length} 章${mins?` · ${mins} 分钟`:''}${c.subject?` · ${esc(c.subject)}`:''}</span>
+      </span>
+      <span class="mxrow">${tags}</span>
+    </summary>
+    <div class="lvbody">${body}</div>
+  </details>`;
+}
+
+function renderNoCourseNote(){
+  const box = document.getElementById('noCourseNote');
+  const has = l => !!(((l.stages||{}).study||{}).courseIds || []).length;
+  const noCourse = MOCK.DB.levels.filter(l=>!has(l));
+  if(!noCourse.length){ box.innerHTML=''; return; }
+  const nos = noCourse.map(l=>`L${String(l.no).padStart(2,'0')}`).join(' / ');
+  box.innerHTML = `<details class="fold">
+    <summary>为什么 ${nos} 不在课程列表里</summary>
+    <div class="fold-body">
+      ${esc(noCourse.map(l=>l.title).join(' / '))} 还没建课程，等临近再录。<br>
+      ${MOCK.DB.levels.length} 关里有 ${MOCK.DB.courses.length} 门课是正常的 —— 并非每关都要独立课程，有的内容并入相邻关卡。
+    </div>
+  </details>`;
+}
+
+/* ---------- 「新增章节」表单已下线（2026-10-05 收口，后端无保存接口） ----------
+   原 fillCourseSelect / submitNewChapter 一并移除，避免留下"看着能用实际存不进去"的入口。 */
+
+/* ---------- 删除课程（走 MOCKAPI.mockDeleteCourse 既有链路） ----------
+   注意： mockDeleteCourse 读的是 #dcTitle 的值，并要求与课程名**完全一致**才执行。
+      所以这里必须自己渲染弹层（不能只靠 UI 的模板），字段 id 必须叫 dcTitle。 */
+function openDeleteCourse(){
+  const list = sortedCourses();
+  if(!list.length) return toast('课程库为空','err');
+  const opts = list.map(c=>{
+    const lv = MOCK.levelOfCourseIn(c.id);
+    return `<option value="${esc(c.id)}">${esc(c.id)} · ${esc(c.title)}（第 ${lv?lv.no:'—'} 关）</option>`;
+  }).join('');
+  openModal(`
+  <div class="m-h"><h2>删除课程</h2><span class="x" onclick="closeModal()">×</span></div>
+  <div class="m-b">
+    <div class="note danger" style="margin-bottom:var(--s4)">
+      <b>删除会同时隐藏该关卡的「学」环节。</b>
+      <ul style="margin:6px 0 0;padding-left:18px">
+        <li>正在学该课的学员进度会被中断</li>
+        <li>已通过的学员记录保留，但课程入口消失</li>
+        <li>该关卡的「练 / 考」不受影响</li>
+      </ul>
+      <div style="margin-top:6px">只是想改内容，用「换视频」而不是删课程。</div>
+    </div>
+    <div class="fld">
+      <label>选择要删除的课程 <span class="req">*</span></label>
+      <select id="dcPick">${opts}</select>
+    </div>
+    <div class="fld">
+      <label>请完整输入课程名以确认删除 <span class="req">*</span></label>
+      <input id="dcTitle" type="text" autocomplete="off" placeholder="逐字输入课程名">
+      <div class="tip">删除后该课程 id 会写入 seedlog，<b>不会被种子复活</b>。</div>
+    </div>
+  </div>
+  <div class="m-f">
+    <button class="btn ghost" onclick="closeModal()">取消</button>
+    <button class="btn danger" id="dcOk">我确认删除</button>
+  </div>`);
+  document.getElementById('dcOk').onclick = ()=>{
+    MOCKAPI.mockDeleteCourse(document.getElementById('dcPick').value);
+    render();
+  };
+}
+
+/* ---------- 工具 ---------- */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+</script>
+
+</body>
+</html>

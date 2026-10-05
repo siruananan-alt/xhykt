@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>学员管理 · 教务管理员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-admin" data-role="admin" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap wide">
+
+  <div class="pg-head">
+    <span class="eyebrow">星禾云课堂</span>
+    <h1>学员管理</h1>
+    <p class="sub">全部在训学员的档案总览。</p>
+  </div>
+
+  <div class="card">
+    <div class="tblwrap">
+      <table>
+        <thead><tr>
+          <th>工号</th><th>姓名</th><th>校区</th><th>导师</th><th>带教计划</th><th>当前关卡</th><th>状态</th>
+        </tr></thead>
+        <tbody id="stuRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <details class="fold">
+    <summary>本页只读</summary>
+    <div class="fold-body">
+      改导师走「用户管理 <svg class="ic"><use href="#i-arrow-r"/></svg> 转移」；改关卡进度走「闯关总览 <svg class="ic"><use href="#i-arrow-r"/></svg> 代录」。
+    </div>
+  </details>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* 学员管理：基线 viewAdminStudents —— 7 列，只读 */
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-students.html');
+  initNav();
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+
+  const n = MOCK.DB.levels.length;
+  document.getElementById('stuRows').innerHTML = MOCK.DB.trainees.map(t=>{
+    const cur = MOCK.currentLevelOf(t.id);
+    const curTxt = cur.no > n ? '已通关' : ('第 '+cur.no+' 关 · '+cur.title);
+    const planName = (MOCK.planOf(t.planId)||{}).name || '—';
+    return `<tr>
+      <td><b>${UI.esc(t.id)}</b></td>
+      <td>${UI.esc(t.name)}</td>
+      <td>${UI.esc(t.dept)}</td>
+      <td>${UI.esc((MOCK.mentorOf(t.mentorId)||{}).name||'—')}</td>
+      <td>${UI.esc(planName)}</td>
+      <td>${UI.esc(curTxt)}</td>
+      <td>${MOCK.DB.signoffs[t.id]?'<span class="tag ok">已出师</span>':'<span class="tag">培养中</span>'}</td>
+    </tr>`;
+  }).join('');
+});
+</script>
+</body>
+</html>

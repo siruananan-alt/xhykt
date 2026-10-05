@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>我的带教 · 导师</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-mentor" data-role="mentor" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap wide">
+
+  <div class="pg-head">
+    <span class="eyebrow" id="eyebrow">—</span>
+    <h1>我的带教</h1>
+    <p class="sub">5 周学习地图、胜任力清单、PK 三项指标。</p>
+  </div>
+
+  <!-- PK 三项指标（带教体系的核心考核口径） -->
+  <div class="kpis" id="kpis" style="margin-bottom:var(--s5)"></div>
+
+  <!-- 5 周学习地图 -->
+  <div class="card" style="border:3px solid var(--ink)">
+    <div class="card-h">
+      <h2>5 周学习地图</h2>
+    </div>
+
+    <div id="mapStagebar" style="margin-bottom:var(--s5)"></div>
+
+    <div class="tblwrap">
+      <table>
+        <thead>
+          <tr><th>周次</th><th>阶段</th><th>学员要过的关</th><th>带教重点动作</th><th>关键卡点</th></tr>
+        </thead>
+        <tbody id="mapBody"></tbody>
+      </table>
+    </div>
+
+    <div class="note warn" style="margin-top:var(--s4)" id="realityNote"></div>
+  </div>
+
+  <!-- 教日志（2026-10-05 收口）
+       【为什么下线填写入口】教日志目前只存浏览器内存，刷新即丢（后端无教日志表）。
+       对真实导师来说，写完就消失的记录比没有记录更伤 —— 所以上线版隐藏整个填写卡，
+       只保留下方可直接抄写的模板。等后端有正式存储后再恢复填写入口。 -->
+  <div class="grid g-side">
+    <div>
+      <!-- 教日志模板（直接可抄） -->
+      <div class="card">
+        <div class="card-h">
+          <h2>教日志模板</h2>
+          <span class="tag ghost">填空式 · 1 分钟</span>
+        </div>
+        <p class="hint" style="margin-bottom:var(--s4)">可复制到飞书文档按日填写</p>
+        <div class="note">
+          <b>今天教了什么：</b>（一句话，带他拆了哪条对标视频）<br>
+          <b>学员卡在哪：</b>（一句话，剪辑模板还没沉淀）<br>
+          <b>下一步做什么：</b>（一句话，明天盯 T-G3 剪辑模板）
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <!-- 胜任力清单（按真实关卡进度推导，不是写死的三绿两灰） -->
+      <div class="card">
+        <div class="card-h">
+          <h2>胜任力清单进度</h2>
+          <span class="tag ghost" id="compN">—</span>
+        </div>
+        <div id="comp"></div>
+        <div class="note" style="margin-top:var(--s4)">
+          由导师勾选，学员只读。5 项全过是转正的隐性前提 —— 达标线全绿但胜任力不过，导师有权建议延长带教。
+        </div>
+      </div>
+
+      <!-- 每周固定动作 -->
+      <div class="card">
+        <div class="card-h"><h2>每周固定动作</h2></div>
+        <div class="tl">
+          <div class="ev"><div class="ts">每日 20:00 前</div>
+            <div class="tx">批完当天全部提交</div></div>
+          <div class="ev"><div class="ts">每周一</div>
+            <div class="tx">对一次胜任力清单 · 给出本周重点动作</div></div>
+          <div class="ev"><div class="ts">每周三</div>
+            <div class="tx">看一次月引流数据，差 800 人的尽早干预</div></div>
+          <div class="ev"><div class="ts">每周五</div>
+            <div class="tx">写本周带教小结 · 填 PK 三项指标</div></div>
+          <div class="ev"><div class="ts">第 5 周</div>
+            <div class="tx">转正面谈（学员 + 导师 + 教务三方）</div></div>
+        </div>
+      </div>
+
+      <!-- 【2026-10-05 收口】原「常用操作」卡三按钮（导出周报/查看待批/答疑群）
+           均为点了只弹「暂未开放」的占位入口，按上线收口规则整体移除。 -->
+    </div>
+  </div>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<!--
+  本页交互清单：
+  1. 整页数据驱动。旧版硬编码了三处与事实矛盾的内容：
+     - "带教学徒 2 人" -> 真实 M1 只带 1 人（S001）
+     - "李彦（S002）" -> 该账号**不存在**
+     - "朱子悦 3/5 胜任力" -> 真实进度需按关卡推导
+  2. 5 周学习地图：周次/关卡/任务卡张数**全部从 LEVEL_PHASES + TASK_DEFS 推导**，
+     不写死 5/3/1 张卡。
+  3. 教日志：真实数据只到「没有记录」就显示空态，**不为好看编数据**。
+  4. 胜任力清单：5 项各自绑定"对应关卡"，通过与否读该关真实进度。
+
+  数据来源：window.MOCK / window.MOCKAPI / window.UI（proto/assets/*.js）
+-->
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* ============================================================
+   我的带教 · 数据驱动（#36 第三部分）
+   ============================================================ */
+
+const ME = ()=>MOCKAPI.S.wid;
+function myMentees(){ return MOCK.DB.trainees.filter(t=>t.mentorId===ME()); }
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('mentor','mentor-coach.html');
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(ME());
+  render();
+  /* 【2026-10-05 收口】教日志填写入口已下线（只存内存、刷新即丢），
+     addLog 绑定与 renderLogs 调用一并摘除；旧函数实现已删除（见文件下方收口说明）。 */
+});
+
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const meU = MOCK.userOf(ME());
+  const mentees = myMentees();
+  document.getElementById('eyebrow').textContent =
+    `带教导师 ${ME()} · ${esc((meU&&meU.dept)||'—')} · 带教学徒 ${mentees.length} 人`;
+
+  renderKpis(mentees);
+  renderMap(mentees);
+  /* renderLogs(mentees) 已随教日志入口下线摘除（2026-10-05 收口） */
+  renderComp(mentees);
+  if(typeof injectIcons==='function') injectIcons();
+}
+
+/* ---------- PK 三项指标 ----------
+   注意： 真实数据里没有「新人反馈评分」「带教投入时长」这两个量，
+      所以不编数字，直接明说"未登记"。 */
+function renderKpis(mentees){
+  const wids = mentees.map(t=>t.id);
+  const totalLv = MOCK.DB.levels.length || 1;
+
+  /* 节点通过率 = 所有徒弟「已过关卡数 / 总关卡数」的均值 */
+  let rate = 0;
+  if(mentees.length){
+    const sum = mentees.reduce((a,t)=>a + MOCK.DB.levels.filter(l=>MOCK.levelDone(t.id,l)).length, 0);
+    rate = Math.round(sum / (mentees.length * totalLv) * 100);
+  }
+  /* 转正率 = 4 条达标线全绿的徒弟占比（只认 met === true） */
+  const certified = mentees.filter(t=>{
+    const fn = (typeof readinessBadge==='function') ? readinessBadge : (window.UI&&window.UI.readinessBadge);
+    if(typeof fn!=='function') return false;
+    return MOCK.READINESS_LINES.every(l=>{ const b = fn(l.key, t.id); return b && b.met; });
+  }).length;
+  const certRate = mentees.length ? Math.round(certified / mentees.length * 100) : 0;
+
+  const rateCls = rate >= 50 ? 'kpi' : 'kpi plain';
+  const certCls = certRate >= 30 ? 'kpi' : 'kpi plain';
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="${rateCls}"><b>${rate}%</b><span>节点通过率 · 目标 50%</span></div>
+    <div class="${certCls}"><b>${certRate}%</b><span>新人转正率 · 目标 30%</span></div>
+    <div class="kpi plain"><b>未登记</b><span>新人反馈评分 · 目标 4.0</span></div>
+    <div class="kpi plain"><b>未登记</b><span>本周带教投入（小时）</span></div>`;
+}
+
+/* ---------- 5 周学习地图（周次/关卡/卡数全推导） ---------- */
+
+/* 带教重点动作：本页局部文案表（LEVEL_PHASES 没有这个字段，也不该往常量里加） */
+const COACH_ACTIONS = {
+  '新手期': '<svg class="ic"><use href="#i-num1"/></svg> 带他跑通一次完整推流（找对标<svg class="ic"><use href="#i-arrow-r"/></svg>做对标<svg class="ic"><use href="#i-arrow-r"/></svg>推客资）<br><svg class="ic"><use href="#i-num2"/></svg> 让他独立发第一条视频，你在旁边看<br><svg class="ic"><use href="#i-num3"/></svg> 第 1 周结束前对一次胜任力清单',
+  '成长期': '<svg class="ic"><use href="#i-num1"/></svg> 逼他沉淀剪辑模板<br><svg class="ic"><use href="#i-num2"/></svg> 一起拆一条百万爆款，卡点时间<br><svg class="ic"><use href="#i-num3"/></svg> 第一次看他的月引流数据<br><svg class="ic"><use href="#i-num4"/></svg> 教他判断能不能进成熟期',
+  '成熟期': '<svg class="ic"><use href="#i-num1"/></svg> 正式分配 4 个账号<br><svg class="ic"><use href="#i-num2"/></svg> 教他用数据定位问题而不是瞎改内容<br><svg class="ic"><use href="#i-num3"/></svg> 完全放手，让他独立操盘<br><svg class="ic"><use href="#i-num4"/></svg> 5 周成果验收 + 达标线核对 + 转正面谈',
+};
+
+function renderMap(mentees){
+  /* 阶段条：按 3 个阶段的实际关卡数 */
+  document.getElementById('mapStagebar').innerHTML = UI.stagebar(mentees[0] ? mentees[0].id : ME());
+
+  const rows = MOCK.LEVEL_PHASES.map(ph=>{
+    const lvs = MOCK.DB.levels.filter(l=>l.no>=ph.from && l.no<=ph.to);
+    const cards = MOCK.TASK_DEFS.filter(d=>lvs.some(l=>l.id===d.levelId));
+    const lvHtml = lvs.map(l=>`L${String(l.no).padStart(2,'0')} ${esc(l.title)}`).join('<br>');
+    const cardCls = cards.length >= 4 ? 'danger' : (cards.length ? 'warn' : 'ghost');
+    // 注意： LEVEL_PHASES **没有** action 字段（只有 name/from/to/week）-> 带教动作走本页局部表，
+    //    不要往 mock-data 里加字段（那是后端常量镜像）。
+    return `<tr>
+      <td><b>${esc(ph.week)}</b></td>
+      <td><span class="tag ${ph.from<=6?'ghost':'warn'}">${esc(ph.name)}</span></td>
+      <td>${lvHtml}</td>
+      <td>${COACH_ACTIONS[ph.name] || '—'}</td>
+      <td><span class="tag ${cardCls}">${cards.length} 张任务卡</span>
+        ${cards.length?`<br><span style="font-size:12px;color:var(--muted)">${cards.map(c=>c.id).join(' / ')}</span>`:''}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('mapBody').innerHTML = rows;
+
+  /* 运营现实：任务卡的关卡分布实测（不写死"13 张全在 L05–L12"） */
+  const withCards = MOCK.DB.levels.filter(l=>MOCK.TASK_DEFS.some(d=>d.levelId===l.id)).map(l=>l.no);
+  const noCards = MOCK.DB.levels.filter(l=>!MOCK.TASK_DEFS.some(d=>d.levelId===l.id)).map(l=>l.no);
+  document.getElementById('realityNote').innerHTML =
+    `<b><svg class='ic'><use href='#i-alert'/></svg> 运营现实：</b>${MOCK.TASK_DEFS.length} 张任务卡在
+     L${String(Math.min(...withCards)).padStart(2,'0')}–L${String(Math.max(...withCards)).padStart(2,'0')}，
+     L${noCards.map(n=>String(n).padStart(2,'0')).join(' / L')} 无「练」环节。
+     前置关「考」未及时代录，学员到不了任务卡关卡。`;
+}
+
+/* ---------- 教日志 ----------
+/* ---------- 教日志（2026-10-05 上线收口）----------
+   教日志目前只存浏览器内存、刷新即丢（后端无教日志表），对真实导师是数据丢失陷阱。
+   填写入口（renderLogs / openLogEditor / addLog 绑定）已整体移除，仅保留页面上可直接抄写的模板卡。
+   待后端有正式存储后，从 _bak/round3-pre/mentor-coach.html 可找回原实现。 */
+
+/* ---------- 胜任力清单 ----------
+   注意： 5 项各自绑定一个"可判定的关卡"：是否达标 = 该关是否全环节通过。
+      （真实后端没有独立的胜任力表 —— 这里是按关卡进度的**可解释**推导，
+        不是凭空勾选；正式版应改为后端字段。） */
+const COMPETENCIES = [
+  { name:'独立剪出可发布视频',       lvNo:2  },
+  { name:'按飞书规范提交数据',       lvNo:3  },
+  { name:'稳定拿到初始流量池',       lvNo:5  },
+  { name:'找对标并说清为什么爆',     lvNo:6  },
+  { name:'做出高加粉的导流钩子',     lvNo:8  },
+];
+
+function renderComp(mentees){
+  const box = document.getElementById('comp');
+  if(!mentees.length){
+    document.getElementById('compN').textContent = '—';
+    box.innerHTML = `<p class="hint" style="margin:0">暂无带教学员</p>`;
+    return;
+  }
+  /* 汇总：任一徒弟达标即勾选 */
+  const state = COMPETENCIES.map(c=>{
+    const lv = MOCK.DB.levels.find(l=>l.no===c.lvNo);
+    const hits = mentees.filter(t=> lv && MOCK.levelDone(t.id, lv));
+    return { c, lv, hits, ok: hits.length>0 };
+  });
+  const mine = mentees.length===1 ? state.filter(s=>s.ok).length : state.filter(s=>s.ok).length;
+  document.getElementById('compN').textContent =
+    mentees.length===1 ? `${mentees[0].name||mentees[0].id} ${mine}/${COMPETENCIES.length}`
+                       : `${mentees.length} 人合并 · 已过 ${mine}/${COMPETENCIES.length} 项`;
+
+  box.innerHTML = state.map(({c,lv,hits,ok})=>{
+    const who = mentees.map(t=>{
+      const u = MOCK.userOf(t.id)||{};
+      const done = lv && MOCK.levelDone(t.id, lv);
+      return `${esc(u.name||t.id)} ${done?'<svg class="ic"><use href="#i-check"/></svg>':'未过'}`;
+    }).join(' · ');
+    return `<div class="chk ${ok?'on':'off'}"><span class="bx">${ok?'<svg class="ic"><use href="#i-check"/></svg>':''}</span>
+      <span class="cb"><b${ok?'':' style="color:var(--muted)"'}>${esc(c.name)}</b>
+        <span class="d">${who}${lv?` · 对应第 ${lv.no} 关`:' · 无对应关卡'}</span></span></div>`;
+  }).join('');
+}
+
+/* ---------- 工具 ---------- */
+function today(){
+  const d = new Date(), p = n=>String(n).padStart(2,'0');
+  return `${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,971 @@
+/* ============================================================
+   企业内部学习站 · 视觉规范 v2（Duolingo 视觉语言 × 转正培养业务）
+   唯一真源：所有页面只引 theme.css，不在页面里写颜色/尺寸变量。
+   ------------------------------------------------------------
+   色彩语义（v2 §3.2）：全站颜色只编码业务状态，不得挪作装饰
+     绿 = 已通过 / 前进        蓝 = 可点 / 链接
+     橙 = 待人处理（待审核）    红 = 打回 / 危险
+     灰 = 未解锁 / 禁用        深墨 = 描边与吐司底
+   ============================================================ */
+
+/* ---------- 1. 设计令牌 ---------- */
+:root{
+  /* 表面：纸白画布，让状态色块成为唯一视觉焦点 */
+  --bg:#ffffff; --card:#ffffff;
+  --soft:#f7f7f7; --soft2:#fafafa;
+  --wash:#d7ffb8;                 /* Storybook Green：进度/已达成底块 */
+
+  /* 文字：Charcoal 主 / Pencil Gray 次（正文压灰，彩色标题主导） */
+  --text:#4b4b4b; --muted:#777777; --faint:#afafaf;
+  --ink:#000437;                  /* Night Ink：描边与深色块 */
+
+  /* 状态语义 */
+  --ok:#58cc02;      --ok-ink:#3f8f00;   --ok-bg:#d7ffb8;
+  --link:#1cb0f6;    --link-ink:#0a8fc8;
+  --warn:#e8890c;    --warn-ink:#a35c00; --warn-bg:#fff1de;
+  --danger:#e5484d;  --danger-ink:#b3282c;--danger-bg:#fdeaea;
+  --lock:#afafaf;    --lock-bg:#f2f2f2;
+
+  /* 主行动：实心绿 + 深墨描边，按下位移 4px（贴纸被压下去） */
+  --primary:#58cc02; --primary-press:#4a9e02; --primary-edge:#000437;
+
+  /* 线与形状 */
+  --line:#e5e5e5; --edge:#afafaf;
+  --radius:16px; --radius-btn:12px; --radius-sm:8px;
+  --border:2px;
+  --lift:0 4px 0 var(--edge);
+  --lift-ink:0 4px 0 var(--primary-edge);
+  --ring:0 0 0 4px rgba(28,176,246,.30);
+
+  /* 间距（base 4px） */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px;
+  --s6:24px; --s8:32px; --s10:40px; --s12:48px; --s16:64px;
+
+  /* 字号基线（工作端默认；学员端由 body.role-student 覆盖） */
+  --fs-body:14.5px; --fs-cap:13px; --fs-h2:17px; --fs-h1:24px;
+  --fs-kpi:28px;
+  --btn-h:44px; --row-h:48px;
+
+  --font-display:'Nunito','HarmonyOS Sans SC','MiSans','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  --font-body:'Nunito','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  --font-mono:'Nunito',ui-monospace,SFMono-Regular,Consolas,monospace;
+}
+
+/* ---------- 2. 基础重置 ---------- */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--font-body);background:var(--bg);color:var(--text);
+  font-size:var(--fs-body);line-height:1.65;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:var(--font-display);margin:0;letter-spacing:-.01em}
+h1{font-size:var(--fs-h1);font-weight:800;letter-spacing:-.02em;line-height:1.25}
+h2{font-size:var(--fs-h2);font-weight:700;line-height:1.35}
+h3{font-size:15px;font-weight:700}
+p{margin:0 0 var(--s3)}
+a{color:var(--link-ink);text-decoration:none}
+a:hover{text-decoration:underline}
+code,kbd{font-family:var(--font-mono);font-size:.92em;background:var(--soft);padding:1px 5px;border-radius:4px}
+ul{margin:0 0 var(--s3);padding-left:20px}
+li{margin:2px 0}
+small{font-size:var(--fs-cap)}
+hr{border:0;border-top:2px solid var(--line);margin:var(--s6) 0}
+:focus-visible{outline:none;box-shadow:var(--ring);border-radius:var(--radius-sm)}
+
+/* ---------- 3. 布局骨架 ----------
+   顶栏 = 浅灰通栏 + 内嵌白色胶囊（参考稿骨架）。
+   胶囊内分三区：品牌 ｜ 分类 chip 导航 ｜ 角色切换。
+   注意：参考稿的柔和胶囊投影不照搬，沿用本项目语言 = 2px 描边 + 硬边投影。 */
+.topbar{
+  height:68px;background:var(--soft);border-bottom:2px solid var(--line);
+  display:flex;align-items:center;padding:0 var(--s4);
+  position:sticky;top:0;z-index:50;
+}
+.tb-in{
+  display:flex;align-items:center;gap:var(--s3);
+  width:100%;max-width:1280px;margin:0 auto;
+  background:var(--bg);border:2px solid var(--line);border-radius:var(--radius);
+  padding:0 var(--s3);height:48px;box-shadow:var(--lift);
+}
+.brand{
+  display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:800;font-size:16px;color:var(--ink);flex:none;
+  /* 【2026-10-05】品牌区改为返回首页的链接（用户需求）。三处处理：
+     1. text-decoration:none —— <a> 默认下划线会横穿 32px 绿色 logo 块。
+     2. 负 margin + 等量 padding = **点击区外扩一圈**（用户选择的方案）：
+        视觉排布一个像素不动，但左右各多 8px、上下各多 6px 的可点范围，
+        避免「只有字和 logo 那点面积能点」。
+     3. hover 用底色高亮（中性 --soft）—— 绿/橙在本项目只编码业务状态，不拿来编码"可点击"。 */
+  text-decoration:none;cursor:pointer;
+  margin:-6px -8px;padding:6px 8px;border-radius:var(--radius-btn);
+  transition:background .14s linear;
+}
+.brand:hover{background:var(--soft);text-decoration:none}
+.brand:active{background:var(--soft2)}
+.brand:focus-visible{outline:2px solid var(--link-ink);outline-offset:2px}
+.brand .logo{
+  width:32px;height:32px;border-radius:var(--radius-btn);background:var(--ok);
+  border:2px solid var(--ink);color:var(--ink);display:grid;place-items:center;
+  font-size:15px;font-weight:800;flex:none;
+}
+/* 品牌区：主名 + 副名**两行**排布。
+   【2026-10-05】此前两行规则只写在 landing.css（公开落地页），工作页的
+   UI.topbarHTML 模板没有 -> 主名 7 字 + 副名 5 字（教务管理端/带教工作台）
+   挤在同一行，顶栏 48px 胶囊里读不开，还把导航最后一项挤出可视区。
+   现下沉到 theme.css，全站（含工作页）统一两行。
+   两行合计 20+16=36px，仍在 48px 胶囊内，导航区高度不受影响。 */
+.brand .bn{display:flex;flex-direction:column;line-height:1.25}
+.brand .bn2{display:block;font-weight:500;font-size:12.5px;color:var(--muted)}
+/* 胶囊内导航区：左右各留自动边距 -> 导航相对胶囊真正居中；
+   品牌窄、角色区宽时视觉仍平衡（侧边两段留白不等但导航居中）。 */
+.tb-nav{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0 var(--s2)}
+.who{flex:none;display:flex;align-items:center;gap:10px}
+
+/* 顶栏「待办」按钮
+   注意：【2026-10-05 补】此前**完全没有 CSS**，高度全靠内容撑 -> 同一个按钮在不同页
+   量出 40px / 23px 两种高度（check-mobile 实测），因为顶栏 .tb-in 是 48px 且 overflow:hidden，
+   按钮高度随两侧内容（brand2 副名 / gate 开关 / 身份牌）挤压而漂移。
+   这属于 Design System 漏洞：尺寸是副作用而非声明。改为显式声明 + 触控达标。 */
+.todo-btn{
+  flex:none;display:inline-flex;align-items:center;gap:6px;
+  height:40px;min-width:56px;padding:0 var(--s3);
+  font-family:inherit;font-size:13px;font-weight:700;color:var(--warn-ink);
+  background:var(--warn-bg);border:2px solid var(--warn);border-radius:var(--radius-btn);
+  cursor:pointer;white-space:nowrap;
+}
+.todo-btn:hover{background:var(--warn);color:#fff}
+.todo-btn .dot{width:8px;height:8px;border-radius:50%;background:var(--warn-ink);flex:none}
+.todo-btn:hover .dot{background:#fff}
+/* 窄屏顶栏压缩到 56px 时，待办按钮同步降一档但仍 ≥44px 触控 */
+@media (max-width:720px){
+  .todo-btn{height:44px;padding:0 10px}
+}
+
+/* 顶栏「强制解锁」开关（gateSwitchHTML）
+   注意：【2026-10-05 补】`.gatesw` / `.sw` 此前**都没有 CSS** -> 屏幕上是一个裸 22px
+   checkbox。这是全站最高危的开关（开启后学员被锁死），却长得最不像开关、也最难点。
+   现补完整开关组件：真实 checkbox 仍可访问（opacity:0 覆盖在滑块上，键盘/读屏正常），
+   44px 触控。注意：**高危信息按 PRD 要求保持顶栏常显**，不做折叠。 */
+.gatesw{
+  flex:none;display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  min-height:44px;padding:0 var(--s2);
+}
+.gatesw input[type=checkbox]{
+  position:absolute;opacity:0;width:44px;height:44px;margin:0;cursor:pointer;
+}
+.gatesw .sw{
+  flex:none;position:relative;width:44px;height:24px;border-radius:999px;
+  background:var(--bg);border:2px solid var(--edge);
+  transition:background .12s linear,border-color .12s linear;
+}
+.gatesw .sw::after{
+  content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+  background:var(--muted);transition:transform .12s linear,background .12s linear;
+}
+.gatesw input:checked~.sw{background:var(--warn-bg);border-color:var(--warn)}
+.gatesw input:checked~.sw::after{transform:translateX(20px);background:var(--warn)}
+.gatesw input:focus-visible~.sw{outline:2px solid var(--link-ink);outline-offset:2px}
+.avatar{
+  width:34px;height:34px;border-radius:50%;background:var(--wash);
+  border:2px solid var(--ink);display:grid;place-items:center;
+  font-weight:800;color:var(--ink);flex:none;font-size:14px;
+}
+/* 姓名 + 角色的两行排布规则已下沉到 §20，与 .role-chip 一起用选择器分组给出
+   （.role-chip 不是 .who，只挂 .who 会漏 —— 见 §20 内的说明）。 */
+
+.wrap{max-width:1080px;margin:0 auto;padding:var(--s8) var(--s6) var(--s16);width:100%}
+.wrap.wide{max-width:1280px}
+
+/* 页面头：标题 + 副标题 + 一句话说明（对齐参考的 headline+paragraph 节奏） */
+.pg-head{margin:var(--s2) 0 var(--s6)}
+.pg-head .sub{color:var(--muted);font-size:15px;margin:6px 0 0;max-width:720px;line-height:1.6}
+.pg-head .eyebrow{
+  display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
+  color:var(--link-ink);background:var(--soft);border:2px solid var(--line);
+  border-radius:999px;padding:3px 12px;margin-bottom:var(--s3);
+}
+
+.card{background:var(--card);border:2px solid var(--line);border-radius:var(--radius);padding:var(--s5);margin-bottom:var(--s5)}
+.card.tight{padding:var(--s4)}
+.card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3);flex-wrap:wrap}
+.card-h .hint{color:var(--muted);font-size:var(--fs-cap);margin:2px 0 0;line-height:1.5;max-width:640px}
+/* 【2026-10-05 新增】卡片头部的「看全部 ->」跳转链。此前 3 处内联 style 完全同构
+   （student-me ×2 / mentor ×1），实测手机端 h=22px —— 全页最难点中的元素。
+   抽成类并给 44px 触控，用负 margin 抵消新增高度以保持原有视觉间距。 */
+.more{
+  display:inline-flex;align-items:center;min-height:44px;padding:0 4px;
+  margin:-10px -4px -10px 0;
+  font-size:13px;font-weight:700;color:var(--link-ink);text-decoration:none;white-space:nowrap;
+}
+.more:hover{color:var(--ok-ink)}
+.grid{display:grid;gap:var(--s4)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g-side{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);align-items:start}
+@media(max-width:900px){.g2,.g3,.g4,.g-side{grid-template-columns:1fr}}
+
+/* 顶栏内嵌分类导航（替代原「页面第二行 chip 条」）
+   - 位置：顶栏白胶囊内，品牌与角色切换之间
+   - 分组：竖分隔线 .nav2 i，不加高、不占额外行
+   - 状态：填充=可点，描边深墨=当前页（沿用"填充vs描边=行动vs状态"）
+   - 窄屏：整条横向滚动，不折行（学员端手机竖屏不在此列，见 §16） */
+.nav2{display:flex;align-items:center;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.nav2::-webkit-scrollbar{display:none}
+.nav2 a{
+  /* padding 8px（不是 7px）：原 43px 差 1px 到 44px 触控标准。
+     只加 1px 纵向内边距，横向排布与视觉密度完全不变 —— 比 min-height 更可控
+     （min-height 会在对齐时把整条 nav 的行高顶起来，chip 之间出现不一致基线）。 */
+  display:inline-flex;align-items:center;gap:6px;flex:none;
+  padding:8px 13px;border-radius:var(--radius-btn);
+  background:transparent;border:2px solid transparent;color:var(--muted);
+  font-size:13px;font-weight:700;white-space:nowrap;
+  transition:background .18s,color .18s,border-color .18s;
+}
+.nav2 a:hover{background:var(--soft);color:var(--ink);text-decoration:none}
+.nav2 a:active{background:var(--soft2)}
+.nav2 a.on{background:var(--bg);color:var(--ink);border-color:var(--ink)}
+/* 分组分隔线：分类只靠这条竖线，不加分组标题文字（省横向空间） */
+.nav2 i{flex:none;width:2px;height:18px;margin:0 6px;background:var(--line);border-radius:2px}
+/* chip 溢出提示：右侧渐隐，滚到底自动消失（纯装饰，遮的是胶囊白底所以用 --bg） */
+.nav2.has-over{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);
+  mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.nav2.has-over.at-end{-webkit-mask-image:none;mask-image:none}
+
+/* ---------- 4. 按钮（贴纸：实心+2px描边+硬边投影，按下位移） ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:var(--btn-h);padding:0 20px;border-radius:var(--radius-btn);
+  background:var(--ok);color:#fff;border:2px solid var(--primary-edge);
+  box-shadow:var(--lift-ink);
+  font-family:var(--font-display);font-size:14.5px;font-weight:700;letter-spacing:.01em;
+  cursor:pointer;transition:transform .12s,box-shadow .12s,background .18s;
+}
+.btn:hover{background:#63d90c;text-decoration:none}
+.btn:active{transform:translateY(4px);box-shadow:0 0 0 var(--primary-edge)}
+.btn.ghost{background:var(--bg);color:var(--ink);border-color:var(--edge);box-shadow:var(--lift)}
+.btn.ghost:hover{background:var(--soft);text-decoration:none}
+.btn.ghost:active{transform:translateY(4px);box-shadow:0 0 0 var(--edge)}
+.btn.danger{background:var(--danger);border-color:var(--danger-ink);box-shadow:0 4px 0 var(--danger-ink)}
+.btn.danger:hover{background:#ef5f63}
+.btn.danger:active{box-shadow:0 0 0 var(--danger-ink)}
+.btn.warn{background:var(--warn);border-color:var(--warn-ink);box-shadow:0 4px 0 var(--warn-ink)}
+.btn.sm{min-height:34px;padding:0 14px;font-size:13px;box-shadow:0 3px 0 var(--edge)}
+.btn.sm.ghost{box-shadow:0 3px 0 var(--edge)}
+.btn.sm:active{transform:translateY(3px);box-shadow:0 0 0 var(--edge)}
+.btn.lg{min-height:56px;padding:0 28px;font-size:16.5px;border-radius:14px}
+.btn.block{display:flex;width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+/* ---------- 5. 表单（含三态：默认/聚焦/校验） ---------- */
+label{display:block;font-size:13px;font-weight:700;color:var(--muted);margin:0 0 5px}
+label .req{color:var(--danger);margin-left:2px}
+input[type=text],input[type=password],input[type=number],select,textarea{
+  width:100%;font-family:inherit;font-size:14.5px;color:var(--text);
+  background:var(--bg);border:2px solid var(--edge);border-radius:var(--radius-btn);
+  padding:10px 14px;min-height:var(--btn-h);
+  transition:border-color .16s,box-shadow .16s;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--link);box-shadow:var(--ring)}
+input::placeholder,textarea::placeholder{color:var(--faint)}
+textarea{min-height:96px;resize:vertical;line-height:1.6}
+select{appearance:none;background-image:none;padding-right:34px}
+.fld{margin-bottom:var(--s4)}
+.fld .tip{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+.fld .err{display:none;align-items:center;gap:5px;font-size:12.5px;color:var(--danger-ink);margin-top:5px;font-weight:600}
+.fld.bad input,.fld.bad select,.fld.bad textarea{border-color:var(--danger);background:var(--danger-bg)}
+.fld.bad .err{display:flex}
+.fld.good input,.fld.good select{border-color:var(--ok)}
+.fld .ok{display:none;font-size:12.5px;color:var(--ok-ink);margin-top:5px;font-weight:600}
+.fld.good .ok{display:block}
+.check{display:flex;align-items:flex-start;gap:10px;padding:8px 0;cursor:pointer}
+.check input{width:22px;height:22px;min-height:0;margin:2px 0 0;accent-color:var(--ok);flex:none;cursor:pointer}
+.check span{font-size:14px;line-height:1.5}
+.check b{font-weight:700}
+
+/* ---------- 6. 状态标签 / 徽标（12px 圆角，参考明确小标签也 12px） ---------- */
+.tag{
+  display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:var(--radius-btn);
+  font-size:11.5px;font-weight:700;letter-spacing:.02em;background:var(--soft);color:var(--muted);
+  border:2px solid transparent;white-space:nowrap;
+}
+.tag.ok{background:var(--ok-bg);color:var(--ok-ink);border-color:var(--ok)}
+.tag.warn{background:var(--warn-bg);color:var(--warn-ink);border-color:var(--warn)}
+.tag.danger{background:var(--danger-bg);color:var(--danger-ink);border-color:var(--danger)}
+.tag.link{background:#e8f8ff;color:var(--link-ink);border-color:var(--link)}
+.tag.lock{background:var(--lock-bg);color:#8a8a8a;border-color:var(--lock)}
+.tag.ghost{background:var(--bg);color:var(--muted);border-color:var(--line)}
+
+/* 待人处理：唯一需要「另一个人行动」的状态 -> 橙 + 轻微脉冲
+   安静但不停，导师离席时最该看见它。reduced-motion 下关闭。 */
+.pulse{animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(232,137,12,0)}50%{box-shadow:0 0 0 5px rgba(232,137,12,.16)}}
+@media(prefers-reduced-motion:reduce){.pulse{animation:none}}
+
+/* 待办角标：橙底（红=错误，橙=待处理） */
+.badge{
+  min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--warn);
+  color:#fff;font-size:11.5px;font-weight:800;display:inline-grid;place-items:center;
+  border:2px solid var(--bg);
+}
+.badge.ok{background:var(--ok)}.badge.danger{background:var(--danger)}
+
+/* ---------- 7. KPI（数字=进度，浅绿底，不用阴影） ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--s3)}
+.kpi{background:var(--wash);border:2px solid var(--ink);border-radius:var(--radius);padding:var(--s4)}
+.kpi.plain{background:var(--bg);border-color:var(--line)}
+.kpi.hot{background:var(--warn-bg);border-color:var(--warn)}
+.kpi b{display:block;font-family:var(--font-display);font-size:var(--fs-kpi);font-weight:800;color:var(--ink);letter-spacing:-.02em;line-height:1.1}
+.kpi span{display:block;font-size:12.5px;font-weight:700;color:var(--ok-ink);margin-top:4px}
+.kpi.plain span{color:var(--muted)}
+.kpi.hot b{color:var(--warn-ink)}
+
+/* ---------- 8. 表格（描边包住横滚区，白底上也要有边界） ---------- */
+.tblwrap{border:2px solid var(--line);border-radius:var(--radius);overflow-x:auto;background:var(--bg)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:720px}
+th,td{text-align:left;padding:12px 12px;border-bottom:2px solid var(--line);vertical-align:middle}
+th{color:var(--muted);font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:var(--soft2)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--soft2)}
+td.num{font-family:var(--font-mono);font-weight:700}
+.ops{white-space:nowrap}
+.ops .btn{margin-right:6px}
+
+/* ---------- 9. 进度：条 + 阶段刻度 ---------- */
+.bar{height:12px;background:var(--line);border-radius:999px;overflow:hidden;border:2px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:999px;transition:width .5s cubic-bezier(.22,1,.36,1)}
+.bar.sm{height:8px}
+
+/* 阶段进度条（1A）：3 阶段 × 5 周的时间骨架 */
+.stagebar{display:flex;gap:var(--s2);margin:var(--s2) 0 var(--s3)}
+.stagebar .stg{
+  flex:1;border:2px solid var(--line);border-radius:var(--radius-btn);padding:10px 12px;
+  background:var(--bg);min-width:0;
+}
+.stagebar .stg .nm{font-size:12.5px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:5px}
+.stagebar .stg .wk{font-size:11px;color:var(--faint);margin-top:2px}
+.stagebar .stg .pg{font-family:var(--font-display);font-size:19px;font-weight:800;color:var(--text);margin-top:4px}
+.stagebar .stg.done{background:var(--ok-bg);border-color:var(--ok)}
+.stagebar .stg.done .pg,.stagebar .stg.done .nm{color:var(--ok-ink)}
+.stagebar .stg.cur{border:3px solid var(--ok);padding:9px 11px}
+.stagebar .stg.cur .nm{color:var(--ok-ink)}
+.stagebar .stg .pg small{font-size:11.5px;font-weight:700;color:var(--muted)}
+
+/* ---------- 10. 闯关状态格（.mx）四态：形状+色+符号三重编码 ---------- */
+.mx{
+  display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:32px;
+  padding:0 8px;border-radius:var(--radius-btn);border:2px solid var(--line);
+  background:var(--bg);color:var(--faint);font-family:var(--font-display);
+  font-size:13px;font-weight:800;
+}
+.mx.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok-ink)}
+.mx.doing{background:var(--warn-bg);border-color:var(--warn);color:var(--warn-ink)}
+.mx.todo{background:var(--bg);border-color:var(--edge);color:var(--text)}
+.mx.lock{background:var(--lock-bg);border-style:dashed;border-color:var(--lock);color:#b5b5b5}
+/* 功能性描边：导师唯一能看出「卡在第几关」的线索 -> 加强到 3px，绝不删 */
+.mx.cur{border:3px solid var(--ink)}
+.mxrow{display:flex;flex-wrap:wrap;gap:6px}
+.mxlegend{display:flex;gap:var(--s4);flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted);margin-top:var(--s3)}
+.mxlegend span{display:inline-flex;align-items:center;gap:6px}
+/* 图例里的示意色块：缩到 22×20 / 11px。此前这组三元组被内联重复 11 处
+   （admin-journey / student-journey / design-spec），改尺寸要逐处改 -> 下沉到图例作用域。 */
+.mxlegend .mx{min-width:22px;height:20px;font-size:11px}
+
+/* ---------- 11. 章节行 / 任务卡 ---------- */
+.rowitem{
+  display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);
+  border:2px solid var(--line);border-radius:var(--radius-btn);background:var(--bg);margin-bottom:var(--s2);
+  transition:border-color .16s,background .16s,transform .12s;
+}
+.rowitem:hover{border-color:var(--edge);background:var(--soft2)}
+.rowitem .ico{
+  width:38px;height:38px;border-radius:10px;background:var(--soft);border:2px solid var(--line);
+  display:grid;place-items:center;color:var(--ink);flex:none;
+}
+.rowitem .mid{flex:1;min-width:0}
+.rowitem .mid b{display:block;font-size:14px;font-weight:700}
+.rowitem .mid .d{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.5}
+.rowitem.wait{border-color:var(--warn);background:var(--warn-bg)}
+.rowitem.wait .ico{background:var(--warn-bg);border-color:var(--warn);color:var(--warn-ink)}
+.rowitem.rej{border-color:var(--danger);background:var(--danger-bg)}
+.rowitem.rej .ico{background:var(--danger-bg);border-color:var(--danger);color:var(--danger-ink)}
+.rowitem.ok{border-color:var(--ok);background:var(--ok-bg)}
+.rowitem .acts{flex:none;display:flex;gap:6px}
+
+/* 任务卡：人工批改场景，状态必须一眼可分 */
+.tcard{border:2px solid var(--line);border-radius:var(--radius-btn);padding:var(--s4);margin-bottom:var(--s3);background:var(--bg)}
+.tcard.done{border-color:var(--ok);background:var(--ok-bg)}
+.tcard.wait{border-color:var(--warn);background:var(--warn-bg)}
+.tcard.rej{border-color:var(--danger);background:var(--danger-bg)}
+.tcard.lock{background:var(--lock-bg);border-style:dashed}
+.tcard-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tcard-h b{font-size:14.5px;font-weight:700}
+.tcard .req{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.6}
+.tcard .sub{font-size:12.5px;color:var(--muted);margin-top:6px}
+.tcard .rejnote{margin-top:8px;font-size:12.5px;font-weight:600;color:var(--danger-ink);background:var(--bg);border:2px solid var(--danger);border-radius:10px;padding:8px 10px}
+.tcard .acts{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- 12. 时间线 ---------- */
+.tl{position:relative;padding-left:22px}
+.tl::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.tl .ev{position:relative;padding:0 0 var(--s4)}
+.tl .ev::before{content:"";position:absolute;left:-19px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--ok);border:2px solid var(--bg)}
+.tl .ev .ts{font-size:11.5px;color:var(--muted);font-weight:700}
+.tl .ev .tx{font-size:13.5px;margin-top:2px;line-height:1.55}
+
+/* ---------- 13. 提示条 ---------- */
+.note{border:2px solid var(--line);border-radius:var(--radius-btn);padding:var(--s3) var(--s4);font-size:13.5px;line-height:1.6;background:var(--soft)}
+.note.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok-ink)}
+.note.warn{background:var(--warn-bg);border-color:var(--warn);color:var(--warn-ink)}
+.note.danger{background:var(--danger-bg);border-color:var(--danger);color:var(--danger-ink)}
+.note b{font-weight:800}
+
+/* 折叠说明（details/summary，零 JS）：把「实现细节 / 口径备注 / 待确认项」这类
+   低优先级长文收起来。默认收起 -> 不给主内容抢注意力；需要时可展开。
+   语义色沿用 .note（通过 .fold.warn 等修饰）。 */
+details.fold{border:2px solid var(--line);border-radius:var(--radius-btn);background:var(--soft);margin-top:var(--s4)}
+details.fold>summary{
+  cursor:pointer;list-style:none;padding:10px var(--s4);
+  font-size:13px;font-weight:700;color:var(--muted);
+  display:flex;align-items:center;gap:8px;user-select:none;
+}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{
+  content:"i";flex:none;width:18px;height:18px;border-radius:50%;
+  background:var(--bg);border:2px solid var(--edge);color:var(--muted);
+  display:grid;place-items:center;font-size:11px;font-weight:800;font-style:normal;
+}
+details.fold>summary::after{content:"展开";margin-left:auto;font-size:12px;color:var(--faint);font-weight:600}
+details.fold[open]>summary::after{content:"收起"}
+details.fold[open]>summary{border-bottom:2px solid var(--line)}
+details.fold .fold-body{padding:var(--s3) var(--s4);font-size:13px;line-height:1.65;color:var(--text)}
+details.fold.warn{border-color:var(--warn);background:var(--warn-bg)}
+details.fold.warn>summary{color:var(--warn-ink)}
+details.fold.warn>summary::before{border-color:var(--warn);color:var(--warn-ink);background:var(--bg)}
+
+/* ---------- 20b. 裸 <details>（无 fold 外框，只做折叠） ----------
+   此前 summary 的 cursor/字重/字号逐处内联（mentor.html / student-me.html 各 1 处），
+   语义相同、值不同 -> 抽成类：折叠标题的**可点性**（cursor）+ 默认排版由一处保证。 */
+details.plain>summary{cursor:pointer;font-weight:700}
+details.plain>summary::-webkit-details-marker{display:none}
+details.plain.big>summary{font-family:var(--font-display);font-size:17px}
+details.plain.link>summary{font-size:13.5px;color:var(--link-ink)}
+
+/* ---------- 21. 可折叠阶段分组（.ph-fold）----------
+   【2026-10-05 · 学员端 12 关路径】12 张 lvcard 按 3 个阶段分成组，用户要能**按期收起**
+   （只收起后面的阶段，保留当前在做的那个）—— 而不是整张卡一刀切收起。
+
+   为什么用 <details> 而不是 <button> + JS：<summary> 在无障碍树里的角色**就是 button**，
+   键盘 Enter/Space 原生可切换，展开态由 open 属性承载（读屏自动播报 expanded/collapsed），
+   且零 JS —— 不存在「状态与 DOM 不同步」这类需要专门测的缺陷。
+
+   注意： 项目里折叠组件有三套，别混用：
+     §20b details.plain = 裸折叠（只给 cursor/字重）
+     §20   details.fold  = 灰底边框**信息框**，装低优先级长文（「为什么…」）
+     §21   .ph-fold       = **阶段分组折叠**，装核心内容，无外框（贴在 .card 里）
+   注意： 尺寸同样是**声明出来的**：summary 与三角按钮都显式给 44px 触控。 */
+.ph-fold{margin:var(--s5) 0 0;border-top:2px solid var(--line)}
+.ph-fold:first-child{margin-top:var(--s4);border-top:0}
+.ph-fold>summary{
+  display:flex;align-items:center;gap:var(--s3);
+  min-height:44px;margin:0 calc(-1 * var(--s4));padding:0 var(--s4);
+  cursor:pointer;list-style:none;border-radius:var(--radius-btn);
+  transition:background .12s linear;
+}
+.ph-fold>summary::-webkit-details-marker{display:none}
+.ph-fold>summary::marker{content:""}
+/* 负 margin 抵消 .card 的横向 padding -> 悬停高亮铺满整行；
+   padding（而非 margin）撑高度 -> summary 自身即 44px 触控区。 */
+.ph-fold>summary:hover{background:var(--soft)}
+.ph-fold>summary:focus-visible{outline:2px solid var(--link-ink);outline-offset:-2px}
+/* 分隔线：展开时在 summary 下方；收起时它就是这段内容的唯一边界。
+   用 summary 的 border-bottom 而不是外层 div -> 收起后不会留一条无归属的线。 */
+.ph-fold[open]>summary{border-bottom:2px solid var(--line)}
+/* 折叠态显示进度「n/m 关」—— 收起后仍要知道这组过了几关，否则会以为是空的。 */
+.ph-fold-n{
+  flex:none;margin-left:auto;font-size:12.5px;font-weight:700;
+  color:var(--muted);font-variant-numeric:tabular-nums;
+}
+.ph-fold-n.ok{color:var(--ok-ink)}
+/* 折叠状态指示：> 已收起（可展开）/ v 已展开（可收起）。纯 CSS 三角形，无图标依赖。 */
+.ph-fold-btn{
+  flex:none;display:grid;place-items:center;width:44px;height:44px;
+  margin:-4px -4px -4px 0;color:var(--muted);
+}
+.ph-fold-btn::before{
+  content:"";width:0;height:0;
+  border:6px solid transparent;border-left-color:currentColor;margin-left:3px;
+}
+.ph-fold[open]>.summary .ph-fold-btn::before{
+  border-left-color:transparent;border-top-color:currentColor;margin:3px 0 0;
+}
+/* [红] hover 反馈只用「底色 + 三角变深」——绿/橙在本项目只编码业务状态（已通关=绿），
+   给"可点击"涂状态色属语义倒挂。用中性深色 var(--text)。 */
+.ph-fold>summary:hover .ph-fold-btn{color:var(--text)}
+.ph-fold-body{padding:var(--s3) 0 0}
+@media (max-width:720px){
+  .ph-fold>summary{padding:0 var(--s3);margin:0 calc(-1 * var(--s3))}
+  .ph-fold-btn{width:44px;height:44px}
+  .ph-fold-n{font-size:12px}
+}
+
+.empty{text-align:center;padding:var(--s10) var(--s4);color:var(--muted)}
+.empty .big{font-size:30px;margin-bottom:var(--s2)}
+
+/* ---------- 14. 图片/媒体占位符（统一规范） ----------
+   用法：<figure class="ph ph-banner" data-size="1200×400" data-use="Banner 头图">
+   渲染为虚线框 + 居中标签（尺寸 + 用途），交付时替换为真实素材。 */
+.ph{
+  margin:0;border:2px dashed var(--edge);border-radius:var(--radius-btn);
+  background:var(--soft2);display:grid;place-items:center;text-align:center;
+  color:var(--muted);overflow:hidden;position:relative;
+}
+.ph .ph-t{font-size:12.5px;font-weight:700;line-height:1.5;padding:var(--s2)}
+.ph .ph-t b{display:block;color:var(--text);font-size:13px;margin-bottom:2px}
+.ph .ph-t code{background:var(--bg);border:1px solid var(--line)}
+.ph-banner{aspect-ratio:1200/400;width:100%}
+.ph-card{aspect-ratio:16/9;width:100%}
+.ph-thumb{aspect-ratio:1/1;width:100%;max-width:120px}
+.ph-avatar{aspect-ratio:1/1;width:64px;height:64px;border-radius:50%}
+.ph-video{aspect-ratio:16/9;width:100%}
+.ph-illus{aspect-ratio:4/3;width:100%;max-width:260px;background:var(--wash);border-color:var(--ok)}
+
+/* ---------- 课程卡封面块（2026-10-05 收口：替代学员课程库的虚线占位图） ----------
+   色块 + 课程编号，与管理端章节 .cover 徽标同一语言（wash 底 + display 字）。
+   dim = 未解锁课程压灰。只用既有 token，不新增颜色。 */
+.cvr{
+  flex:none;width:118px;aspect-ratio:16/9;border-radius:var(--radius-btn);
+  background:var(--wash);border:2px solid var(--line);
+  display:grid;place-items:center;margin:0;
+  font-family:var(--font-display);font-weight:800;font-size:20px;color:var(--ok-ink);
+  letter-spacing:.02em;
+}
+.cvr.dim{opacity:.55;filter:grayscale(.4)}
+
+/* ---------- 15. 弹层 / 吐司 / 抽屉 ---------- */
+.mask{position:fixed;inset:0;background:rgba(0,4,55,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:var(--s5)}
+.mask.on{display:flex}
+.modal{
+  background:var(--bg);border:2px solid var(--ink);border-radius:var(--radius);
+  max-width:600px;width:100%;max-height:86vh;overflow:auto;
+  box-shadow:0 6px 0 rgba(0,4,55,.18);animation:mIn .26s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes mIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+.modal .m-h{display:flex;align-items:center;gap:10px;padding:var(--s4) var(--s5);border-bottom:2px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.modal .m-h h2{font-size:18px}
+.modal .m-h .x{margin-left:auto;width:34px;height:34px;border-radius:10px;border:2px solid var(--line);background:var(--bg);display:grid;place-items:center;cursor:pointer;font-size:17px;color:var(--muted);flex:none}
+.modal .m-h .x:hover{background:var(--soft);color:var(--text)}
+.modal .m-b{padding:var(--s5)}
+.modal .m-f{padding:var(--s4) var(--s5);border-top:2px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:var(--soft2)}
+
+.toasts{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none}
+.toast{
+  pointer-events:auto;display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;
+  border:2px solid var(--ink);border-radius:var(--radius-btn);padding:12px 16px;font-size:13.5px;
+  box-shadow:0 4px 0 rgba(0,0,0,.2);animation:tIn .26s cubic-bezier(.22,1,.36,1) both;max-width:92vw;
+}
+.toast.ok{border-color:var(--ok)}.toast.warn{border-color:var(--warn)}.toast.err{border-color:var(--danger)}
+@keyframes tIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ---------- 16. 学员端字号档（PRD §4：手机竖屏单手，字号放大） ---------- */
+body.role-student{--fs-body:16px;--fs-cap:13.5px;--fs-h2:19px;--fs-h1:24px;--btn-h:48px;--row-h:56px;line-height:1.7}
+body.role-student .wrap{padding:var(--s5) var(--s4) var(--s16)}
+body.role-student .btn{font-size:15.5px;padding:0 22px}
+body.role-student .btn.lg{min-height:56px;font-size:17px}
+body.role-student .kpi b{font-size:30px}
+body.role-student .card{border-radius:18px;padding:var(--s4)}
+/* 学员端顶栏 chip：触控目标≥44px，字号跟正文档（12px 太小） */
+body.role-student .nav2 a{font-size:13.5px;padding:10px 14px}
+
+/* ---------- 17. 工作端密度档（导师/培训师/管理员） ---------- */
+body.role-mentor,body.role-trainer{--fs-body:14.5px}
+body.role-trainer .rowitem{min-height:40px;padding:8px var(--s3)}
+body.role-trainer .rowitem .mid b{font-size:13px}
+body.role-trainer .rowitem .mid .d{font-size:11.5px}
+body.role-admin{--fs-body:14.5px}
+
+/* ---------- 18. 手机适配（≤640px） ---------- */
+@media(max-width:640px){
+  .wrap{padding:var(--s5) var(--s4) var(--s12)}
+  h1{font-size:21px}
+  /* 顶栏：外层留白收到 8px，胶囊内只留品牌 + 角色（chip 保留，横向可滚） */
+  .topbar{height:60px;padding:0 var(--s2)}
+  .tb-in{height:44px;padding:0 10px;border-radius:14px}
+  .brand .bn,.brand .bn2{display:none}
+  /* 【2026-10-05】窄屏顶栏收缩优先级：**只让导航让位**，品牌 / 身份牌 / 待办 / 开关都保持完整。
+     flex:1 1 auto + min-width:0 是关键 —— 缺 min-width:0 时 flex item 不会缩到内容宽度以下，
+     9 项管理端导航（内容 869px）会把胶囊撑破。
+     注意： 改这条时连带验「整页横向溢出」（verify.js 每页都断言）——
+        2026-10-05 加「切换账号」时，身份牌外多出的 24px caret 正是靠这条挤掉的。 */
+  .nav2{flex:1 1 auto;min-width:0}
+  .who{min-width:0}
+  .who .who-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav2 a{min-height:40px}
+  .stagebar{flex-direction:column}
+  .pg-head .sub{font-size:14px}
+  .card{padding:var(--s4)}
+}
+@media(pointer:coarse){
+  .btn{min-height:44px}
+  .nav2 a{min-height:44px}
+  .rowitem{min-height:56px}
+  input[type=text],input[type=password],input[type=number],select,textarea{min-height:48px}
+  input[type=checkbox]{width:22px;height:22px}
+  td a,.rowitem a{display:inline-flex;align-items:center;min-height:44px}
+}
+
+/* ---------- 19. 图标（1em 描边，随 currentColor） ---------- */
+.ic{width:1em;height:1em;display:inline-block;vertical-align:-.125em;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ic-lg{width:1.2em;height:1.2em}
+.ic-fill{fill:currentColor;stroke:none}
+.spr{position:absolute;width:0;height:0;overflow:hidden}
+
+/* ---------- 20. 顶栏身份牌 + 账号切换下拉（2026-10-05） ----------
+   【2026-10-04 · 方案 A】原「角色切换菜单」是原型演示工具，真给团队用就是权限漏洞
+   （任何登录者点一下就能切到别人的工作台）-> 曾整体移除，改为静态不可点身份牌。
+   【2026-10-05 · 重新加回】用户需求：演示/验收时要能一键换账号看不同角色视角。
+   风险与一行开关见 app.js §6b（ACCOUNT_SWITCHER_ENABLED）。
+
+   注意： 三处尺寸都是**声明出来的**，不是内容撑出来的：
+      .role-chip 44px（触控）、.acct-i 44px（每行菜单）、.acct-caret 独立 24px 见方。
+      顶栏 .tb-in 高 48px 且内容有横向竞争，尺寸一旦靠内容撑就会随导航项数漂移。 */
+/* 注意： flex 必须是 **0 0 auto**（不可压缩）。
+   【为什么不能写 0 1 auto】2026-10-05 实测：写可压缩后 .acct-wrap 被压到 4px，
+   但 flex 是**按比例分配**的 -> .nav2 同时被压到 42px（9 项导航挤成 42px），
+   整页反而从 397px 涨到 439px。
+   真正该让位的是**导航**（.nav2 已有 overflow-x:auto，横向可滚），
+   所以收缩优先级靠下面 .nav2{flex:1 1 auto; min-width:0} 表达，
+   身份牌必须保持自身完整宽度。
+   A/B 实测（注入 CSS 对比同一页面）：
+     flex:none  -> 管理端 sw=397/390（溢出 7px）
+     flex:0 1 auto -> 管理端 sw=439/390（溢出 49px，更糟）
+   -> 保留 flex:none，溢出改由「窄屏下让 .nav2 真正可缩」来解决。 */
+.acct-wrap{position:relative;flex:0 0 auto}
+.role-chip{
+  display:flex;align-items:center;gap:8px;background:transparent;border:2px solid transparent;
+  border-radius:var(--radius-btn);padding:0 8px 0 4px;min-height:var(--btn-h);
+  font-family:inherit;font-size:13px;font-weight:700;color:var(--text);
+  cursor:pointer;transition:background .14s linear,border-color .14s linear;
+}
+.role-chip:hover{background:var(--soft)}
+.role-chip:active{background:var(--soft2)}
+.role-chip:focus-visible{outline:2px solid var(--link-ink);outline-offset:2px}
+/* open 态由 JS 给 .acct-wrap 加 .open；这里同时给按钮描边，让「正在展开」有明确回执 */
+.acct-wrap.open .role-chip{background:var(--bg);border-color:var(--ink)}
+.role-chip .avatar{width:26px;height:26px;font-size:12px;border-width:2px}
+/* [红]【2026-10-05 补漏】姓名 + 角色的两行规则原本只挂在 `.who` 下（L172-173），
+   而身份牌的 class 是 `.role-chip`（不是 .who）-> 选择器不匹配，
+   实际渲染成「范文淼教务管理员」挤成一行，读不出哪段是姓名哪段是角色（截图实测）。
+   属于**改动前就存在**的样式漏写，不是本次引入；因这块正在改，一并补齐。
+   修法：把 .who 的两行规则用选择器分组一起给 .role-chip，不新增重复声明。 */
+.role-chip .who-txt,
+.who .who-txt{font-weight:700;font-size:13.5px;line-height:1.25}
+.role-chip .who-txt span,
+.who .who-txt span{display:block;font-weight:500;font-size:11.5px;color:var(--muted)}
+/* caret：v 展开 / > 收起，纯 CSS 三角形（与 §21 .ph-fold-btn 同一套做法，不引图标依赖） */
+.acct-caret{flex:none;display:grid;place-items:center;width:24px;height:24px;color:var(--muted)}
+.acct-caret::before{
+  content:"";width:0;height:0;margin-top:-3px;
+  border:5px solid transparent;border-top-color:currentColor;
+}
+.acct-wrap.open .acct-caret::before{margin-top:4px;border-top-color:transparent;border-bottom-color:currentColor}
+.acct-wrap.open .acct-caret{color:var(--text)}
+
+/* 下拉面板：白底 + 2px 描边 + 硬边投影（沿用项目贴纸语言，不用柔和阴影） */
+.acct-menu{
+  position:absolute;top:calc(100% + 8px);right:0;z-index:60;
+  min-width:236px;padding:var(--s2);
+  background:var(--bg);border:2px solid var(--ink);border-radius:var(--radius);
+  box-shadow:var(--lift);
+  display:none;
+}
+.acct-wrap.open .acct-menu{display:block}
+.acct-t{
+  padding:5px var(--s3) 7px;font-size:11.5px;font-weight:800;color:var(--muted);
+  letter-spacing:.04em;
+}
+.acct-i{
+  display:flex;align-items:center;gap:10px;width:100%;
+  min-height:var(--btn-h);padding:5px var(--s3);     /* 纵向 padding 撑高度 -> 每行 44px 触控 */
+  background:transparent;border:2px solid transparent;border-radius:var(--radius-btn);
+  font-family:inherit;text-align:left;cursor:pointer;
+  transition:background .12s linear;
+}
+.acct-i:hover{background:var(--soft)}
+.acct-i:focus-visible{outline:2px solid var(--link-ink);outline-offset:-2px}
+.acct-i .avatar{width:30px;height:30px;font-size:13px;flex:none}
+.acct-n{flex:none;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.acct-n b{font-size:13.5px;font-weight:800;color:var(--ink)}
+.acct-n span{font-size:11.5px;font-weight:500;color:var(--muted)}
+/* 「当前」标记：中性灰底 + 深墨字，不用绿 —— 绿在本项目只编码已通关/已达成（语义倒挂）。 */
+.acct-cur{
+  margin-left:auto;flex:none;padding:2px 8px;border-radius:99px;
+  background:var(--soft);border:2px solid var(--line);
+  font-size:11px;font-weight:800;color:var(--muted);
+}
+
+/* ---------- 20b. 下拉里的「退出登录」（2026-10-05） ----------
+   破坏性操作用 --danger 语义色（项目里 danger 已用于 .note.danger 一致），
+   **常态不铺红底**：红底会让它在视觉上比"切换到某账号"更抢眼，而它其实是最少用的。
+   -> 常态只有图标+文字为红，hover 才铺浅红底。 */
+.acct-sep{height:2px;margin:6px calc(var(--s2) - 2px);background:var(--line);border-radius:2px}
+.acct-ico{display:grid;place-items:center;width:30px;height:30px;flex:none;color:var(--danger-ink)}
+.acct-ico .ic{width:17px;height:17px}
+.acct-out .acct-n b{color:var(--danger-ink)}
+.acct-out .acct-n span{color:var(--muted)}
+.acct-out:hover{background:var(--danger-bg)}
+
+@media (max-width:720px){
+  .role-chip{padding:0 4px 0 4px;gap:6px}
+  .role-chip .who-txt{display:none}
+  /* 【2026-10-05】窄屏下 caret **绝对定位叠在头像上**，不再占独立横向空间。
+     注意： 为什么必须这样：管理端顶栏硬内容已占满 390px
+       （品牌 48 + 待办 56 + 强制解锁开关 168 + 身份牌 73 = 345 + 三个 gap 36 = 381），
+       caret 再占 24+6=30px 就必然整页横向溢出 7px（实测）。
+       身份牌是「你是谁」不能压（头像 26px 是最小可读单元），
+       导航 .nav2 自己 overflow-x:auto 会滚（已加 flex:1 1 auto;min-width:0），
+       -> 唯一能让位的就是我新加的 caret。叠在头像右下角，视觉仍是明确的"可展开"信号。 */
+  .acct-caret{position:absolute;right:2px;bottom:2px;width:14px;height:14px}
+  .acct-caret::before{border-width:4px}
+  .acct-wrap.open .acct-caret::before{border-width:4px;margin-top:3px}
+  .acct-menu{min-width:0;width:min(74vw,280px)}
+}
+
+/* ---------- 21. 关卡通过率条（管理端看板） ----------
+   0% 是"需要处理的信号"不是"缺数据"，所以 0% 时条转灰、数字转红。 */
+.rate{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:2px solid var(--line)}
+.rate:last-child{border-bottom:0}
+.rate .rn{font-family:var(--font-mono);font-size:11.5px;color:var(--muted);width:26px;flex:none;font-weight:700}
+.rate .rl{font-size:12.5px;width:150px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rate .rb{flex:1;min-width:60px;height:20px;background:var(--line);border-radius:6px;overflow:hidden;border:2px solid var(--line)}
+.rate .rb i{display:block;height:100%;background:var(--ok);border-radius:4px}
+.rate .rb.zero i{background:var(--faint)}
+.rate .rv{font-family:var(--font-mono);font-size:12.5px;font-weight:800;width:52px;text-align:right;flex:none;color:var(--ink)}
+.rate .rv.zero{color:var(--danger-ink)}
+@media(max-width:640px){.rate .rl{width:100px}}
+
+/* ---------- 22. 阶段聚合条（管理端闯关总览，视觉方案 A 的聚合变体） ---------- */
+.aggbar{display:flex;gap:var(--s2);margin-bottom:var(--s4);flex-wrap:wrap}
+.aggbar .ag{
+  flex:1;min-width:190px;border:2px solid var(--line);border-radius:var(--radius-btn);
+  padding:10px 12px;background:var(--bg)
+}
+.aggbar .ag.blocked{border-color:var(--danger);background:var(--danger-bg)}
+.aggbar .ag .nm{font-size:12.5px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:6px}
+.aggbar .ag.blocked .nm{color:var(--danger-ink)}
+.aggbar .ag .vv{font-family:var(--font-display);font-size:20px;font-weight:800;margin-top:4px}
+.aggbar .ag.blocked .vv{color:var(--danger-ink)}
+.aggbar .ag .sb{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.45}
+
+/* ---------- 23. 闯关矩阵 12×N（管理端核心页） ----------
+   表体 min-width 1180px 靠 .tblwrap 横滚；≤900px 整表隐藏、改卡片视图。
+   切换用纯 CSS media query（不靠 JS 判宽度，避免拖窗口/缩放时不同步）。 */
+.mxtbl{min-width:1180px}
+.mxtbl th.who,.mxtbl td.who{
+  position:sticky;left:0;background:var(--bg);z-index:2;
+  border-right:2px solid var(--line);min-width:172px
+}
+.mxtbl th.who{z-index:3;background:var(--soft2)}
+.mxtbl th.lv{font-family:var(--font-mono);font-size:11px;padding:8px 4px;text-align:center;min-width:44px}
+.mxtbl th.lv small{display:block;font-size:9.5px;font-weight:500;letter-spacing:0;text-transform:none;margin-top:2px}
+.mxtbl td{padding:6px 4px;text-align:center}
+.mxtbl td.who{text-align:left;padding:10px 12px}
+.mxtbl td.who .nm{font-weight:700;font-size:13.5px;display:block}
+.mxtbl td.who .id{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+.mxtbl tbody tr:hover td{background:var(--soft2)}
+.mxtbl tbody tr:hover td.who{background:var(--soft2)}
+.mxtbl .ops{white-space:nowrap;text-align:right;padding-right:12px}
+.mxcards{display:grid;gap:var(--s3)}
+.mxcard{border:2px solid var(--line);border-radius:var(--radius);padding:var(--s4);background:var(--bg)}
+.mxcard .h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:var(--s3)}
+.mxcard .h .nm{font-weight:700;font-size:15px}
+.mxcard .h .id{font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
+.mxcard .r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@media(max-width:900px){.mxtbl{display:none}}
+@media(min-width:901px){.mxcards{display:none}}
+
+/* ---------- 24. 课程卡窄屏（≤640px）：竖排，不与封面并排 ----------
+   实测：390px 视口下横排（118px 封面 + 文字）会把整页撑到 409px，出现横向滚动。
+   竖排后封面铺满卡片宽度，文字独占一行，不再溢出。 */
+@media(max-width:640px){
+  .lvcard{flex-wrap:wrap}
+  .lvcard>.ph{flex:none;width:100%!important;max-width:none;aspect-ratio:21/9}
+  .lvcard .lvbody{width:100%;min-width:0}
+}
+
+/* ---------- 25. 触控目标在 coarse 指针下必须 ≥44px（修优先级 bug） ----------
+   实测：.btn.sm{min-height:34px} 的选择器优先级高于 coarse 里的 .btn{min-height:44px}，
+   导致学员手机上小按钮仍是 34px（"下载 checklist"、"联系导师" 等）。
+   学员是手机单手操作，34px 会误触 —— 触控目标不可省。 */
+@media(pointer:coarse){
+  .btn,.btn.sm,.btn.lg{min-height:44px;padding-left:18px;padding-right:18px}
+  .btn.sm{font-size:13.5px}
+  .btn.lg{min-height:56px}
+  /* 章节行内的操作按钮同样放大 */
+  .rowitem .acts .btn{min-height:44px}
+}
+
+/* ---------- 26. 未登录占位（2026-10-05 · 需求「未登录只能看见首页内容」） ----------
+   用户选择的是「停在原页显示请先登录」（URL 不变），占位由 app.js 的
+   requireLogin() 渲染进 <main>，各页 render() 被 needsLoginGate() 短路。
+
+   视觉口径：**中性灰 + 一个登录按钮**。
+   为什么不用品牌绿：绿在本项目里=「已通过/可行动」，是个**业务状态色**；
+   而这里是「你没登录」的中性提示，用绿会让人误以为已经通过或可以点。
+   同 §20b 的纪律：颜色只编码业务状态，交互提示用中性色。 */
+.needlogin-body .topbar,.needlogin-body .nav2{display:none}
+.needlogin-body>main.wrap,.needlogin-body>main.wide{min-height:auto}
+.needlogin{
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  padding:var(--s7,56px) var(--s4);gap:var(--s2);
+}
+.needlogin-ico{
+  display:grid;place-items:center;width:56px;height:56px;margin-bottom:var(--s2);
+  border:2px solid var(--line);border-radius:50%;color:var(--muted);background:var(--bg);
+}
+.needlogin-ico .ic{width:26px;height:26px}
+.needlogin h1{font-family:var(--font-display);font-size:24px;color:var(--ink)}
+.needlogin p{font-size:13.5px;color:var(--muted);line-height:1.7;max-width:34em}
+.needlogin .btn{margin-top:var(--s3)}
+.needlogin-why{font-size:12px!important;color:var(--faint,var(--muted))!important;opacity:.8}
+
+/* ---------- §27 真实数据加载态 / 加载失败（2026-10-05 · P0-2） ----------
+   目的：live 数据未到达前**绝不留本地示例数据那一帧**。
+   做法：mock-api-live.js 在发起 data 请求**之前**同步给 <html> 打 data-live-loading="1"，
+   主内容区 visibility:hidden（注意： 用 visibility 而非 display:none —— 后者会让 main 高度归零，
+   数据到了放出来时页面会明显跳动、滚动位置丢失）；同时 fixed 一层居中提示，成功后移除。
+   加载失败时**不放出来**，改由 .liveerr 顶上（含重试），避免用户拿着示例数据操作。 */
+html[data-live-loading="1"] main{visibility:hidden}
+.liveload,.liveerr{
+  position:fixed;left:0;right:0;top:68px;bottom:0;z-index:9000;
+  display:flex;align-items:center;justify-content:center;padding:24px;
+  background:var(--bg);
+}
+.liveload-box,.liveerr-box{
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;max-width:34em;
+}
+.liveload-box b,.liveerr-box b{font-family:var(--font-display);font-size:16px;color:var(--ink)}
+.liveload-sub{font-size:13px;color:var(--muted);line-height:1.7;opacity:.85}
+.liveerr-msg{font-size:13px;color:var(--text);line-height:1.7}
+.liveload-spin{
+  width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--ink);
+  border-radius:50%;animation:liveload-spin .8s linear infinite;
+}
+@keyframes liveload-spin{to{transform:rotate(360deg)}}
+.liveerr-box .btn{margin-top:6px}
+@media (prefers-reduced-motion:reduce){.liveload-spin{animation:none}}
+@media (max-width:640px){.liveload,.liveerr{top:56px}}
+
+/* ==========================================================================
+   学员首页「今日聚焦 / 距离转正 / 当前关卡」（2026-10-05 第二轮体验优化）
+   目标：新人登录后 3 秒内知道「我在哪 / 下一步做什么 / 离转正多远」。
+   设计约束：只复用既有 token（--ok/--warn/--faint/--s3..--s5），不新增设计语言。
+   ========================================================================== */
+
+/* ---- 1. 今日聚焦（页面视觉优先级最高）---- */
+.focus{
+  border:2px solid var(--ok);
+  background:var(--ok-bg);
+  padding:var(--s5);
+  margin-bottom:var(--s4);
+}
+.focus-tag{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:12px;font-weight:800;letter-spacing:.06em;
+  color:var(--ok-ink);text-transform:none;
+  margin-bottom:var(--s2);
+}
+.focus-tag .ic{width:15px;height:15px}
+.focus-lv{
+  font-size:var(--fs-h2);font-weight:800;color:var(--ok-ink);
+  line-height:1.35;margin-bottom:var(--s3);
+}
+.focus-stages{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:var(--s3)}
+.focus-stages .fs{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:12.5px;font-weight:700;
+  padding:3px 9px;border-radius:999px;
+  background:rgba(255,255,255,.7);color:var(--faint);
+  border:1px solid transparent;
+}
+.focus-stages .fs.ok{color:var(--ok-ink);border-color:var(--ok)}
+.focus-stages .fs .ic{width:13px;height:13px}
+.focus-todo{
+  font-size:15px;font-weight:800;color:var(--ok-ink);
+  line-height:1.55;margin-bottom:4px;
+}
+.focus-why{
+  font-size:13px;color:var(--ok-ink);opacity:.86;
+  line-height:1.6;margin:0 0 var(--s4);
+}
+.focus-btn{display:inline-flex;align-items:center;justify-content:center}
+/* 完成态：12 关全通 */
+.focus-done{
+  border:2px solid var(--ok);background:var(--ok-bg);
+  padding:var(--s5);margin-bottom:var(--s4);
+}
+.focus-done .focus-tag{color:var(--ok-ink);margin-bottom:var(--s2)}
+.focus-done .focus-h{font-size:var(--fs-h2);color:var(--ok-ink);margin:0 0 4px}
+.focus-done .focus-t{font-size:13.5px;color:var(--ok-ink);opacity:.86;margin:0;line-height:1.6}
+
+/* ---- 2. 距离转正（紧凑列表，不做看板）---- */
+.rdlist{display:flex;flex-direction:column;gap:2px}
+.rdrow{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:var(--s3);padding:9px 0;
+  border-bottom:1px solid var(--line,rgba(0,0,0,.07));
+}
+.rdrow:last-child{border-bottom:0}
+.rdname{font-size:13.5px;font-weight:600;color:var(--ink,inherit)}
+.rdval{font-size:13px;font-weight:700;color:var(--faint);text-align:right}
+/* 「待更新」不能长得像分数 —— 用中性灰 + 斜体，避免学员误读成真实成绩 */
+.rdval.wait{font-weight:600;font-style:normal;color:var(--faint);font-size:12.5px}
+.rdval.ok{color:var(--ok-ink)}
+
+/* ---- 3. 当前关卡 ---- */
+.curgoal{
+  font-size:13.5px;line-height:1.65;color:var(--ink,inherit);
+  margin:0 0 var(--s3);
+}
+.curstages{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:var(--s3)}
+.curstages .cs{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:12.5px;padding:4px 10px;border-radius:999px;
+  background:rgba(0,0,0,.04);color:var(--faint);
+}
+.curstages .cs.ok{background:var(--ok-bg);color:var(--ok-ink)}
+.curstages .cs b{font-weight:800}
+.curcard{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:10px 12px;border-radius:12px;
+  background:rgba(0,0,0,.03);
+}
+.curcard-n{font-size:11.5px;font-weight:700;color:var(--faint);letter-spacing:.04em}
+.curcard-t{font-size:13.5px;font-weight:700}
+
+/* ---- 4. 移动端（390px）：保证主行动按钮无需横向滚动 ---- */
+@media (max-width:640px){
+  .focus,.focus-done{padding:var(--s4);margin-bottom:var(--s3)}
+  .focus-lv{font-size:19px}
+  .focus-todo{font-size:14.5px}
+  /* 按钮占满宽度 -> 拇指可点，且不需要横向滚动 */
+  .focus-btn{width:100%;min-height:46px}
+  .rdrow{padding:8px 0}
+  .rdname{font-size:13px}
+  .rdval{font-size:12.5px}
+  /* 「距离转正」两列并排会让 390px 变窄导致换行，这里保持单列但压缩行距 */
+  .curstages .cs{font-size:12px;padding:3px 8px}
+}
+
+/* ==========================================================================
+   管理端课程管理 · 章节行「预览视频」（2026-10-05）
+   - .btn.dim：置灰但**可点** —— 点击给「暂无视频」提示（disabled 属性点不了，
+     用户会以为是坏了；置灰 + 提示才符合"看得出不可用、也知道为什么"）。
+   - 窄屏（≤640px）：章节行 4 个操作按钮（预览/换视频/换PDF/删）横排会撑破
+     390px，操作区整体换行到文字下方右对齐；只作用于带 .chrow 的章节行，
+     其他页面的 .rowitem 不受影响。
+   ========================================================================== */
+.btn.dim{opacity:.45;cursor:not-allowed}
+@media (max-width:640px){
+  .rowitem.chrow{flex-wrap:wrap}
+  .rowitem.chrow .acts{width:100%;justify-content:flex-end;flex-wrap:wrap}
+}

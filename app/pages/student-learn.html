@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>学习中心</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-student" data-role="student" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap" id="page"></main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* 学习中心：基线 viewLearn（L1074-1089）
+   保留功能：课时目录（视频 / 测验 / 同频三态按钮）/ 收藏 / 评分 / 答疑讨论区
+   URL 参数：?c=C7                                                             */
+const CID = new URLSearchParams(location.search).get('c') || 'C1';
+// 注意： 不能在顶层求值：initRole() 要到 DOMContentLoaded 才同步会话身份
+const WID = () => MOCKAPI.S.wid;
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('student','');
+  initNav();
+  window.__rerender = render;
+  render();
+});
+
+function gateOf(chid){
+  return MOCK.DB.gates[MOCK.KEY3(WID(),CID,chid)] || { mentee:false, mentor:false };
+}
+
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const c=MOCK.courseOf(CID);
+  const page=document.getElementById('page');
+  if(!c){ page.innerHTML='<div class="empty"><div class="big"><svg class="ic"><use href="#i-think"/></svg></div><b>找不到这门课</b></div>'; return; }
+
+  // [红] V2 第1层闸门：未解锁时**整页锁死**，不发视频地址（基线 courseLocked）
+  if(MOCK.courseLocked(CID, WID())){
+    page.innerHTML=`
+      <a class="btn ghost sm" href="student-courses.html"><svg class='ic'><use href='#i-arrow-l'/></svg> 返回课程库</a>
+      <div class="card" style="margin-top:14px;text-align:center;padding:40px 20px">
+        <div style="font-size:40px;line-height:1"><svg class='ic'><use href='#i-lock'/></svg></div>
+        <h1 style="font-size:20px;margin:12px 0 6px">${UI.esc(c.title)}</h1>
+        <p class="sub" style="margin:0 0 4px">${UI.esc(MOCK.lockReason(CID,WID()))}</p>
+        <p class="sub">通过上一关后自动开放。</p>
+        <a class="btn sm" href="student-journey.html" style="margin-top:14px">去看我的闯关</a>
+      </div>`;
+    return;
+  }
+
+  const lr=MOCKAPI.learnOf(WID(),CID);
+  const done=lr.done||[];
+
+  // 课时目录：三态按钮逐条照抄基线
+  const rows=c.chapters.map(ch=>{
+    const g=gateOf(ch.id);
+    const isGate=!!ch.gate;
+    const doneSync=isGate && g.mentee && g.mentor;
+    const isDone=done.includes(ch.id);
+    let btn='';
+    if(isGate){
+      btn = doneSync ? '<span class="tag ok">已同频解锁</span>'
+          : g.mentee  ? '<span class="tag warn">待导师确认</span>'
+          : `<button class="btn sm" onclick="openSync('${CID}','${ch.id}')">我确认已同频</button>`;
+    }else if(ch.type==='quiz'){
+      btn = isDone ? '<span class="tag ok">已完成</span>'
+                  : `<button class="btn sm" onclick="openQuiz('${CID}','${ch.id}')">开始测验</button>`;
+    }else{
+      btn = isDone ? '<span class="tag ok">已学</span>'
+                  : `<button class="btn sm" onclick="openPlayer('${CID}','${ch.id}')">学习</button>`;
+    }
+    const icon = isGate ? '<svg class="ic"><use href="#i-handshake"/></svg>' : ch.type==='quiz' ? '<svg class="ic"><use href="#i-pencil"/></svg>' : '<svg class="ic"><use href="#i-play"/></svg>';
+    const wrap = (isGate && g.mentee && !g.mentor) ? 'wait' : (doneSync||isDone) ? 'ok' : '';
+    return `<div class="rowitem ${wrap}" ${(isGate&&g.mentee&&!g.mentor)?`style="cursor:pointer" onclick="openSync('${CID}','${ch.id}')"`:''}>
+      <span style="font-size:17px">${icon}</span>
+      <span style="flex:1;min-width:0"><b>${UI.esc(ch.title)}</b></span>
+      ${btn}
+    </div>`;
+  }).join('');
+
+  const favOn = !!(MOCK.DB.fav[WID()] && MOCK.DB.fav[WID()].courses && MOCK.DB.fav[WID()].courses[CID]);
+
+  page.innerHTML=`
+    <a class="btn ghost sm" href="student-courses.html"><svg class='ic'><use href='#i-arrow-l'/></svg> 返回课程库</a>
+    <h1 style="font-size:24px;margin:14px 0 4px">${UI.esc(c.title)}</h1>
+    <p class="sub" style="margin:0 0 14px">讲师：${UI.esc(c.lecturer)} · 阶段：${UI.esc(c.subject)} · 难度：${UI.esc(c.difficulty)}</p>
+
+    <div class="card">
+      <div class="row" style="gap:10px;align-items:center">
+        <button class="btn ghost sm" onclick="mockToggleFav('${CID}')">${favOn?'<svg class="ic"><use href="#i-star"/></svg> 已收藏':'<svg class="ic"><use href="#i-star-o"/></svg> 收藏'}</button>
+        <span id="rateHere"></span>
+      </div>
+      ${c.desc?`<p class="sub" style="margin:12px 0 0">${UI.esc(c.desc)}</p>`:''}
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:15px;margin:0 0 12px">课时目录</h2>
+      ${rows || '<p class="sub">（暂无章节）</p>'}
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:15px;margin:0 0 12px">答疑讨论区</h2>
+      <div id="qaBox"></div>
+    </div>`;
+
+  renderRate();
+  renderQA();
+}
+
+function renderRate(){
+  const box=document.getElementById('rateHere'); if(!box) return;
+  const my=((MOCK.DB.rating[CID]||{}).scores||{})[WID()]||0;
+  const n=Object.keys((MOCK.DB.rating[CID]||{}).scores||{}).length;
+  const avg=avgRating(CID);
+  box.innerHTML='<span class="sub" style="margin-left:8px">评分：</span>'
+    +[1,2,3,4,5].map(i=>`<span style="cursor:pointer;font-size:16px;color:${i<=my?'var(--warn)':'var(--muted)'}" title="评 ${i} 分" onclick="mockSetRate('${CID}',${i})"><svg class='ic'><use href='#i-star'/></svg></span>`).join('')
+    +`<span class="sub"> 均分 ${n?avg.toFixed(1):'—'}（${n}人）</span>`;
+}
+function renderQA(){
+  const box=document.getElementById('qaBox'); if(!box) return;
+  const items=((MOCK.DB.qa[CID]||{}).items||[]);
+  box.innerHTML=`
+    <div style="margin-bottom:10px">
+      <input type="text" id="qaTxt" placeholder="输入问题（内部可见）"
+             onkeydown="if(event.key==='Enter')mockPostQA('${CID}')">
+      <button class="btn sm" style="margin-top:8px" onclick="mockPostQA('${CID}')">发布</button>
+    </div>
+    ${items.length ? items.map(q=>`<div style="border-bottom:2px dashed var(--line);padding:8px 0">
+        <b>${UI.esc(q.u)}</b> <span class="sub">${UI.esc(q.ts)}</span>
+        <div>${UI.esc(q.txt)}</div></div>`).join('')
+      : '<p class="sub">暂无留言</p>'}`;
+}
+</script>
+</body>
+</html>

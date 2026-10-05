@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>学习跟踪 · 教务管理员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-admin" data-role="admin" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap wide">
+
+  <div class="pg-head">
+    <span class="eyebrow">星禾云课堂</span>
+    <h1>学习跟踪</h1>
+    <p class="sub">逐个学员看学习进度。</p>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h2 style="font-size:15px;margin:0">明细表</h2>
+      <button class="btn sm" onclick="exportLearningReport()">导出 CSV</button>
+    </div>
+    <div class="tblwrap" style="margin-top:12px">
+      <table>
+        <thead><tr>
+          <th>工号</th><th>姓名</th><th>校区</th><th>导师</th><th>当前关卡</th>
+          <th>最后观看</th><th>拖拽跳过</th><th>同频</th><th>轨迹</th>
+        </tr></thead>
+        <tbody id="trackRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <details class="fold">
+    <summary>口径说明（同频 / 拖拽跳过）</summary>
+    <div class="fold-body">
+      <b>同频</b>：徒弟与导师都确认才算完成，格式 <code>已完成/总数</code>。<br>
+      <b>拖拽跳过</b>：播放器事件里出现过拖拽行为（只做记录与复盘，不做硬拦）。
+    </div>
+  </details>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* 学习跟踪：基线 viewTracking —— 9 列（含"轨迹"操作列）
+   CSV 导出 8 列（比页面表少"轨迹"列，与基线 L1486 一致） */
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-tracking.html');
+  initNav();
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+
+  const lvN = MOCK.DB.levels.length;
+
+  // 带双确认的章节总数 = 全站 gate 章节数（基线 gcnt 口径）
+  const gcnt = MOCK.DB.courses.reduce((a,c)=>a+c.chapters.filter(ch=>ch.gate).length,0);
+
+  function syncdOf(tid){
+    let n=0;
+    MOCK.DB.courses.forEach(c=>c.chapters.filter(ch=>ch.gate).forEach(ch=>{
+      const g=MOCK.DB.gates[MOCK.KEY3(tid,c.id,ch.id)];
+      if(g&&g.mentee&&g.mentor) n++;
+    }));
+    return n;
+  }
+  function lastWatchOf(tid){
+    let last='';
+    Object.keys(MOCK.DB.learn).forEach(k=>{
+      if(k.split('|')[0]!==tid) return;
+      (MOCK.DB.learn[k].events||[]).forEach(e=>{ if(!last||e.ts>last) last=e.ts; });
+    });
+    return last;
+  }
+  function dragOf(tid){
+    return Object.keys(MOCK.DB.learn).some(k=>k.split('|')[0]===tid && MOCK.DB.learn[k].dragSkip);
+  }
+
+  document.getElementById('trackRows').innerHTML = MOCK.DB.trainees.map(t=>{
+    const cur=MOCK.currentLevelOf(t.id);
+    const curTxt = cur.no>lvN ? '已通关' : ('第 '+cur.no+' 关');
+    const last=lastWatchOf(t.id);
+    return `<tr>
+      <td><b>${UI.esc(t.id)}</b></td>
+      <td>${UI.esc(t.name)}</td>
+      <td>${UI.esc(t.dept)}</td>
+      <td>${UI.esc((MOCK.mentorOf(t.mentorId)||{}).name||'—')}</td>
+      <td>${UI.esc(curTxt)}</td>
+      <td>${UI.esc(last||'—')}</td>
+      <td>${dragOf(t.id)?'<span class="tag danger">是</span>':'否'}</td>
+      <td>${syncdOf(t.id)}/${gcnt}</td>
+      <td><button class="btn ghost sm" onclick="openTimeline('${UI.esc(t.id)}')">轨迹</button></td>
+    </tr>`;
+  }).join('');
+});
+</script>
+</body>
+</html>

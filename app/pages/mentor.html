@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>导师工作台</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-mentor" data-role="mentor" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap wide">
+
+  <div class="pg-head">
+    <span class="eyebrow" id="eyebrow">—</span>
+    <h1>工作台</h1>
+    <p class="sub">先批谁、谁掉队了。</p>
+  </div>
+
+  <!-- 1. 待办 KPI：数字即行动指引 -->
+  <div class="kpis" id="kpis" style="margin-bottom:var(--s5)"></div>
+
+  <div class="grid g-side">
+
+    <!-- ================= 左栏：待我批改（唯一需要动手的地方） ================= -->
+    <div>
+      <div class="card" id="queueCard" style="border:3px solid var(--warn)">
+        <div class="card-h">
+          <div style="display:flex;align-items:center;gap:10px">
+            <h2>待我批改</h2>
+            <span class="badge" id="queueN">0</span>
+          </div>
+          <span class="tag warn pulse" id="queueTag">需要你动手</span>
+        </div>
+
+        <div id="queue"></div>
+      </div>
+
+      <!-- 已批记录（折叠，避免占主栏空间） -->
+      <div class="card">
+        <details class="plain big" id="doneWrap" open>
+          <summary>
+            我最近批过的（<span id="doneN">0</span> 条）
+          </summary>
+          <div style="margin-top:var(--s4)" id="done"></div>
+        </details>
+      </div>
+    </div>
+
+    <!-- ================= 右栏：我的徒弟（要关心的人） ================= -->
+    <div>
+      <div class="card">
+        <div class="card-h">
+          <h2>我的徒弟</h2>
+          <span class="tag ghost" id="menteeN">—</span>
+        </div>
+        <div id="mentees"></div>
+      </div>
+
+      <!-- 5 周学习地图（带教节奏） -->
+      <div class="card">
+        <div class="card-h">
+          <h2>5 周带教地图</h2>
+          <a href="mentor-coach.html" class="more">完整版 <svg class="ic"><use href="#i-arrow-r"/></svg></a>
+        </div>
+        <div class="tl">
+          <div class="ev"><div class="ts">第 1 周</div>
+            <div class="tx">新手期 6 关全通 · 重点：让他跑通一次完整推流</div></div>
+          <div class="ev"><div class="ts">第 2 周</div>
+            <div class="tx">成长期 L07–L09 · 重点：模板沉淀，把剪辑压到 1.5 小时内</div></div>
+          <div class="ev"><div class="ts">第 3 周</div>
+            <div class="tx">成长期收尾 · 重点：月引流摸到 800 人的门道</div></div>
+          <div class="ev"><div class="ts">第 4 周</div>
+            <div class="tx">成熟期 L10–L11 · 重点：4 个账号分配 + 数据诊断</div></div>
+          <div class="ev"><div class="ts">第 5 周</div>
+            <div class="tx">转正项目 · 重点：独立操盘，5 周成果验收</div></div>
+        </div>
+      </div>
+
+      <!-- 【2026-10-05 收口】原「常用操作」卡三按钮（代录进度/导出报表/答疑群）均为
+           点了只弹「暂未开放」的占位入口，按上线收口规则整体移除。
+           真实的批改与代录入口在上方待批改队列与徒弟详情页。 -->
+
+    </div>
+
+  </div>
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<!--
+  本页交互清单：
+  1. 「待我批改」队列按真实数据渲染（自己徒弟的 submitted 任务卡 + 考核），
+     等得最久的排最前；无待批时显示空态引导（不编造数据）。
+  2. 点「批改」-> 打开弹层，展示该条提交的真实说明；通过/打回走 MOCKAPI.mockReviewTask /
+     mockExamReview（与学员端、管理端三条批改入口共用同一条链路）。
+  3. 批完 -> 就地重渲染（队列少一条、KPI 减 1、状态落 DB）。
+  4. 右栏徒弟行整行可点 -> mentor-mentee.html；矩阵 12 格四态由 UI.mxCell 统一渲染
+     （当前关 3px 深墨描边是功能性线索，绝不删）。
+  5. 待办口径唯一来源 = MOCK.todoCounts(wid)（导师只算自己徒弟的练 + 考）。
+
+  数据来源：window.MOCK / window.MOCKAPI（proto/assets/*.js）
+-->
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* ============================================================
+   导师工作台 · 数据驱动
+   原实现完全硬编码（写死 3 条待批、2 名徒弟、"李彦 S002"这个不存在的账号）。
+   真实数据：M1 郑丽薪只带 1 个徒弟（S001 朱子悦），且当前待批 = 0。
+   ============================================================ */
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('mentor','mentor.html');
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+  window.__rerender = render;   // 验收脚本在内存里造数据后手动重渲染（与其它页一致）
+  render();
+});
+
+const ME = ()=>MOCKAPI.S.wid;
+
+/* 我带的徒弟（导师只看自己徒弟） */
+function myMentees(){
+  const me = ME();
+  return MOCK.DB.trainees.filter(t=>t.mentorId===me);
+}
+
+/* 取某学员、某关、某任务的批改记录（导师端要跨徒弟看，所以带 wid 参数）。
+   注意：【2026-10-04 修正】旧重写时把 rec0 改名为 recOf，却漏了函数定义 ->
+   openReview 里调用时抛 ReferenceError('recOf is not defined')，表现为
+   「点批改没反应」。同目录 mentor-mentee.html 的 recOf 是 2 参（用外层 WID），
+   本页需跨学员，故定义为 3 参。 */
+function recOf(wid, lvId, tid){
+  return ((MOCK.DB.tasks[wid]||{})[lvId]||{})[tid];
+}
+
+/* 我的待批队列：自己徒弟的 submitted（任务卡 + 考核）
+   与 MOCK.todoCounts 同口径（导师 = 自己徒弟的练 + 考），只是这里要明细不要计数 */
+function myQueue(){
+  const wids = myMentees().map(t=>t.id);
+  const out = [];
+  wids.forEach(wid=>{
+    const byLv = MOCK.DB.tasks[wid] || {};
+    Object.keys(byLv).forEach(lvId=>{
+      const lv = MOCK.levelOf(lvId); if(!lv) return;
+      Object.keys(byLv[lvId]||{}).forEach(tid=>{
+        const r = byLv[lvId][tid];
+        if(!r || r.status!=='submitted') return;
+        out.push({ wid, lv, tid, rec:r, isExam: tid===MOCK.EXAM_TASK });
+      });
+    });
+  });
+  // 等得最久的排最前（提交时间升序；无时间排最后）
+  out.sort((a,b)=> new Date(a.rec.at||0) - new Date(b.rec.at||0));
+  return out;
+}
+
+/* 我最近批过的：自己徒弟 tasks 里 status 为 passed/rejected 且带 reviewAt 的 */
+function myReviewed(){
+  const wids = myMentees().map(t=>t.id);
+  const out = [];
+  wids.forEach(wid=>{
+    const byLv = MOCK.DB.tasks[wid] || {};
+    Object.keys(byLv).forEach(lvId=>{
+      const lv = MOCK.levelOf(lvId); if(!lv) return;
+      Object.keys(byLv[lvId]||{}).forEach(tid=>{
+        const r = byLv[lvId][tid];
+        if(!r || !r.reviewAt) return;
+        out.push({ wid, lv, tid, rec:r, isExam: tid===MOCK.EXAM_TASK });
+      });
+    });
+  });
+  out.sort((a,b)=> new Date(b.rec.reviewAt||0) - new Date(a.rec.reviewAt||0));
+  return out;
+}
+
+/* ============================================================
+   渲染
+   ============================================================ */
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const me = ME(), meU = MOCK.userOf(me), meM = MOCK.mentorOf(me);
+  document.getElementById('eyebrow').textContent =
+    `${meU?meU.role==='mentor'?'带教导师':'—':'—'} · ${me}${meM&&meM.dept?' · '+meM.dept:''}`;
+
+  const mentees = myMentees();
+  const queue   = myQueue();
+  const done    = myReviewed();
+  const todo    = MOCK.todoCounts(me);
+
+  renderKpis(todo, mentees, done);
+  renderQueue(queue);
+  renderDone(done);
+  renderMentees(mentees);
+
+  if(typeof injectIcons==='function') injectIcons();
+}
+
+function renderKpis(todo, mentees, done){
+  // 卡 3 天以上：按 journey 的最后活动时间 -> 这里用「当前关 + 未全过」的简单口径近似
+  const stuck = mentees.filter(t=>{
+    const cur = MOCK.currentLevelOf(t.id);
+    return cur && !MOCK.levelDone(t.id, cur);
+  }).length;
+  // 注意： 零值不能上绿底（--wash 绿 = 有进展）；待批 > 0 用 hot（橙）
+  const queueCls = todo.total > 0 ? 'kpi hot' : 'kpi plain';
+  document.getElementById('kpis').innerHTML = `
+    <div class="${queueCls}"><b>${todo.total}</b><span>待我批改</span></div>
+    <div class="kpi plain"><b>${mentees.length}</b><span>带教学徒</span></div>
+    <div class="kpi plain"><b>${done.length}</b><span>我批过的</span></div>
+    <div class="kpi plain"><b>${stuck}</b><span>还在闯关中</span></div>`;
+}
+
+function renderQueue(queue){
+  const box = document.getElementById('queue');
+  document.getElementById('queueN').textContent = queue.length;
+  const tag = document.getElementById('queueTag');
+
+  if(!queue.length){
+    tag.className = 'tag ok';
+    tag.textContent = '暂时清空';
+    box.innerHTML = `
+      <div class="empty-note"><b>暂无待批改</b></div>`;
+    return;
+  }
+  tag.className = 'tag warn pulse';
+  tag.textContent = '需要你动手';
+
+  box.innerHTML = queue.map(it=>{
+    const u = MOCK.traineeOf(it.wid) || {};
+    const def = it.isExam ? null : MOCK.TASK_DEFS.find(d=>d.id===it.tid);
+    const waited = waitedDays(it.rec.at);
+    const title = it.isExam
+      ? `${u.name||it.wid}（${it.wid}）· 第 ${it.lv.no} 关考核`
+      : `${u.name||it.wid}（${it.wid}）· ${it.tid} ${def?def.title:''}`;
+    const desc = it.isExam
+      ? '实操考核：带教导师看完给结论。'
+      : (def ? def.req : '按任务卡要求提交成果。');
+    const waitTag = waited === null
+      ? `<span class="tag ghost">刚刚提交</span>`
+      : (waited >= 1
+          ? `<span class="tag danger">已等 ${waited} 天</span>`
+          : `<span class="tag ghost">今天提交</span>`);
+    return `
+    <div class="rowitem wait" data-wid="${esc(it.wid)}" data-lv="${esc(it.lv.id)}" data-tid="${esc(it.tid)}">
+      <span class="ico" data-ic="i-clock"></span>
+      <span class="mid">
+        <b>${esc(title)}</b>
+        <span class="d">${esc(desc)}${it.rec.note?`<br>提交说明：${esc(it.rec.note)}`:''}</span>
+        <span class="mxrow" style="margin-top:8px">
+          ${waitTag}
+          <span class="tag ghost">${it.isExam?'考核「考」环节':'任务卡「练」环节'}</span>
+          ${it.rec.at?`<span class="tag ghost">${esc(fmt(it.rec.at))} 提交</span>`:''}
+        </span>
+      </span>
+      <span class="acts">
+        <button class="btn sm" data-review="1">批改</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+function renderDone(done){
+  document.getElementById('doneN').textContent = done.length;
+  const box = document.getElementById('done');
+  if(!done.length){
+    box.innerHTML = `<p class="hint" style="margin:0">暂无批改记录</p>`;
+    return;
+  }
+  box.innerHTML = done.slice(0, 8).map(it=>{
+    const u = MOCK.traineeOf(it.wid) || {};
+    const def = it.isExam ? null : MOCK.TASK_DEFS.find(d=>d.id===it.tid);
+    const ok = it.rec.status === 'passed';
+    const label = it.isExam ? `第 ${it.lv.no} 关考核` : `${it.tid} ${def?def.title:''}`;
+    return `
+    <div class="rowitem ${ok?'ok':'rej'}">
+      <span class="ico" data-ic="${ok?'i-check':'i-close'}"></span>
+      <span class="mid"><b>${esc(u.name||it.wid)}（${esc(it.wid)}）· ${esc(label)}</b>
+        <span class="d">${esc(fmt(it.rec.reviewAt))} ${ok?'通过':'打回'}${it.rec.reviewNote?' · '+esc(it.rec.reviewNote):''}</span></span>
+    </div>`;
+  }).join('');
+}
+
+function renderMentees(mentees){
+  const box = document.getElementById('mentees');
+  document.getElementById('menteeN').textContent = `${mentees.length} 人`;
+  if(!mentees.length){
+    box.innerHTML = `<p class="hint" style="margin:0">暂无带教学员</p>`;
+    return;
+  }
+  box.innerHTML = mentees.map(t=>{
+    const u = MOCK.userOf(t.id) || {};
+    const cur = MOCK.currentLevelOf(t.id);
+    const doneN = MOCK.DB.levels.filter(l=>MOCK.levelDone(t.id,l)).length;
+    const todo = MOCK.todoCounts(t.id);
+    const rd = MOCK.readinessBadge ? readinessLineMet(t.id) : 0;
+    const name = u.name || t.name || t.id;
+    // 12 格矩阵（UI.mxCell 是四态唯一来源）
+    const cells = MOCK.DB.levels.map(lv=>UI.mxCell(t.id, lv, {cur: cur && cur.id===lv.id})).join('');
+    const days = t.joined ? Math.max(0, Math.floor((Date.now()-new Date(t.joined))/86400000)) : null;
+    return `
+    <a class="rowitem" href="mentor-mentee.html?wid=${esc(t.id)}" style="text-decoration:none;display:block">
+      <span class="avatar" style="float:left;margin-right:12px">${esc(String(name).slice(0,1))}</span>
+      <span class="mid" style="display:block;overflow:hidden">
+        <b>${esc(name)} · ${esc(t.id)}</b>
+        <span class="d">${days!==null?`入职 ${days} 天 · `:''}已过 ${doneN}/12 关 · 当前：第 ${cur?cur.no:'—'} 关</span>
+        <span class="mxrow" style="margin-top:8px">${cells}</span>
+      </span>
+    </a>
+    <div class="dl" style="margin:8px 0 16px">
+      <div class="it"><div class="k">待批改</div>
+        <div class="v" style="${todo.total?'color:var(--warn-ink)':''}">${todo.total} 条</div></div>
+      <div class="it"><div class="k">转正达标线</div><div class="v">${rd} / 4 条</div></div>
+      <div class="it"><div class="k">卡在</div>
+        <div class="v">${cur?`第 ${cur.no} 关`:'—'}</div></div>
+    </div>`;
+  }).join('');
+}
+
+/* 达标线条数（只认 met === true，阈值从不参与判定）
+   注意： readinessBadge 挂在 window.UI 上（也挂了全局），不在 MOCK 上 */
+function readinessLineMet(wid){
+  const fn = (typeof readinessBadge==='function') ? readinessBadge
+           : (window.UI && window.UI.readinessBadge);
+  if(typeof fn!=='function') return 0;
+  return MOCK.READINESS_LINES.filter(l=>{
+    const b = fn(l.key, wid);
+    return b && b.met;
+  }).length;
+}
+
+/* ============================================================
+   批改（走 MOCKAPI，与学员端/管理端同一条链路）
+   ============================================================ */
+document.addEventListener('click', e=>{
+  const btn = e.target.closest && e.target.closest('button[data-review]');
+  if(!btn) return;
+  const row = btn.closest('.rowitem');
+  if(!row) return;
+  openReview(row.dataset.wid, row.dataset.lv, row.dataset.tid);
+});
+
+/* 注意： 审核链路（与学员端、管理端同一条）：
+     MOCKAPI.mockReview(tid, levelId, taskId, pass)  <- 注意第一个参数是**学员工号**
+     打回原因经 window.__rejNote 传入（后端 L1487-1493 的既有约定）
+   弹层用 app.js 的 openModal(htmlString) —— 它收的是 HTML 字符串，不是 template id。 */
+function openReview(wid, lvId, tid){
+  const lv = MOCK.levelOf(lvId);
+  const u  = MOCK.traineeOf(wid) || {};
+  const isExam = tid === MOCK.EXAM_TASK;
+  const def = isExam ? null : MOCK.TASK_DEFS.find(d=>d.id===tid);
+  const rec = ((MOCK.DB.tasks[wid]||{})[lvId]||{})[tid] || {};
+  const waiting = waitedDays(rec.at);
+
+  // 通过会发生什么 —— 复述真实规则，别让导师以为"点了就解锁"
+  let effect;
+  if(isExam){
+    effect = `第 ${lv.no+1} 关解锁`;
+  }else{
+    const defs = MOCK.TASK_DEFS.filter(d=>d.levelId===lvId);
+    const unpassed = defs.filter(d=>d.id!==tid && (recOf(wid,lvId,d.id)||{}).status!=='passed');
+    effect = unpassed.length
+      ? `还差 <b>${unpassed.length}</b> 张卡（${unpassed.map(d=>d.id).join(' / ')}），「练」才记通过`
+      : `本关「练」完成`;
+  }
+
+  openModal(`
+  <div class="m-h">
+    <h2>批改：${isExam?`第 ${lv.no} 关考核`:`${esc(tid)} ${esc(def?def.title:'')}`}</h2>
+    <span class="x" onclick="closeModal()">×</span>
+  </div>
+  <div class="m-b">
+    <div class="note warn" style="margin-bottom:var(--s4)">
+      <b>${esc(u.name||wid)}（${esc(wid)}）· 第 ${lv.no} 关 · ${esc(fmt(rec.at))} 提交</b>
+      ${waiting!==null&&waiting>=1?` · 已等 ${waiting} 天`:''}
+    </div>
+    ${def?`<div class="note" style="margin-bottom:var(--s4)"><b>任务要求：</b>${esc(def.req)}</div>`:''}
+    ${rec.note?`<div class="note ok" style="margin-bottom:var(--s4)"><b>提交说明：</b>${esc(rec.note)}</div>`:''}
+    <div class="fld" style="margin-top:var(--s4)">
+      <label>批改结论 <span class="req">*</span></label>
+      <select id="rvSel">
+        <option value="ok">通过</option>
+        <option value="rej">打回（必须写原因）</option>
+      </select>
+    </div>
+    <div class="fld">
+      <label>批改意见</label>
+      <textarea id="rvNote" placeholder="通过可以留空；打回请写清缺什么、怎么算做完。"></textarea>
+      <div class="tip">学员端原文显示，写具体动作。</div>
+    </div>
+    <div class="note ok" style="margin-top:var(--s2)"><b>通过后：</b>${effect}</div>
+  </div>
+  <div class="m-f">
+    <button class="btn ghost" onclick="closeModal()">取消</button>
+    <button class="btn" id="rvOk">确认通过</button>
+  </div>`);
+
+  document.getElementById('rvOk').onclick = ()=>submitReview(wid, lvId, tid);
+}
+
+function submitReview(wid, lvId, tid){
+  const sel  = document.getElementById('rvSel');
+  const box  = document.getElementById('rvNote');
+  const note = (box.value||'').trim();
+  const pass = sel.value === 'ok';
+  // 打回必须写原因（后端有默认值兜底，前端先拦一道更友好）
+  if(!pass && note.length < 2){
+    box.closest('.fld').classList.add('bad');
+    toast('打回必须写原因','err');
+    box.focus();
+    return;
+  }
+  window.__rejNote = pass ? null : note;   // 打回原因经全局传给 mockReview
+  MOCKAPI.mockReview(wid, lvId, tid, pass);
+  window.__rejNote = null;
+  closeModal();
+  render();
+}
+
+/* ============================================================
+   工具
+   ============================================================ */
+function waitedDays(at){
+  if(!at) return null;
+  const d = new Date(at); if(isNaN(d)) return null;
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+function fmt(s){
+  if(!s) return '';
+  const d = new Date(s); if(isNaN(d)) return String(s).slice(0,16).replace('T',' ');
+  const p = n=>String(n).padStart(2,'0');
+  return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+</script>
+
+</body>
+</html>

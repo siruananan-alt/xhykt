@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>闯关总览 · 教务管理员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-admin" data-role="admin" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap wide">
+
+  <div class="pg-head">
+    <span class="eyebrow" id="eyebrow">在训学员 · 12 关</span>
+    <h1>闯关总览</h1>
+    <p class="sub">全员闯关矩阵，待批改就地处理。</p>
+  </div>
+
+  <!-- 阶段聚合条：先给结论，再给明细（由真实数据算，不写死） -->
+  <div class="aggbar" id="aggbar"></div>
+
+  <!-- 筛选工具条 -->
+  <div class="card tight">
+    <div style="display:flex;gap:var(--s3);align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:190px">
+        <label style="margin-bottom:4px">搜索学员</label>
+        <input type="text" id="q" placeholder="姓名或工号…">
+      </div>
+      <div style="flex:none;width:160px">
+        <label style="margin-bottom:4px">按卡点天数</label>
+        <select id="fStuck">
+          <option value="">全部学员</option>
+          <option value="3">卡 3 天以上</option>
+          <option value="1">卡 1 天以上</option>
+        </select>
+      </div>
+      <div style="flex:none;width:150px">
+        <label style="margin-bottom:4px">按阶段</label>
+        <select id="fPhase">
+          <option value="">全部阶段</option>
+          <option value="新手期">新手期（第 1 周）</option>
+          <option value="成长期">成长期（第 2–3 周）</option>
+          <option value="成熟期">成熟期（第 4–5 周）</option>
+        </select>
+      </div>
+      <div style="flex:none">
+        <button class="btn ghost" onclick="exportJourneyCSV()">导出 CSV</button>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:10px">当前显示 <b id="filterCount">0</b> 名学员</p>
+  </div>
+
+  <!-- ============ 批量通过（入口 1.） ============
+       【2026-10-05 UI 审计】原为 border:3px solid var(--warn) + 「需要动手」pulse 标签。
+       3px 描边是 `.mx.cur` 的**功能性**专属（导师看出「卡在第几关」），
+       用在一张普通操作卡上会让它**视觉压过主矩阵**——而这页的主任务是看矩阵。
+       现在降回 2px（与 .card 默认一致），**橙色语义保留**（待审核=橙，PRD 已定），
+       「需要动手」标签也保留 —— 它仍是全站唯一提示"这里有活要干"的地方。 -->
+  <div class="card" style="border:2px solid var(--warn)">
+    <div class="card-h">
+      <div style="display:flex;align-items:center;gap:10px">
+        <h2>待批改 · 批量通过</h2>
+        <span class="badge" id="bulkBadge">0</span>
+      </div>
+      <span class="tag warn pulse">需要动手</span>
+    </div>
+    <p class="hint" style="margin-bottom:var(--s4)">
+      只适合纯口述、答案唯一的考核。实操类请在下方矩阵逐条看。
+    </p>
+    <div id="bulkBox"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:var(--s3)">
+      <button class="btn warn" id="bulkEntryBtn" disabled onclick="openBulkPass()">批量通过（0）</button>
+      <button class="btn ghost" onclick="openBulkPass()">批量通过面板</button>
+    </div>
+  </div>
+
+  <!-- ============ 矩阵（桌面） ============ -->
+  <div class="card">
+    <div class="card-h">
+      <h2>学员 × 12 关矩阵</h2>
+      <div class="mxlegend" style="margin:0">
+        <span><span class="mx ok"><svg class="ic"><use href="#i-check"/></svg></span>全过</span>
+        <span><span class="mx doing">n·m</span>已过 n/共 m 环节</span>
+        <span><span class="mx todo">·</span>已解锁未开始</span>
+        <span><span class="mx lock">—</span>未解锁</span>
+      </div>
+    </div>
+
+    <div class="tblwrap">
+      <table class="mxtbl">
+        <thead><tr id="mxHead"></tr></thead>
+        <tbody id="mxBody"></tbody>
+      </table>
+    </div>
+
+    <!-- 窄屏卡片视图（纯 CSS 切换） -->
+    <div class="mxcards" id="mxCards"></div>
+
+    <details class="fold">
+      <summary>怎么读这张矩阵</summary>
+      <div class="fold-body">
+        悬停（或手机长按）任一色块 <svg class="ic"><use href="#i-arrow-r"/></svg> 显示该关的<b>学 / 练 / 考</b>状态、批改人与通过时间。<br>
+        带 <b>3px 深墨描边</b>的是该学员<b>当前所在关卡</b>。窄屏自动切卡片视图。
+      </div>
+    </details>
+  </div>
+
+  <!-- 阶段详情（真实数据） -->
+  <div class="grid g3" id="phaseCards"></div>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<!--
+  本页交互清单：
+  1. 二级导航当前项「闯关总览」自动高亮。
+  2. 矩阵色块：hover（或手机长按）显示逐环节明细（学/练/考各状态、批改人、时间）。
+     点色块 -> 打开该学员该关的详情弹层。
+  3. 当前关 3px 深墨描边（.mx.cur）：功能性描边，导师/管理员唯一能快速看出"卡在第几关"的线索。
+  4. 「批改 n」按钮：n = 该学员待批改总数。点击 -> openAdminReview(工号) 弹层列出该学员全部
+     待批条目，走与导师端完全一致的批改链路与判定规则。
+     批完后弹层自动刷新（若还开着）+ 「批改 n」按钮与角标同步更新，归零则按钮消失。
+  5. 「代录」-> openJourney(工号) 代录弹层（选关卡 + 勾环节 -> 写 journey）。运营救急通道。
+  6. 批量通过【入口 1.】：卡片里的复选框清单就地勾选 + 一键通过；
+     与看板【入口 2.】共用 mockBulkPass() 同一条链路（逐条过 canReview）。
+  7. 搜索 + 卡点天数 + 阶段：三个筛选同时作用于表格行与卡片（共用 data-kw），计数实时更新。
+  8. ≤900px：纯 CSS 切卡片视图（表格 display:none），不靠 JS 判宽度。
+-->
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* 闯关总览 · 数据驱动版
+   基线等价：viewAdminJourney（12 列矩阵 + 四态色块 + 当前关描边 + 待批改就地处理）
+   硬约束：
+     · 列 = 12 关，行 = 该角色可见的学员（admin 全部 / mentor 只自己徒弟）
+     · 色块四态由 UI.mxCell 唯一产出，本页不自算状态
+     · 「批改 n」= 该学员待批改条数，与顶栏角标同源（MOCK.todoCounts）
+     · 阶段聚合与阶段详情卡全部是**真实算出来的**，不再写死 0/4 */
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-journey.html');
+  initNav();
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+  window.__rerender = render;
+  render();
+});
+
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const wid = MOCKAPI.S.wid;
+  const rows = MOCKAPI.visibleTrainees(wid);
+  window.__pendIdx = pendingIndex();          // 1. 先建索引，后续逐行读取
+  document.getElementById('eyebrow').textContent = '全站 '+rows.length+' 名在训学员 · '+MOCK.DB.levels.length+' 关';
+  renderAgg(rows,wid);
+  renderMatrix(rows);
+  renderBulkEntry(rows);
+  renderPhaseCards(rows);
+  applyFilters();
+}
+
+/* ---------- 1. 阶段聚合条（真实计算） ---------- */
+function renderAgg(rows,wid){
+  const total = rows.length||1;
+  document.getElementById('aggbar').innerHTML = MOCK.LEVEL_PHASES.map(ph=>{
+    const lvs = MOCK.DB.levels.filter(l=>l.no>=ph.from&&l.no<=ph.to);
+    const full = rows.filter(t=>lvs.every(l=>MOCK.levelDone(t.id,l))).length;
+    const bad = full===0;
+    return `<div class="ag${bad?' blocked':''}">
+      <div class="nm">${ph.name} · ${ph.week}（L${String(ph.from).padStart(2,'0')}–L${String(ph.to).padStart(2,'0')}）</div>
+      <div class="vv">${full} / ${rows.length} 人全通</div>
+      <div class="sb">${bad?'本阶段还没有人全通':'已有 '+full+' 人走完本阶段'}</div>
+    </div>`;
+  }).join('') + (()=>{
+    const c = MOCK.todoCounts(wid);
+    return `<div class="ag${c.total?' blocked':''}">
+      <div class="nm"><svg class='ic'><use href='#i-dot'/></svg> 全站待批改</div>
+      <div class="vv">${c.total} 条</div>
+      <div class="sb">练 ${c.practice} · 考 ${c.exam}</div>
+    </div>`;
+  })();
+}
+
+/* ---------- 2. 矩阵 ---------- */
+function renderMatrix(rows){
+  document.getElementById('mxHead').innerHTML =
+    '<th class="who">学员</th>' +
+    MOCK.DB.levels.map(l=>`<th class="lv">${String(l.no).padStart(2,'0')}<small>${esc(l.title.slice(0,2))}</small></th>`).join('') +
+    '<th>操作</th>';
+
+  document.getElementById('mxBody').innerHTML = rows.map(t=>{
+    const pend = pendingOf(t.id);
+    const cur  = MOCK.currentLevelOf(t.id);
+    const days = stuckDays(t.id);
+    const stuckTag = days>=3?'<span class="tag danger">卡 '+days+' 天</span>'
+                   : days>=1?'<span class="tag warn">卡 '+days+' 天</span>'
+                   : '';
+    const kw = (t.name+' '+t.id+' '+((MOCK.mentorOf(t.mentorId)||{}).name||'')).toLowerCase();
+    return `<tr data-kw="${esc(kw)}" data-id="${esc(t.id)}">
+      <td class="who">
+        <span class="nm">${esc(t.name)} <span class="tag ghost">${esc(t.id)}</span> ${stuckTag}</span>
+        <span class="id">带教 ${esc((MOCK.mentorOf(t.mentorId)||{}).name||'未指定')} · ${esc(t.week?'第 '+t.week+' 周':'第 '+(MOCK.currentLevelOf(t.id).no)+' 关')}</span>
+      </td>
+      ${MOCK.DB.levels.map(l=>`<td>${UI.mxCell(t.id,l)}</td>`).join('')}
+      <td class="ops">
+        ${pend?`<button class="btn sm" onclick="openAdminReview('${esc(t.id)}')">批改 ${pend}</button>`:''}
+        <button class="btn sm ghost" onclick="openJourney('${esc(t.id)}')">代录</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="14" class="hint">没有可见学员</td></tr>';
+
+  document.getElementById('mxCards').innerHTML = rows.map(t=>{
+    const pend = pendingOf(t.id);
+    const cur  = MOCK.currentLevelOf(t.id);
+    const days = stuckDays(t.id);
+    const kw = (t.name+' '+t.id).toLowerCase();
+    return `<div class="mxcard" data-kw="${esc(kw)}" data-id="${esc(t.id)}">
+      <div class="h"><span class="avatar">${esc(t.name.slice(0,1))}</span>
+        <span><span class="nm">${esc(t.name)}</span> <span class="id">${esc(t.id)} · 带教 ${esc((MOCK.mentorOf(t.mentorId)||{}).name||'未指定')}</span></span>
+        ${days>=1?`<span class="tag ${days>=3?'danger':'warn'}" style="margin-left:auto">卡 ${days} 天</span>`
+                 :'<span class="mx doing" style="margin-left:auto">第 '+cur.no+' 关</span>'}
+      </div>
+      <div class="r mxrow">${MOCK.DB.levels.map(l=>UI.mxCell(t.id,l)).join('')}</div>
+      <div class="r" style="margin-top:var(--s3)">
+        ${pend?`<button class="btn sm" onclick="openAdminReview('${esc(t.id)}')">批改 ${pend}</button>`:''}
+        <button class="btn sm ghost" onclick="openJourney('${esc(t.id)}')">代录</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- 3. 批量通过入口 1. ---------- */
+function renderBulkEntry(rows){
+  const list = UI.pendingList(MOCKAPI.S.wid);
+  const box  = document.getElementById('bulkBox');
+  const badge= document.getElementById('bulkBadge');
+  if(badge) badge.textContent = list.length;
+  if(!list.length){
+    box.innerHTML = '<div class="empty"><div class="big"><svg class="ic"><use href="#i-party"/></svg></div><b>全站没有待批改的提交</b><p style="font-size:13px;margin-top:6px">学员提交后这里会自动出现。</p></div>';
+    syncBulkBtn();
+    return;
+  }
+  box.innerHTML = `<label class="check" style="border-bottom:2px solid var(--line);padding-bottom:10px">
+      <input type="checkbox" id="selAll"><span><b>全选当前列表</b>（勾上后批量按钮才可用）</span></label>
+    <div id="selList" style="margin:var(--s3) 0">${UI.bulkListHTML(list)}</div>`;
+  bindSelectAll('#selAll','.bsel',syncBulkBtn);
+  document.querySelectorAll('.bsel').forEach(c=>c.addEventListener('change',syncBulkBtn));
+  // 就地勾选的按钮 = 打开确认框（不跳弹层），与「打开面板」是同一个 executeBulkSel
+  const b=document.getElementById('bulkEntryBtn');
+  if(b) b.onclick=()=>{ const sel=selSnapshot(); if(!sel.length) return; askBulkConfirm(sel); };
+  syncBulkBtn();
+}
+function selSnapshot(){
+  return [...document.querySelectorAll('.bsel')].filter(c=>c.checked)
+    .map(c=>({ tid:c.dataset.tid, lvId:c.dataset.lv, taskId:c.dataset.task }));
+}
+function syncBulkBtn(){
+  const b=document.getElementById('bulkEntryBtn'); if(!b) return;
+  const n=selSnapshot().length;
+  b.textContent='批量通过（'+n+'）'; b.disabled=n===0;
+}
+// 就地勾选 -> 确认框。复用 UI.doBulkPass 的确认文案，但快照走本页的复选框
+function askBulkConfirm(sel){
+  window.__bulkSel=sel;
+  confirmBox('确认批量通过？',
+    `将对所选的 <b>${sel.length}</b> 条纯口述类考核一键通过。通过后会立即解锁下一关，学员端马上能看到。<br><br>
+     <b>建议：</b>批量前抽查 1 条，确认答案口径没问题。`,
+    'runBulkPass()','确认批量通过');
+}
+
+/* ---------- 4. 阶段详情卡（真实数据） ---------- */
+function renderPhaseCards(rows){
+  document.getElementById('phaseCards').innerHTML = MOCK.LEVEL_PHASES.map(ph=>{
+    const lvs = MOCK.DB.levels.filter(l=>l.no>=ph.from&&l.no<=ph.to);
+    const full= rows.filter(t=>lvs.every(l=>MOCK.levelDone(t.id,l))).length;
+    const cls = full===lvs.length&&full>0?'ok' : (full?'warn':'lock');
+    const hasPrac = lvs.some(l=>l.stages&&l.stages.practice);
+    return `<div class="card">
+      <div class="card-h"><h2>${ph.name} · ${ph.week}</h2><span class="tag ${cls}">${full}/${rows.length} 全通</span></div>
+      <p class="hint" style="margin-bottom:var(--s3)">L${String(ph.from).padStart(2,'0')}–L${String(ph.to).padStart(2,'0')} · ${hasPrac?'含「练」环节（任务卡）':'只有「学」和「考」'}</p>
+      <div class="tblwrap"><table style="min-width:0;font-size:12.5px">
+        <thead><tr><th>关</th><th>课程</th><th>通过</th></tr></thead>
+        <tbody>${lvs.map(l=>{
+          const n=rows.filter(t=>MOCK.levelDone(t.id,l)).length;
+          const tag = n===rows.length&&n>0?'ok':(n?'doing':'lock');
+          return `<tr><td>${String(l.no).padStart(2,'0')}</td><td>${esc(l.title)}</td>
+            <td><span class="mx ${tag}">${n}/${rows.length}</span></td></tr>`;
+        }).join('')}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- 工具 ---------- */
+// 该学员待批改条数。注意： 每次 render 只算一次全站清单并缓存 ——
+// 逐行调 UI.pendingList 会退化成 O(n²)，12 关 × N 学员时明显卡顿。
+function pendingIndex(){
+  return UI.pendingList(MOCKAPI.S.wid).reduce((m,p)=>{
+    (m[p.tid]=m[p.tid]||[]).push(p); return m;
+  },{});
+}
+function pendingOf(tid){ return (window.__pendIdx&&window.__pendIdx[tid]||[]).length; }
+// 卡点天数：用最后一条 journey/提交时间倒推；没有记录返回 0
+function stuckDays(tid){
+  let last=null;
+  const J=MOCK.DB.journey[tid]||{};
+  Object.keys(J).forEach(lv=>Object.keys(J[lv]).forEach(s=>{
+    const at=J[lv][s]&&J[lv][s].at; if(at&&(!last||at>last)) last=at;
+  }));
+  const T=MOCK.DB.tasks[tid]||{};
+  Object.keys(T).forEach(lv=>Object.keys(T[lv]).forEach(k=>{
+    const at=T[lv][k]&&T[lv][k].at; if(at&&(!last||at>last)) last=at;
+  }));
+  if(!last) return 0;
+  const d=Math.floor((Date.now()-new Date(last).getTime())/86400000);
+  return d>0?d:0;
+}
+
+/* ---------- 三个筛选（同时作用于表格行与卡片） ---------- */
+function applyFilters(){
+  const q=(document.getElementById('q').value||'').trim().toLowerCase();
+  const stuck=document.getElementById('fStuck').value;
+  const phase=document.getElementById('fPhase').value;
+  const scope=window.matchMedia('(max-width:900px)').matches?'.mxcard[data-kw]':'tr[data-kw]';
+  let n=0;
+  document.querySelectorAll('tr[data-kw],.mxcard[data-kw]').forEach(it=>{
+    const tid=it.dataset.id;
+    let hit = !q || it.dataset.kw.toLowerCase().includes(q);
+    if(hit && stuck) hit = stuckDays(tid) >= Number(stuck);
+    if(hit && phase){
+      const cur=MOCK.currentLevelOf(tid);
+      const p=MOCK.DB.levels.find(l=>l.id===cur.id);
+      hit = !!(p && p.phase===phase);
+    }
+    it.style.display=hit?'':'none';
+    if(it.matches(scope)&&hit) n++;
+  });
+  document.getElementById('filterCount').textContent=n;
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  ['q','fStuck','fPhase'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.addEventListener('input',applyFilters);el.addEventListener('change',applyFilters); }
+  });
+});
+
+/* ---------- 导出 CSV（基线：学员 × 12 关 × 各环节状态 × 卡点天数） ---------- */
+function exportJourneyCSV(){
+  const rows=MOCKAPI.visibleTrainees(MOCKAPI.S.wid);
+  const head=['工号','姓名','导师',...MOCK.DB.levels.map(l=>'L'+String(l.no).padStart(2,'0')),'当前关卡','卡点天数'];
+  UI.exportCSV('闯关总览.csv',head,rows.map(t=>{
+    const cells=MOCK.DB.levels.map(l=>{
+      if(!MOCK.levelUnlocked(t.id,l)) return '未解锁';
+      const p=MOCK.levelProgress(t.id,l);
+      return p.done===p.total?'全过':(p.done>0?(p.done+'/'+p.total):'未开始');
+    });
+    const cur=MOCK.currentLevelOf(t.id);
+    return [t.id,t.name,(MOCK.mentorOf(t.mentorId)||{}).name||t.mentorId,
+            ...cells,'第 '+cur.no+' 关 '+cur.title,stuckDays(t.id)];
+  }));
+}
+</script>
+</body>
+</html>

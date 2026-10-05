@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>用户管理 · 教务管理员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-admin" data-role="admin" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap wide">
+
+  <div class="pg-head">
+    <span class="eyebrow">星禾云课堂</span>
+    <h1>用户管理</h1>
+    <p class="sub">学员进「学员管理」，导师进「带教计划」。</p>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="sub">共 <b id="userCount">0</b> 个账号。新增学员前先建导师。</div>
+      <button class="btn" onclick="openAddUser()">+ 新增用户</button>
+    </div>
+    <div class="tblwrap" style="margin-top:12px">
+      <table>
+        <thead><tr>
+          <th>工号</th><th>姓名</th><th>角色</th><th>校区</th><th>导师/职称</th><th>最近打卡</th><th>操作</th>
+        </tr></thead>
+        <tbody id="userRows"></tbody>
+      </table>
+    </div>
+    <div class="note warn" style="margin-top:12px">
+      密码经服务端加密存储，<b>列表不回传</b>。
+    </div>
+  </div>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* 用户管理：基线 viewAdminUsers —— 7 列
+   操作列规则（逐条照抄基线）：
+     · 重置密码 = 所有人都有
+     · 删除     = admin 本人没有，其他人有
+     · 转移     = 只有学员有                                        */
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-users.html');
+  initNav();
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+
+  // 写操作后重绘：mock-api 的 rerenderAfterWrite() 会调 window.__rerender
+  window.__rerender = render;
+
+  render();
+});
+
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const list = Object.values(MOCK.DB.users);
+  document.getElementById('userCount').textContent = list.length;
+
+  document.getElementById('userRows').innerHTML = list.map(u=>{
+    const roleTag = u.role==='admin' ? '<span class="tag ghost">管理员</span>'
+                 : u.role==='mentor'? '<span class="tag ok">导师</span>'
+                 :                   '<span class="tag">学员</span>';
+    // 第5列：学员显示"所属导师"，其他角色显示"职称"
+    const fifth = u.role==='student'
+      ? UI.esc((MOCK.mentorOf(u.mentorId)||{}).name||'—')
+      : UI.esc(u.title||'—');
+    return `<tr>
+      <td><b>${UI.esc(u.wid)}</b></td>
+      <td>${UI.esc(u.name)}</td>
+      <td>${roleTag}</td>
+      <td>${UI.esc(u.dept||'—')}</td>
+      <td>${fifth}</td>
+      <td>${UI.esc(u.lastCheckin||'未打卡')}</td>
+      <td>
+        <button class="btn ghost sm" onclick="openResetPw('${UI.esc(u.wid)}')">重置密码</button>
+        ${u.wid==='admin'?'':`<button class="btn ghost sm" onclick="askDelUser('${UI.esc(u.wid)}','${UI.esc(u.name||'')}','${UI.esc(u.role||'')}')">删除</button>`}
+        ${u.role==='student'?`<button class="btn ghost sm" onclick="openTransfer('${UI.esc(u.wid)}')">转移</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ---- 删除账号：二次确认（2026-10-05 上线前加固）----
+   为什么加：原来删除按钮直接调 mockDeleteUser，误点即永久删号，无任何拦截。
+   语义说明照实写清，避免管理员误以为"只是删个登录账号"：
+   删的是**账号本身**；该工号的历史学习流水（learn/journey/tasks/readiness）
+   **会保留**（后端刻意不牵连历史），但没有账号就再也登录不进来查看了。 */
+function askDelUser(wid, name, role){
+  const who = (name?('「'+name+'」'):'');
+  const roleCn = role==='student'?'学员':(role==='mentor'?'导师':'用户');
+  confirmBox('删除账号',
+    '<p class="hint">确定删除'+roleCn+who+'（<b>'+UI.esc(wid)+'</b>）？连带影响：<br>'+
+    '<svg class="ic"><use href="#i-num1"/></svg> <b>账号将被永久删除</b>，该工号立即无法登录；<br>'+
+    '<svg class="ic"><use href="#i-num2"/></svg> 他的<b>学习记录会保留</b>（学/练/考进度、任务卡、达标线都不会被抹掉）；<br>'+
+    '<svg class="ic"><use href="#i-num3"/></svg> 误删可从服务端备份恢复，但建议先确认此人确实不再使用。</p>',
+    'doDelUser(' + JSON.stringify(wid) + ')', '确认删除');
+}
+async function doDelUser(wid){
+  try{
+    await mockDeleteUser(wid);
+    toast('已删除账号 '+wid);
+    render();
+  }catch(e){ toast('删除失败：'+(e&&e.message?e.message:e),'err'); }
+}
+</script>
+</body>
+</html>

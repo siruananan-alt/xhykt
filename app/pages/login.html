@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>登录 · 企业内部学习站</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-student" data-role="student">
+
+<main class="auth">
+
+  <!-- 品牌侧：把业务结构讲清楚，让人知道自己在登什么 -->
+  <section class="side">
+    <span class="tag ghost" style="align-self:flex-start;border-color:var(--ok)">星禾云课堂</span>
+    <h1 style="margin-top:var(--s4)">5 周走完 12 关<br>4 条线达标就转正</h1>
+    <p class="lead">
+      不是课程平台，是一套<b>能验收的培养体系</b>：
+      看完视频自动过「学」，交任务卡 + 考核由带教导师<b>人工批改</b>，
+      4 条达标线全绿才能转正。
+    </p>
+
+    <div class="stages">
+      <div class="s"><b>第 1 周</b><span>新手期 L01–L06 · 跑通一次完整推流</span></div>
+      <div class="s"><b>第 2–3 周</b><span>成长期 L07–L09 · 沉淀模板，冲月引流 800 人</span></div>
+      <div class="s"><b>第 4–5 周</b><span>成熟期 L10–L12 · 独立操盘 4 个账号，成果验收</span></div>
+    </div>
+
+    <!-- 【2026-10-05 收口】原「品牌插画位」虚线占位图已移除（正式登录页不放模板占位）。 -->
+  </section>
+
+  <!-- 表单侧 -->
+  <section class="formside">
+    <h2>登录</h2>
+    <p class="sub2">用工号登录。账号由教务管理员统一创建，<b>不提供自助注册</b>。</p>
+
+    <!-- data-ok 由 app.js 的全局 bindForm 在校验通过后回调（同步）。
+         注意： 不写死跳转：统一交给 onLoginOk()，由它按模式分流（真实=异步登录 / 沙盒=直接跳）。 -->
+    <form id="loginForm" data-form="loginForm" data-ok="onLoginOk()">
+      <div class="fld">
+        <label>工号 <span class="req">*</span></label>
+        <input type="text" name="wid" data-rule="wid" placeholder="如 S001 / M1 / admin" autocomplete="username">
+        <div class="tip">学员 S+数字，导师 M+数字，管理员 admin</div>
+        <div class="err">工号格式：字母开头，字母+数字（如 M1 / S001 / admin）</div>
+        <div class="ok">工号格式正确</div>
+      </div>
+
+      <div class="fld">
+        <label>密码 <span class="req">*</span></label>
+        <input type="password" name="pwd" data-rule="pwd" placeholder="至少 6 位" autocomplete="current-password">
+        <div class="tip">忘记密码找教务管理员重置，不设自助找回</div>
+        <div class="err">密码至少 6 位</div>
+        <div class="ok">密码长度符合</div>
+      </div>
+
+      <button class="btn lg block" type="submit" id="loginBtn">登录</button>
+      <!-- 登录失败提示位（真实后端模式用；沙盒模式不显示） -->
+      <div class="note danger" id="loginErr" hidden style="margin-top:var(--s3)"></div>
+    </form>
+
+    <!-- 沙盒演示入口：仅在未开启真实后端时显示（见页末脚本 switchMode()） -->
+    <div class="demo-accounts" id="demoBox">
+      <div class="t">沙盒演示入口（未接真实后端时可用）</div>
+      <div class="row">
+        <span class="nm">朱子悦</span><span class="rl">S001 · 学员</span>
+        <button class="btn sm ghost" onclick="quick('student')">进入</button>
+      </div>
+      <div class="row">
+        <span class="nm">郑丽薪</span><span class="rl">M1 · 带教导师</span>
+        <button class="btn sm ghost" onclick="quick('mentor')">进入</button>
+      </div>
+      <div class="row">
+        <span class="nm">曾锃湘</span><span class="rl">M2 · 带教导师</span>
+        <button class="btn sm ghost" onclick="quick('mentor2')">进入</button>
+      </div>
+      <div class="row">
+        <span class="nm">范文淼</span><span class="rl">admin · 教务管理员</span>
+        <button class="btn sm ghost" onclick="quick('admin')">进入</button>
+      </div>
+      <div class="tip" style="margin-top:10px">这些按钮直接切视角看界面（内存演示数据），<b>不是真实登录</b>。</div>
+    </div>
+
+    <a href="../index.html" style="display:inline-flex;align-items:center;gap:6px;margin-top:var(--s6);font-size:13px;font-weight:700">
+      <svg class="ic"><use href="#i-arrow-l"/></svg> 回到首页看这套系统怎么用
+    </a>
+  </section>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<!--
+  本页交互清单（2026-10-04 阶段四改造后）：
+  1. 表单校验（app.js 全局 bindForm 三态）：
+     - 工号：正则 /^[A-Za-z][A-Za-z0-9]{0,11}$/（字母开头，字母+数字，兼容 admin）；密码：≥6 位。
+       不合格 -> 标红 + 阻止提交 + 吐司。
+  2. **双模式**（由 live 开关决定，见页末 switchMode）：
+     · **真实后端模式**（?live=1 / localStorage.etrainLive=1）：
+       提交 -> `LIVE.login(工号,密码)` -> 真实校验 -> 存 token -> `LIVE.refresh()` 拉全量 -> 按 role 跳首页。
+       失败（密码错/网络）-> 表单下方红条显示后端原因，不跳转。**演示入口整块隐藏**。
+     · **沙盒模式**（默认，无 live 标记）：
+       保留原行为：演示入口按钮 + 表单直接跳转，供离线演示与验收脚本使用。
+  3. 角色 -> 首页：student->我的闯关 / mentor->工作台 / admin->数据看板。
+     注意： role 一律**读后端返回**（真实模式）或**演示按钮指定**（沙盒模式），不猜。
+  4. 【2026-10-04 决策】培训师角色已移除；M2 以真实身份（导师）演示。
+  5. 品牌侧三个阶段卡是静态的（不做动效）——解释性内容，动的只会抢表单注意力。
+  6. 窄屏（≤860px）左右分栏自动堆叠，品牌侧在上、表单侧在下，品牌插画位隐藏优先。
+-->
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* 角色 -> 首页。注意： 与各页 data-role 一致（student/mentor/admin），trainer 已移除。 */
+const HOME={student:'../pages/student-journey.html',mentor:'../pages/mentor.html',admin:'../pages/admin-dashboard.html'};
+const WID_OF={student:'S001',mentor:'M1',mentor2:'M2',admin:'admin'};
+
+/* ---------- 沙盒模式：演示入口（切视角，非真实登录） ---------- */
+function quick(k){
+  sessionStorage.setItem('protoRole',k==='mentor2'?'mentor':k);
+  if(typeof MOCKAPI!=='undefined') MOCKAPI.setSession(WID_OF[k]);
+  location.href=HOME[k==='mentor2'?'mentor':k];
+}
+
+/* ---------- 真实模式：走 LIVE.login ---------- */
+function showErr(msg){
+  const el=document.getElementById('loginErr');
+  if(!el) return;
+  el.hidden=false; el.textContent=msg;
+}
+function hideErr(){ const el=document.getElementById('loginErr'); if(el) el.hidden=true; }
+
+async function doLiveLogin(wid,pw){
+  const btn=document.getElementById('loginBtn');
+  hideErr();
+  if(btn){ btn.disabled=true; btn.textContent='登录中…'; }
+  try{
+    const user=await LIVE.login(wid,pw);          // 1. 真实校验，失败会 throw
+    await LIVE.refresh();                         // 2. 拉全量数据覆写 MOCK.DB
+    const role=user && user.role;                 // 3. role 读后端返回，不猜
+    if(!HOME[role]) throw new Error('该账号角色「'+role+'」暂无对应页面');
+    /* 4. 【2026-10-04】把真实身份写进会话层 —— 与沙盒同源。
+       原因：页面级角色守卫（app.js guardPage）与顶栏角色菜单都读 sessionStorage.protoRole /
+       MOCKAPI.S；真实登录原先**不写** protoRole，导致守卫可能读到上一个账号的残留角色，
+       出现「admin 登录却被弹回学员页」。这里一次写全，两条登录路径对守卫完全等价。 */
+    syncSession(role, (user && user.wid) || wid, user && user.name);
+    location.href=HOME[role];                     // 5. 跳对应首页
+  }catch(e){
+    showErr('登录失败：'+(e&&e.message||e));
+    if(btn){ btn.disabled=false; btn.textContent='登录'; }
+  }
+}
+/* 把登录身份同步到会话层（守卫 / 角色菜单 / Mock 会话三方一致）。
+   断言：role 必须是已知角色键，否则宁可不写（避免写入脏值后守卫失效）。 */
+function syncSession(role,wid,name){
+  if(!HOME[role]) return;
+  try{ sessionStorage.setItem('protoRole',role); }catch(e){}
+  if(typeof window.MOCKAPI==='object' && typeof window.MOCKAPI.setSession==='function'){
+    try{ window.MOCKAPI.setSession(wid); }catch(e){ /* 账号不在 Mock 表里时保持原状 */ }
+  }
+  // Mock 层若没有该账号，至少把身份文案与 body class 对齐（守卫不依赖 body，但视觉要一致）
+  const CN={student:'学员',mentor:'带教导师',admin:'教务管理员'};
+  document.querySelectorAll('[data-who-name]').forEach(e=>{ if(name) e.textContent=name; });
+  document.querySelectorAll('[data-who-role]').forEach(e=>{ if(CN[role]) e.textContent=CN[role]; });
+  document.querySelectorAll('[data-who-av]').forEach(e=>{ if(name) e.textContent=name.slice(0,1); });
+  document.body.className=document.body.className.replace(/role-\w+/g,'').trim()+' role-'+role;
+}
+
+/* ---------- 提交入口（唯一）：由 form 的 data-ok 调用 ----------
+   注意：【为什么不用自己 addEventListener('submit')】
+     app.js 在 DOMContentLoaded 里对 `form[data-form]` 调 bindForm()，
+     bindForm 内部注册 submit 监听器并**同步**执行 onOk（= data-ok）。
+     模拟器/页面若再挂一个 submit 监听器，执行顺序取决于注册先后，
+     且 bindForm 的 onOk 一旦触发同步跳转，后挂的异步逻辑就来不及跑。
+   -> 定案：**只保留 data-ok 一条入口**（= onLoginOk），校验、分流、跳转全在这里完成。
+     这样「校验在前、动作在后」的时序由 bindForm 保证，不会打架。 */
+function onLoginOk(){
+  const f=document.getElementById('loginForm');
+  const wid=(f.querySelector('[name="wid"]').value||'').trim();
+  const pw=(f.querySelector('[name="pwd"]').value||'');
+  const live=!!(window.LIVE && window.LIVE.enabled);
+  if(!live){ location.href=HOME.student; return; }   // 沙盒模式：沿用原直接跳转
+  doLiveLogin(wid,pw);                               // 真实模式：异步登录
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  /*注意： 本页**刻意不加** needsLoginGate 短路闸：登录页就是给未登录的人看的，
+     守卫对它提前 return（app.js guardPage 第294行），needlogin-body 类永远不会加上。
+     但就算真加上了也拦不住 —— 闸门读的是 body 类名，而本页不经过 requireLogin。 */
+  const live=!!(window.LIVE && window.LIVE.enabled);
+  const box=document.getElementById('demoBox');
+  if(box) box.hidden=live;                           // 真实模式隐藏演示入口
+
+  /* ---------- 【2026-10-05】来自「切换账号」的工号预填 ----------
+     流程：工作页点「切换账号」-> app.js switchAccount() 发现是 live 模式
+     （真实后端有 token 鉴权，不能静默改身份）-> 写 sessionStorage.etrainPreWid
+     -> 跳到这里。目的：让人**只需输密码**就能换成另一个账号。
+
+     注意：注意： 关键顺序：必须**先清 token 再判断是否已登录**，否则下面那段
+       「有 token 就免密跳回原账号首页」会把人直接弹回原身份 —— 切换等于没切。
+       这是本段存在的全部意义所在，顺序不能调换。
+     注意： 预填的工号要**高亮选中**：切换的意图是「换这个人」，让人一眼确认没填错。 */
+  const pre=(()=>{ try{ return sessionStorage.getItem('etrainPreWid')||''; }catch(e){ return ''; } })();
+  if(pre){
+    try{
+      sessionStorage.removeItem('etrainPreWid');
+      if(LIVE){ LIVE.token=null; LIVE.user=null; }
+      sessionStorage.removeItem('etrainToken');
+      sessionStorage.removeItem('etrainWho');
+    }catch(e){}
+    const inp=document.querySelector('#loginForm [name="wid"]');
+    if(inp){ inp.value=pre; inp.focus(); inp.select&&inp.select(); }
+    const note=document.getElementById('loginErr');
+    if(note){ note.hidden=false; note.className='note'; note.textContent='正在切换到账号 '+pre+'，请输入该账号的密码'; }
+  }
+
+  /* 真实模式下若已登录（sessionStorage 有 token），直接进对应首页，免重复输密码。
+     注意： 先 refresh 拿 role（以服务端返回为准，不猜 token 内容）。
+     注意： 同样要 syncSession —— 免密跳转这条路径也要把身份落到会话层，
+        否则守卫读到的是上一次的身份（或空），会误弹。 */
+  if(live && LIVE.token){
+    LIVE.refresh().then(()=>{
+      const role=(LIVE.user && LIVE.user.role);
+      if(HOME[role]){
+        syncSession(role, LIVE.user && LIVE.user.wid, LIVE.user && LIVE.user.name);
+        location.href=HOME[role];
+      }
+    }).catch(()=>{ /* token 失效 -> 留在登录页 */ });
+  }
+});
+</script>
+</body>
+</html>

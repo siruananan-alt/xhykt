@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>带教计划 · 教务管理员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-admin" data-role="admin" data-nav-done="1">
+
+<!-- 顶栏由 ui.js 的 topbarHTML() 统一生成（管理端固定 9 项） -->
+<div id="topbarSlot"></div>
+
+<main class="wrap wide">
+
+  <div class="pg-head">
+    <span class="eyebrow">星禾云课堂</span>
+    <h1>带教计划</h1>
+    <p class="sub">计划定义每个阶段的胜任力项与关卡路线。</p>
+  </div>
+
+  <div class="card">
+    <div class="tblwrap">
+      <table>
+        <thead><tr>
+          <th>计划名</th><th>负责导师</th><th>胜任力</th><th>阶段路线</th>
+        </tr></thead>
+        <tbody id="planRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:15px;margin:0 0 10px">阶段路线明细</h2>
+    <div id="planDetail"></div>
+  </div>
+
+  <details class="fold">
+    <summary>本页只读</summary>
+    <div class="fold-body">
+      计划只在「新增用户」时作为下拉选项出现，本站不提供编辑入口。
+    </div>
+  </details>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* 带教计划：基线 viewAdminPlans（4 列，只读） */
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换
+  // 顶栏
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-plans.html');
+  initNav();
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+
+  const rows = MOCK.DB.plans.map(p=>`<tr>
+    <td><b>${UI.esc(p.name)}</b></td>
+    <td>${UI.esc((MOCK.mentorOf(p.owner)||{}).name||'—')}</td>
+    <td>${p.competencies.map(c=>UI.esc(c)).join('、')}</td>
+    <td>${p.weeks.map(w=>UI.esc(w.levels||w.phase)).join(' / ')}</td>
+  </tr>`).join('');
+  document.getElementById('planRows').innerHTML = rows;
+
+  // 阶段路线明细：把 weeks 展开成块，原网站把weeks 平铺在一格里，这里只是换排布（业务数据不变）
+  document.getElementById('planDetail').innerHTML = MOCK.DB.plans.map(p=>`
+    <div class="pgroup">
+      <div class="gh"><b>${UI.esc(p.name)}</b><span class="d">负责导师 ${UI.esc((MOCK.mentorOf(p.owner)||{}).name||'—')}</span></div>
+      ${p.weeks.map(w=>`
+        <div class="rowitem">
+          <div style="flex:1;min-width:220px">
+            <b>第 ${UI.esc(String(w.w))} 周 · ${UI.esc(w.phase)}</b>
+            <div class="sub">关卡 ${UI.esc(w.levels||'—')} · 重点：${UI.esc(w.focus||'—')}</div>
+          </div>
+          <div class="sub">闯关节点：${(w.gates&&w.gates.length)?w.gates.map(UI.esc).join('、'):'—'}</div>
+        </div>`).join('')}
+    </div>`).join('');
+});
+</script>
+</body>
+</html>

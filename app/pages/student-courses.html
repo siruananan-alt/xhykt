@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>课程 · 学员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-student" data-role="student" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap">
+
+  <div class="pg-head">
+    <span class="eyebrow" id="eyebrow">—</span>
+    <h1>课程</h1>
+    <p class="sub">按关卡解锁。</p>
+  </div>
+
+  <!-- 唯一主行动：课程页也得回答"现在做什么"，不能只有筛选 -->
+  <div class="card" id="nextCard" hidden></div>
+
+  <!-- 筛选：搜索 + 三个切档（全部 / 可学习 / 未解锁） -->
+  <div class="filterbar">
+    <div class="search">
+      <span class="ic" data-ic="i-search"></span>
+      <input id="q" type="search" placeholder="搜课程名 / 讲师 / 学科" autocomplete="off">
+    </div>
+    <div class="jump" id="chips"></div>
+  </div>
+
+  <!-- 课程按阶段分组 -->
+  <div id="groups"></div>
+
+  <!-- 空结果 -->
+  <div class="card" id="empty" hidden>
+    <div class="empty-note">
+      <b>没有符合条件的课程</b>
+      <span id="emptyWhy">换个关键词，或者点「全部」看所有课程。</span>
+      <button class="btn ghost sm" id="resetBtn" type="button">重置筛选</button>
+    </div>
+  </div>
+
+  <div class="jump nav">
+    <a href="student-journey.html">闯关</a>
+    <a href="student-courses.html" class="on" aria-current="page">课程</a>
+    <a href="student-me.html">我的</a>
+  </div>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<!--
+  本页交互清单：
+  1. 顶部搜索框（课程名 / 讲师 / 学科）+ 三个筛选 chip（全部 / 可学习 / 未解锁），
+     两者叠加生效；任一筛选无结果 -> 显示空态卡 + 「重置筛选」。
+  2. 课程卡整卡可点 -> student-level.html?lv=<该课所属关卡>；当前关用 3px 绿描边 + 浅绿底。
+  3. 未解锁课程卡无可点链接，写明「需先通过第 N 关 · 标题」——锁住的同时要给路。
+  4. 关卡徽章读 levelOfCourseIn(cid).no（**不是** courseGateOf —— 强制解锁开关关闭时它返回 0）。
+  5. 顶部「接着上次的进度」卡按真实数据算：当前关 + 该关已看/共几个视频。
+
+  数据来源：window.MOCK（proto/assets/mock-data.js）
+  写链路：本页只读，无写操作。
+-->
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* ============================================================
+   学员「课程」页 · 数据驱动
+   原实现完全硬编码（写死 9 门课 / 34 章节 / 第 7 关进度 / 3 个 chip），
+   且未加载 Mock 层、用旧 <header class="topbar">。本页全部改为读真实数据。
+   ============================================================ */
+
+/* 筛选档：'all' | 'ok'（可学习）| 'lock'（未解锁） */
+let FILTER = 'all';
+let KEYWORD = '';
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  // 课程页是学员的平级入口 -> 保留 nav2（与关卡详情页不同）
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('student','student-courses.html');
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+
+  document.getElementById('q').addEventListener('input', e=>{
+    KEYWORD = (e.target.value||'').trim().toLowerCase();
+    render();
+  });
+  document.getElementById('chips').addEventListener('click', e=>{
+    const a = e.target.closest('a[data-f]'); if(!a) return;
+    e.preventDefault();
+    FILTER = a.dataset.f;
+    render();
+  });
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    FILTER = 'all'; KEYWORD = '';
+    document.getElementById('q').value = '';
+    render();
+  });
+
+  render();
+});
+
+/* ---------- 单门课是否解锁 ----------
+   注意： 关卡归属一律走 levelOfCourseIn(cid)：
+     - courseGateOf(cid) 在 settings.enforceGate !== true 时**恒返回 {unlocked:true, levelNo:0}**
+       -> 拿它做「第 N 关」徽章会全部显示 0（这是踩过的坑）。
+     - levelOfCourseIn 只看 stage.study.courseIds 归属，与开关无关，恒返回真实关卡。
+   解锁与否 = levelUnlocked(wid, 该关)。 */
+function courseInfo(cid){
+  const wid = MOCKAPI.S.wid;
+  const lv  = MOCK.levelOfCourseIn(cid);
+  return { lv, levelNo: lv ? lv.no : 0, levelTitle: lv ? lv.title : '—',
+           unlocked: lv ? MOCK.levelUnlocked(wid, lv) : true };
+}
+
+/* 该课的 video 章节看完了几个（learn.json 的 done[] 与章节 id 比对）
+   注意：【2026-10-04 修】DB.learn 是**扁平的 "wid|cid" 复合键**，不是 DB.learn[wid][cid] 两层。
+     写成两层会恒取到 undefined -> 所有课程都显示「0/n 章」（已踩过）。 */
+function watchedOf(cid){
+  const wid = MOCKAPI.S.wid;
+  const c = MOCK.courseOf(cid); if(!c) return { done:0, total:0, rec:null };
+  const vids = (c.chapters||[]).filter(ch=>ch.type==='video');
+  const rec  = MOCK.DB.learn[MOCK.KEY(wid, cid)];
+  const done = rec && Array.isArray(rec.done) ? rec.done.length : 0;
+  return { done, total: vids.length, rec };
+}
+
+/* ============================================================
+   渲染
+   ============================================================ */
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const wid = MOCKAPI.S.wid;
+  const courses = MOCK.DB.courses;
+
+  renderHead(courses);
+  renderChips(courses, wid);
+  renderNextCard(wid);
+  renderGroups(courses, wid);
+
+  if(typeof injectIcons==='function') injectIcons();
+}
+
+/* ---------- 页头：课程数 / 视频章节数 / 可学数 全部实数 ---------- */
+function renderHead(courses){
+  const wid = MOCKAPI.S.wid;
+  let vid = 0, okN = 0, lockN = 0;
+  courses.forEach(c=>{
+    vid += (c.chapters||[]).filter(ch=>ch.type==='video').length;
+    courseInfo(c.id).unlocked ? okN++ : lockN++;
+  });
+  document.getElementById('eyebrow').textContent =
+    `共 ${courses.length} 门课程 · ${vid} 个视频章节 · 可学 ${okN} · 未解锁 ${lockN}`;
+  void wid;
+}
+
+/* ---------- 筛选 chip：数字跟着实时算 ---------- */
+function renderChips(courses, wid){
+  let okN = 0;
+  courses.forEach(c=>{ if(courseInfo(c.id).unlocked) okN++; });
+  const lockN = courses.length - okN;
+  const items = [
+    ['all',  `全部 ${courses.length} 门`],
+    ['ok',   `可学习 ${okN} 门`],
+    ['lock', `未解锁 ${lockN} 门`]
+  ];
+  document.getElementById('chips').innerHTML = items.map(([f,t])=>
+    `<a href="#" data-f="${f}"${f===FILTER?' class="on" style="background:var(--ok-bg);border-color:var(--ok);color:var(--ok-ink)"':''}>${esc(t)}</a>`
+  ).join('');
+}
+
+/* ---------- 顶部「接着上次的进度」：当前关 + 该关视频进度 ---------- */
+function renderNextCard(wid){
+  const box = document.getElementById('nextCard');
+  const cur = MOCK.currentLevelOf(wid);
+  if(!cur){ box.hidden = true; return; }
+  const ids = (cur.stages && cur.stages.study && cur.stages.study.courseIds) || [];
+  let left = 0, total = 0;
+  ids.forEach(cid=>{
+    const w = watchedOf(cid);
+    total += w.total;
+    left  += Math.max(0, w.total - w.done);
+  });
+  const allDone = MOCK.levelDone(wid, cur);
+  // 该关没有视频（如 L10/L11 只有练）-> 换一种说法
+  const body = allDone
+    ? `这一关的环节都过了，可以进入下一关。`
+    : (total === 0
+        ? `这一关没有视频，直接提交任务卡。`
+        : (left > 0
+            ? `还有 <b>${left}</b> 个视频没看。`
+            : `视频都看完了，可以提交这一关剩下的环节了。`));
+  const cta = total === 0 ? '去关卡页' : (left > 0 ? `继续看第 ${cur.no} 关` : `去第 ${cur.no} 关`);
+  box.hidden = false;
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:12.5px;font-weight:700;color:var(--ok-ink);letter-spacing:.04em">接着上次的进度</div>
+        <h2 style="font-size:var(--fs-h2);margin-top:4px">第 ${cur.no} 关 · ${esc(cur.title)}</h2>
+        <p style="font-size:13.5px;color:var(--ok-ink);margin:6px 0 0;line-height:1.6">${body}</p>
+      </div>
+      <a class="btn lg" href="student-level.html?lv=${esc(cur.id)}">${esc(cta)}</a>
+    </div>`;
+}
+
+/* ---------- 按阶段分组 + 筛选 ---------- */
+function renderGroups(courses, wid){
+  const groupsEl = document.getElementById('groups');
+  const phs = MOCK.LEVEL_PHASES;
+
+  // 课程 -> 阶段的归属用「课程所属关卡的 no」落进 LEVEL_PHASES 区间
+  const rows = courses.map(c=>{
+    const info = courseInfo(c.id);
+    const no   = info.levelNo;
+    const ph   = phs.find(p=> no>=p.from && no<=p.to) || null;
+    return { c, info, no, ph };
+  });
+
+  // 关键词：课程名 / 讲师 / 学科
+  const kw = KEYWORD;
+  let list = rows.filter(r=>{
+    if(!kw) return true;
+    const c = r.c;
+    return (c.title||'').toLowerCase().includes(kw)
+        || (c.lecturer||'').toLowerCase().includes(kw)
+        || (c.subject||'').toLowerCase().includes(kw);
+  });
+  // 档位
+  if(FILTER === 'ok')   list = list.filter(r=>r.info.unlocked);
+  if(FILTER === 'lock') list = list.filter(r=>!r.info.unlocked);
+
+  // 空态
+  const emptyEl = document.getElementById('empty');
+  if(!list.length){
+    groupsEl.innerHTML = '';
+    emptyEl.hidden = false;
+    document.getElementById('emptyWhy').textContent = kw
+      ? `没有匹配「${kw}」的课程`
+      : '暂无课程';
+    return;
+  }
+  emptyEl.hidden = true;
+
+  // 分组渲染（阶段顺序 = LEVEL_PHASES 顺序；无归属的课程兜底到最后）
+  const order = phs.map(p=>p.name);
+  const byPh  = {};
+  list.forEach(r=>{
+    const k = r.ph ? r.ph.name : '未归属阶段';
+    (byPh[k] = byPh[k] || []).push(r);
+  });
+  const keys = order.filter(k=>byPh[k]).concat(
+    Object.keys(byPh).filter(k=>order.indexOf(k)<0));
+
+  groupsEl.innerHTML = keys.map(k=>{
+    /* 组内按关卡号升序（2026-10-05 修复：原先沿用课程库数组顺序，
+       学员端看到的顺序是 L01->L05->L03->…，与闯关节奏不一致） */
+    const arr = byPh[k].slice().sort((a,b)=>a.no-b.no);
+    const ph  = phs.find(p=>p.name===k);
+    const okN = arr.filter(r=>r.info.unlocked).length;
+    const lockN = arr.length - okN;
+    const badge = lockN === 0
+      ? `<span class="tag ok">${okN} 门可学</span>`
+      : (okN === 0 ? `<span class="tag lock">${lockN} 门未解锁</span>`
+                   : `<span class="tag warn pulse">${okN} 门可学 · ${lockN} 门未解锁</span>`);
+    // grid 列数按可学课程数走：多门用 g2，≤3 门保持 g2（移动端本来单列）
+    return `
+    <div class="card">
+      <div class="card-h">
+        <h2>${esc(k)}${ph?` · ${esc(ph.week)}`:''}</h2>
+        ${badge}
+      </div>
+      <div class="grid g2">
+        ${arr.map(r=>courseCard(r, wid)).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- 单张课程卡 ---------- */
+function courseCard(r, wid){
+  const c = r.c, info = r.info;
+  const w = watchedOf(c.id);
+  const vids = (c.chapters||[]).filter(ch=>ch.type==='video');
+  const isCur = info.lv && MOCK.currentLevelOf(wid).id === info.lv.id;
+
+  // 元信息：n 章 · 时长 · 学科/难度
+  const meta = [
+    `${vids.length} 章`,
+    c.minutes ? `${c.minutes} 分钟` : null,
+    c.subject || null,
+    c.difficulty || null
+  ].filter(Boolean).join(' · ');
+
+  // 状态标签
+  let stages = '';
+  if(!info.unlocked){
+    stages = `<span class="tag lock">${vids.length} 章未开放</span>`;
+  }else if(MOCK.levelDone(wid, info.lv)){
+    stages = `<span class="tag ok">已完成</span>`;
+  }else{
+    stages = `<span class="tag ok">${w.done}/${w.total} 章</span>`;
+    // 该课所属关有练/考未过 -> 提示等批改
+    const st = info.lv.stages || {};
+    if(st.practice && !MOCK.practiceDone(wid, info.lv.id))
+      stages += `<span class="tag warn pulse">任务卡待批改</span>`;
+    else if(st.exam && !MOCK.lvStageOk(wid, info.lv.id, 'exam'))
+      stages += `<span class="tag warn pulse">考核待批改</span>`;
+  }
+
+  // 视频未上传标记（真实运营状态：C5/C6 全章节 src 为空）
+  // 注意： 只在该关**还没过**时提示：已通关还挂"视频待上传"会和"已完成"打架（真实数据里 C11 就有一个空 src）。
+  const pending = (c.videoPending || vids.some(ch=>!ch.src)) && !MOCK.levelDone(wid, info.lv);
+
+  /* 【2026-10-05 收口】封面不再用虚线占位图（学员不该看到模板痕迹），
+     改为品牌色块 + 课程编号。样式 .cvr 定义在 theme.css。 */
+  const cover = (cid, dim) => `<figure class="cvr${dim?' dim':''}" aria-hidden="true">${esc(cid)}</figure>`;
+
+  // 未解锁：无可点链接，但要写清卡在哪
+  if(!info.unlocked){
+    const needNo = info.levelNo - 1;
+    const prev = MOCK.DB.levels.find(l=>l.no===needNo);
+    return `
+    <div class="lvcard lock">
+      ${cover(c.id, true)}
+      <span class="lvbody">
+        <span class="tag lock">第 ${info.levelNo} 关 · 未解锁</span>
+        <b style="margin-top:6px;color:var(--muted)">${esc(c.title)}</b>
+        <span class="m">需先通过第 ${needNo} 关${prev?` · ${esc(prev.title)}`:''}。<br>${esc(meta)}</span>
+        <span class="lvstages"><span class="tag lock">${vids.length} 章未开放</span></span>
+      </span>
+    </div>`;
+  }
+
+  const head = `<span class="tag ${isCur?'ok':'ghost'}">第 ${info.levelNo} 关${isCur?' · 进行中':''}</span>`;
+  return `<a class="lvcard${isCur?' cur':''}" href="student-level.html?lv=${esc(info.lv.id)}">
+      ${cover(c.id, false)}
+      <span class="lvbody">
+        ${head}
+        <b style="margin-top:6px">${esc(c.title)}</b>
+        <span class="m">${esc(meta)}</span>
+        <span class="lvstages">${stages}${pending?`<span class="tag ghost">视频待上传</span>`:''}</span>
+      </span>
+    </a>`;
+}
+
+/* ---------- 工具 ---------- */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+</script>
+
+</body>
+</html>

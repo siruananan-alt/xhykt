@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>我的闯关 · 学员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-student" data-role="student" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap">
+
+  <div class="pg-head">
+    <span class="eyebrow" id="eyebrow">—</span>
+    <h1 id="hello">—</h1>
+    <p class="sub" id="subline">—</p>
+  </div>
+
+  <!-- 1. 今日聚焦（本页视觉优先级最高：回答「我现在在哪 / 下一步做什么」） -->
+  <div id="focusBox"></div>
+
+  <!-- 2. 距离转正还差什么（复用 readiness，不做看板） -->
+  <div id="rdBox"></div>
+
+  <!-- 3. 当前关卡（详细看这一关要做什么） -->
+  <div id="curBox"></div>
+
+  <!-- 4. 阶段进度条（PRD 5.3-A）—— 由 UI.stagebar() 真实判定渲染 -->
+  <div class="card">
+    <div class="card-h">
+      <h2>我的 5 周进度</h2>
+    </div>
+    <div id="stagebarBox"></div>
+  </div>
+
+  <!-- 5. 积分与待办 -->
+  <div class="kpis" id="kpis" style="margin-bottom:var(--s5)"></div>
+
+  <!-- 4. 12 关路径（真实四态） -->
+  <!-- 【2026-10-05】折叠粒度 = **每个阶段分组各自收起**（新手期/成长期/成熟期），
+       不是整张卡收起 —— 用户要能只收起后面暂时看不到的阶段，保留当前在做的那个。
+       分组由 renderLvList() 输出，每组是独立的 <details class="ph-fold">（零 JS，
+       summary 角色=button，键盘原生可切换）。整张卡保持普通 .card 常开。 -->
+  <div class="card">
+    <div class="card-h">
+      <h2>12 关路径</h2>
+    </div>
+    <div id="lvList"></div>
+  </div>
+
+  <!-- 5. 底部固定导航（手机端主导航） -->
+  <div class="jump nav">
+    <a href="student-journey.html" class="on" aria-current="page">闯关</a>
+    <a href="student-courses.html">课程</a>
+    <a href="student-me.html">我的</a>
+  </div>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<!--
+  本页交互清单：
+  1. 顶部「继续第 N 关」实心绿按钮 -> 跳 student-level.html。
+  2. 12 关路径的 lvcard：已通关/已解锁可点；未解锁的 class="lvcard lock" 无链接、cursor:not-allowed。
+  3. 「待审核」标签带 .pulse（橙）-> 提醒学员「有人在处理你的事」。
+  4. 底部导航当前项「闯关」用绿底绿字表示选中态。
+  5. 全部数据来自 MOCK（不再硬编码）：阶段条 / 四态 / 积分 / 待办均真实判定。
+-->
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('student','student-journey.html');
+  if(typeof injectIcons==='function') injectIcons();
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+  window.__rerender = render;
+  render();
+});
+
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const wid=MOCKAPI.S.wid;
+  const me=MOCK.userOf(wid);
+  const t=MOCK.traineeOf(wid);
+  const lvAll=MOCK.DB.levels;
+  const doneLv=lvAll.filter(l=>MOCK.levelDone(wid,l));
+  const cur=MOCK.currentLevelOf(wid);
+  const curNo=cur?cur.no:1;
+
+  /* 头部 */
+  document.getElementById('eyebrow').textContent =
+    (t?('第 '+(t.week||1)+' 周'):'') + ' · ' + ((me&&me.dept)||'');
+  document.getElementById('hello').textContent = (me?me.name:'') + '，你的学习地图';
+  const leftLv=lvAll.length-doneLv.length;
+  const leftRd=MOCK.READINESS_LINES.filter(l=>!readinessMet(l,wid)).length;
+  // 注意： 关卡总数与阶段名一律读常量，别写死「12 关 / 5 周」—— 改关卡数时会静默过期
+  const nLv=lvAll.length;
+  document.getElementById('subline').innerHTML = leftLv
+    ? `已过 <b>${doneLv.length}</b> 关 · 正在第 <b>${curNo}</b> 关 · 还差 <b>${leftRd}</b> 条达标线转正`
+    : `${nLv} 关全部通关 · 还差 <b>${leftRd}</b> 条达标线转正`;
+
+  renderFocus(wid);
+  renderReadiness(wid);
+  renderCurrent(wid);
+  document.getElementById('stagebarBox').innerHTML = UI.stagebar(wid);
+  renderKpis(wid,lvAll,doneLv);
+  renderLvList(wid,lvAll,curNo);
+}
+
+/* 单条达标线是否达成 —— 与 readinessBadge 同源（site 走关卡全通，其余走 met===true） */
+function readinessMet(line,wid){
+  if(line.source==='site') return lvAllDone(wid);
+  const r=(MOCK.DB.readiness[wid]||{})[line.key];
+  return !!(r&&r.met===true);
+}
+function lvAllDone(wid){
+  return MOCK.DB.levels.length>0 && MOCK.DB.levels.every(l=>MOCK.levelDone(wid,l));
+}
+
+/* ==========================================================================
+   下一步判断（今日聚焦的唯一口径）
+   --------------------------------------------------------------------------
+   规则完全来自真实数据：DB.levels / DB.journey / DB.tasks / DB.learn，
+   **不写死任何关卡号或任务卡 id**。判断顺序：
+     1) 找第一个尚未完全通过的关卡（currentLevelOf）
+     2) 看该关还差哪个环节（levelProgress -> 第一个未过环节）
+     3) 学未过   -> 去学课程
+        练未过   -> 找该关第一张未通过的卡，按 submitted / rejected / 未提交 分文案
+        只剩考   -> 等带教老师确认考核
+     4) 该关全过 -> 自动落到下一关（回到步骤 1）
+     5) 12 关全过 -> 展示完成态
+   ========================================================================== */
+function nextStep(wid){
+  const lvAll=MOCK.DB.levels||[];
+  const cur=MOCK.currentLevelOf(wid);
+  const allDone=MOCK.DB.levels.length>0 && MOCK.DB.levels.every(l=>MOCK.levelDone(wid,l));
+  if(allDone) return { kind:'alldone' };
+  if(!cur)     return { kind:'alldone' };                 // 兜底：不该发生，但不给 undefined
+
+  const prog=MOCK.levelProgress(wid,cur);
+  const CN=MOCK.LV_STAGE_CN;
+  const pending=prog.states.find(s=>!s.ok);
+
+  // 环节状态快照（给「当前状态」那一行用）
+  const snapshot=prog.states.map(s=>({ cn:CN[s.stage]||s.stage, ok:s.ok }));
+
+  if(!pending){                                            // 该关已过（currentLevelOf 兜底）
+    return { kind:'alldone' };
+  }
+  const stage=pending.stage;
+
+  if(stage==='study'){
+    return {
+      kind:'study', lv:cur, snapshot,
+      todo:'学习本关课程', btn:'继续学习', href:lvLink(cur),
+      why:''
+    };
+  }
+
+  if(stage==='practice'){
+    const defs=MOCK.TASK_DEFS.filter(d=>d.levelId===cur.id);
+    const rec=(MOCK.DB.tasks[wid]||{})[cur.id]||{};
+    if(!defs.length){
+      // 该关没有任务卡（练环节存在但无卡定义）—— 不编造，直接说等带教老师
+      return { kind:'waitmentor', lv:cur, snapshot,
+               todo:'等待带教老师安排实操', btn:'查看本关', href:lvLink(cur),
+               why:'' };
+    }
+    // 优先级：被打回 > 待审核 > 第一张未提交
+    const rejected=defs.find(d=>(rec[d.id]||{}).status==='rejected');
+    if(rejected){
+      const rv=rec[rejected.id];
+      return { kind:'rejected', lv:cur, snapshot,
+               todo:'按带教老师反馈修改后重新提交',
+               btn:'重新提交', href:lvLink(cur),
+               why:(rv.reviewNote? ('老师意见：'+String(rv.reviewNote).slice(0,60)) : '') };
+    }
+    const submitted=defs.find(d=>(rec[d.id]||{}).status==='submitted');
+    if(submitted){
+      return { kind:'waiting', lv:cur, snapshot,
+               todo:'等待审核', btn:'查看本关', href:lvLink(cur),
+               why:'' };
+    }
+    const todoCard=defs.find(d=>!(rec[d.id]||{}).status||(rec[d.id]||{}).status!=='passed');
+    if(todoCard){
+      return { kind:'task', lv:cur, snapshot,
+               todo:'提交「'+todoCard.title+'」',
+               btn:'去提交', href:lvLink(cur),
+               why:(todoCard.req?String(todoCard.req).slice(0,50):'') };
+    }
+    return { kind:'waitmentor', lv:cur, snapshot,
+             todo:'等待带教老师确认', btn:'查看本关', href:lvLink(cur), why:'' };
+  }
+
+  // 只剩「考」
+  const rec=(MOCK.DB.tasks[wid]||{})[cur.id]||{};
+  const ex=rec[MOCK.EXAM_TASK];
+  if(ex&&ex.status==='submitted'){
+    return { kind:'waiting', lv:cur, snapshot,
+             todo:'等待考核确认', btn:'查看本关', href:lvLink(cur), why:'' };
+  }
+  if(ex&&ex.status==='rejected'){
+    return { kind:'rejected', lv:cur, snapshot,
+             todo:'考核重新提交', btn:'查看本关', href:lvLink(cur),
+             why:(ex.reviewNote?('老师意见：'+String(ex.reviewNote).slice(0,60)):'') };
+  }
+  return { kind:'waitmentor', lv:cur, snapshot,
+           todo:'等待考核确认', btn:'查看本关', href:lvLink(cur),
+           why:'' };
+}
+function lvLink(lv){ return lv? ('student-level.html?lv='+encodeURIComponent(lv.id)) : 'student-level.html'; }
+
+/* ---- 1. 今日聚焦 ---- */
+function renderFocus(wid){
+  const box=document.getElementById('focusBox');
+  const s=nextStep(wid);
+
+  if(s.kind==='alldone'){
+    // 12 关全通：没有"下一步学习"了，给一个**真实可用**的出口（看达标线 / 回看课程），
+    // 否则学员看到"全部完成"后无处可点、会以为页面坏了。
+    const leftRd=(MOCK.READINESS_LINES||[]).filter(l=>!readinessMet(l,wid)).length;
+    box.innerHTML=`<div class="card focus-done">
+      <div class="focus-tag"><svg class="ic"><use href="#i-award"/></svg>今日聚焦</div>
+      <h2 class="focus-h">学习阶段已全部完成</h2>
+      <p class="focus-t">${leftRd>0? ('还差 <b>'+leftRd+'</b> 条达标线即可转正。') : '达标线全部达成，可转正。'}</p>
+      <a class="btn lg focus-btn" href="student-courses.html">回看课程</a>
+    </div>`;
+    return;
+  }
+  const lv=s.lv;
+  // 状态三连（学/练/考），未配置环节不显示
+  const st=(s.snapshot||[]).map(x=>
+    `<span class="fs ${x.ok?'ok':'no'}"><svg class="ic"><use href="#${x.ok?'i-check':'i-dot'}"/></svg>${esc(x.cn)}${x.ok?'':' 未完成'}</span>`
+  ).join('');
+
+  box.innerHTML=`<div class="card focus">
+    <div class="focus-tag"><svg class="ic"><use href="#i-flag"/></svg>今日聚焦</div>
+    <div class="focus-lv">第 ${lv.no} 关 · ${esc(lv.title)}</div>
+    <div class="focus-stages">${st}</div>
+    <div class="focus-todo">下一步：${esc(s.todo)}</div>
+    ${s.why?`<p class="focus-why">${esc(s.why)}</p>`:''}
+    <a class="btn lg focus-btn" href="${s.href}">${esc(s.btn)}</a>
+  </div>`;
+}
+
+/* ---- 2. 距离转正还差什么（只读 readiness，不新增字段） ---- */
+function renderReadiness(wid){
+  const box=document.getElementById('rdBox');
+  const lines=MOCK.READINESS_LINES||[];
+  const doneLv=(MOCK.DB.levels||[]).filter(l=>MOCK.levelDone(wid,l)).length;
+  const allLv=(MOCK.DB.levels||[]).length;
+  const metN=lines.filter(l=>readinessMet(l,wid)).length;
+
+  const items=lines.map(line=>{
+    // 「学习达标」是系统按关卡算的（source:'site'），不读 readiness 表
+    if(line.source==='site'){
+      return `<div class="rdrow">
+        <span class="rdname">${esc(line.name)}</span>
+        <span class="rdval ${doneLv>=allLv?'ok':''}">${doneLv} / ${allLv} 关</span>
+      </div>`;
+    }
+    const r=(MOCK.DB.readiness[wid]||{})[line.key];
+    //  关键：管理员还没登记时 value 为 null/缺失 —— 必须说「待更新」，
+    //    绝不能显示 0（会让学员误以为自己真的是 0）。
+    if(!r||r.value===null||r.value===undefined||r.value===''){
+      return `<div class="rdrow">
+        <span class="rdname">${esc(line.name)}</span>
+        <span class="rdval wait">待带教老师 / 管理员更新</span>
+      </div>`;
+    }
+    const ok=readinessMet(line,wid);
+    return `<div class="rdrow">
+      <span class="rdname">${esc(line.name)}</span>
+      <span class="rdval ${ok?'ok':''}">${ok?'已达标':(esc(String(r.value))+' / '+esc(String(line.threshold))+(line.unit?esc(line.unit):''))}</span>
+    </div>`;
+  }).join('');
+
+  const left=lines.length-metN;
+  box.innerHTML=`<div class="card">
+    <div class="card-h">
+      <h2>距离转正</h2>
+    </div>
+    <div class="rdlist">${items}</div>
+    <p class="hint" style="margin-top:var(--s3)">${left>0? ('还差 <b>'+left+'</b> 条达标线。') : '达标线全部达成。'}</p>
+  </div>`;
+}
+
+/* ---- 3. 当前关卡 ---- */
+function renderCurrent(wid){
+  const box=document.getElementById('curBox');
+  const all=MOCK.DB.levels||[];
+  const doneN=all.filter(l=>MOCK.levelDone(wid,l)).length;
+  if(doneN>=all.length){
+    box.innerHTML=`<div class="card">
+      <div class="card-h"><h2>当前关卡</h2></div>
+      <p class="hint">12 关已全部通关</p>
+    </div>`;
+    return;
+  }
+  const cur=MOCK.currentLevelOf(wid);
+  if(!cur){ box.innerHTML=''; return; }
+  const prog=MOCK.levelProgress(wid,cur);
+  const CN=MOCK.LV_STAGE_CN;
+  const defs=MOCK.TASK_DEFS.filter(d=>d.levelId===cur.id);
+  const rec=(MOCK.DB.tasks[wid]||{})[cur.id]||{};
+  const passedN=defs.filter(d=>(rec[d.id]||{}).status==='passed').length;
+
+  // 三环节状态（练显示 n/m 张，已约分；无任务卡的关不显示分数）
+  const stLine=prog.states.map(s=>{
+    const cn=CN[s.stage]||s.stage;
+    let txt;
+    if(s.ok) txt='已完成';
+    else if(s.stage==='practice') txt=defs.length? (passedN+' / '+defs.length) : '未开始';
+    else txt='未开始';
+    return `<span class="cs ${s.ok?'ok':'no'}"><b>${esc(cn)}</b> ${esc(txt)}</span>`;
+  }).join('');
+
+  // 目标句：优先用课程 desc；没有就留空，绝不 AI 编造业务目标
+  let goal='';
+  const cids=(cur.stages&&cur.stages.study&&cur.stages.study.courseIds)||[];
+  for(const cid of cids){
+    const c=MOCK.courseOf(cid);
+    if(c&&c.desc){ goal=c.desc; break; }
+  }
+
+  // 当前任务卡（第一张未通过的），全过则提示已完成
+  const curCard=defs.find(d=>(rec[d.id]||{}).status!=='passed');
+
+  box.innerHTML=`<div class="card">
+    <div class="card-h">
+      <h2>当前关卡</h2>
+      <p class="hint">第 ${cur.no} 关 · ${esc(cur.title)}</p>
+    </div>
+    ${goal?`<p class="curgoal">${esc(goal)}</p>`:''}
+    <div class="curstages">${stLine}</div>
+    <div class="curcard">
+      <span class="curcard-n">当前任务卡</span>
+      ${curCard
+        ? `<span class="curcard-t">${esc(curCard.title)}</span><span class="tag ghost">${esc(taskStatusCN(curCard.id,rec))}</span>`
+        : (defs.length? '<span class="curcard-t">本关任务卡已全部通过</span>' : '<span class="curcard-t">本关无任务卡</span>')}
+    </div>
+  </div>`;
+}
+function taskStatusCN(id,rec){
+  const s=(rec[id]||{}).status;
+  if(s==='passed')  return '已通过';
+  if(s==='submitted') return '待审核';
+  if(s==='rejected') return '需调整';
+  return '待提交';
+}
+
+/* 3. 积分与待办 */
+function renderKpis(wid,lvAll,doneLv){
+  const todo=MOCK.todoCounts(wid);
+  const score=MOCK.scoreOf(wid);
+  // 已看视频章节数：遍历 learn 记录里的 done
+  let vids=0;
+  Object.keys(MOCK.DB.learn||{}).forEach(k=>{
+    if(k.split('|')[0]!==wid) return;
+    vids+=(MOCK.DB.learn[k].done||[]).length;
+  });
+  // 待提交任务卡 = 该学员当前已解锁关卡里"未提交"的卡
+  let pend=0;
+  lvAll.forEach(lv=>{
+    if(!MOCK.levelUnlocked(wid,lv)) return;
+    MOCK.TASK_DEFS.filter(d=>d.levelId===lv.id).forEach(d=>{
+      const r=((MOCK.DB.tasks[wid]||{})[lv.id]||{})[d.id];
+      if(!r||r.status==='rejected') pend++;
+    });
+  });
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi"><b>${score}</b><span>闯关积分 / ${MOCK.SCORE_TOTAL} 分达标</span></div>
+    <div class="kpi plain"><b>${doneLv.length}</b><span>已通关卡</span></div>
+    <div class="kpi plain"><b>${vids}</b><span>已看视频</span></div>
+    ${pend?`<div class="kpi hot"><b>${pend}</b><span>任务卡待提交</span></div>`:''}`;
+}
+
+/* 4. 12 关路径：按阶段分组，四态由 levelDone / levelUnlocked 决定
+   【2026-10-05】每组改为独立可折叠的 <details class="ph-fold">：
+   用户要的是「按期收起」—— 能只收起后面的阶段，保留当前在做的那个。
+   默认 open全部：保持改动前的默认可见状态（只加按钮，不改默认行为）。 */
+function renderLvList(wid,lvAll,curNo){
+  const box=document.getElementById('lvList');
+  const parts=[];
+  MOCK.LEVEL_PHASES.forEach(ph=>{
+    const lvs=lvAll.filter(l=>l.no>=ph.from&&l.no<=ph.to);
+    if(!lvs.length) return;
+    const doneN=lvs.filter(l=>MOCK.levelDone(wid,l)).length;
+    const allDone=doneN===lvs.length;
+    /* 默认展开策略：当前所在阶段 + 已全部通关的阶段展开；还没走到的阶段收起。
+       理由（2026-10-05 第二轮）：12 关全展开在 390px 下有 4000+px，学员要滚很久才看到底，
+       而「现在做什么」已经在今日聚焦里了 —— 下面这张图是「整个培养路径」，
+       属于次要信息，让学员想看时再展开即可。
+       注意：一关未通关时（doneN=0）强制展开当前阶段，避免"看不到自己在哪一关"。 */
+    const isCurPhase=lvs.some(l=>!MOCK.levelDone(wid,l)&&MOCK.levelUnlocked(wid,l));
+    const open=allDone||isCurPhase;
+    parts.push(`<details class="ph-fold"${open?' open':''}>
+      <summary>
+        <span class="tag ghost"${allDone?' style="border-color:var(--ok);color:var(--ok-ink)"':''}>${esc(ph.name)} · ${esc(ph.week)}</span>
+        <span class="ph-fold-n${allDone?' ok':''}">${doneN}/${lvs.length} 关</span>
+        <span class="ph-fold-btn" aria-hidden="true"></span>
+      </summary>
+      <div class="ph-fold-body">${lvs.map(lv=>lvCard(wid,lv,curNo)).join('')}</div>
+    </details>`);
+  });
+  box.innerHTML=parts.join('');
+}
+
+function lvCard(wid,lv,curNo){
+  const done   = MOCK.levelDone(wid,lv);
+  const unlock = MOCK.levelUnlocked(wid,lv);
+  const isCur  = !done && unlock && lv.no===curNo;
+  const st=lv.stages||{};
+  const tags=[];
+  ['study','practice','exam'].forEach(s=>{
+    if(!st[s]) return;
+    const cn=MOCK.LV_STAGE_CN[s];
+    let ok = s==='practice' ? MOCK.practiceDone(wid,lv.id) : MOCK.lvStageOk(wid,lv.id,s);
+    if(ok){ tags.push(`<span class="tag ok">${cn} 已完成</span>`); return; }
+    if(!unlock){ tags.push(`<span class="tag lock">${cn} 未解锁</span>`); return; }
+    // 未完成 -> 区分"待审核 / 待提交 / 未开始"
+    if(s==='practice'){
+      const defs=MOCK.TASK_DEFS.filter(d=>d.levelId===lv.id);
+      const rec=(MOCK.DB.tasks[wid]||{})[lv.id]||{};
+      const sub=defs.filter(d=>(rec[d.id]||{}).status==='submitted').length;
+      const passed=defs.filter(d=>(rec[d.id]||{}).status==='passed').length;
+      if(sub) tags.push(`<span class="tag warn pulse">${sub} 张待审核</span>`);
+      else if(defs.length) tags.push(`<span class="tag ghost">${defs.length-sub-passed} 张待提交</span>`);
+      else tags.push('<span class="tag ghost">本关无练环节</span>');
+    }else if(s==='exam'){
+      const rec=((MOCK.DB.tasks[wid]||{})[lv.id]||{})[MOCK.EXAM_TASK];
+      if(rec&&rec.status==='submitted') tags.push('<span class="tag warn pulse">考 待审核</span>');
+      else if(rec&&rec.status==='rejected') tags.push('<span class="tag danger">考 已打回</span>');
+      else tags.push('<span class="tag ghost">考 未开始</span>');
+    }else{
+      tags.push(`<span class="tag ghost">${cn} 未开始</span>`);
+    }
+  });
+  const mx=UI.mxCell(wid,lv);
+  const inner=`<span class="lvno"${!unlock?' style="color:var(--faint)"':''}>${lv.no}</span>
+    <span class="lvbody"><b>${esc(lv.title)}</b>
+      <span class="m">${esc(lv.week||'')} · ${esc(lv.phase||'')}</span>
+      <span class="lvstages">${tags.join('')}</span></span>
+    <span style="align-self:center">${mx}</span>`;
+  return unlock
+    ? `<a class="lvcard${isCur?' cur':''}" href="student-level.html?lv=${esc(lv.id)}">${inner}</a>`
+    : `<div class="lvcard lock">${inner}</div>`;
+}
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+</script>
+</body>
+</html>

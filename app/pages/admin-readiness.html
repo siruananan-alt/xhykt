@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>转正达标线登记 · 教务管理员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-admin" data-role="admin" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap wide">
+
+  <div class="pg-head">
+    <span class="eyebrow" id="eyebrow">4 条达标线 · 1 条系统自动 + 3 条人工登记</span>
+    <h1>转正达标线登记</h1>
+    <p class="sub">4 条线全绿才可转正。</p>
+  </div>
+
+  <!-- 汇总（真实算） -->
+  <div class="kpis" id="kpis" style="margin-bottom:var(--s5)"></div>
+
+  <div id="riskNote"></div>
+
+  <!-- 逐学员逐条线 -->
+  <div class="card">
+    <div class="card-h">
+      <h2>学员达标线明细</h2>
+      <p class="hint">达标线数值<b>只能人工登记</b>。</p>
+    </div>
+    <div id="rdList"></div>
+  </div>
+
+  <!-- 转正审批 -->
+  <div class="card">
+    <div class="card-h">
+      <h2>转正审批</h2>
+      <span class="tag lock" id="certTag">当前 0 人可转正</span>
+    </div>
+    <p class="hint" style="margin-bottom:var(--s4)">
+      4 条达标线全绿 + 胜任力 5 项全过，才进入审批。
+    </p>
+    <div id="certBox"></div>
+  </div>
+
+  <!-- 达标线规则配置 -->
+  <div class="card">
+    <div class="card-h">
+      <h2>达标线规则</h2>
+      <span class="tag ghost">当前阈值</span>
+    </div>
+    <div id="ruleTbl"></div>
+    <details class="fold">
+      <summary>达标线判定规则</summary>
+      <div class="fold-body">
+        <b>阈值统一：</b>「≥ 800 人」「&lt; 1.5 小时」等阈值为统一口径，本站不提供改动入口；如需调整请联系系统管理员。<br>
+        <b>判定只看结论：</b>是否达标严格按登记的 <code>met === true</code> 判定，阈值从不参与自动比较。
+      </div>
+    </details>
+    <details class="fold warn">
+      <summary>3 项口径尚未统一（会影响转正判定）</summary>
+      <div class="fold-body">
+        <svg class="ic"><use href="#i-num1"/></svg> <b>26 分 vs 31 分</b> —— 闯关积分算法有两版，尚未统一；<br>
+        <svg class="ic"><use href="#i-num2"/></svg> <b>关 8 / 关 9 的终审人</b> —— 由谁终审，口径待定；<br>
+        <svg class="ic"><use href="#i-num3"/></svg> <b>月引流 800 人</b> —— 按自然月还是滚动 30 天，尚未明确。<br>
+        请与教务确认后再调整判定规则，否则同一批学员可能得出不同结论。
+      </div>
+    </details>
+  </div>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<!--
+  本页交互清单（2026-10-04 改版：全部由 MOCK 真实数据驱动 + 阈值可真改）：
+  1. 二级导航当前项「达标线登记」自动高亮。
+  2. 每个「登记」按钮 -> UI.openReadiness(工号, 线key)：
+     - 数值字段带校验（月引流 0–99999；小时数 >0）。
+     - 「学习达标」线无登记入口 —— 它是系统自动的，给个能点的按钮反而误导。
+     - 保存后卡片状态就地切换（no -> ok）、学员端徽章同步（走 rerenderAfterWrite）。
+  3. 达标线阈值**只读展示**（2026-10-04 用户决策：新 UI 不提供改阈值）。
+     - 后端阈值为常量、无写接口，前端改无法真实生效 -> 去掉入口，避免"看着能改其实没用"。
+     - 「不可改」列：学习达标线写"系统决定"，飞书三条写"后端常量"。
+  4. 未到的关卡显示「未到关卡 / 暂无数据」灰锁标签，而不是红字"不达标"。
+  5. 空状态写清"为什么空"和"什么时候会有"。
+-->
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-readiness.html');
+  initNav();
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+  window.__rerender = render;
+  render();
+});
+
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const wid  = MOCKAPI.S.wid;
+  const rows = MOCKAPI.visibleTrainees(wid);
+  renderKpis(rows);  renderList(rows);
+  renderCert(rows);
+  renderRules();
+}
+
+/* ---------- 汇总 KPI ---------- */
+function renderKpis(rows){
+  const LINES=MOCK.READINESS_LINES;
+  const canCert=rows.filter(t=>isReady(t.id)).length;
+  const allPass=rows.filter(t=>LINES.every(l=>lineMet(t.id,l))).length;
+  // 已达标项 / 总项数：4 条线 × 学员数
+  let met=0; const total=rows.length*LINES.length;
+  rows.forEach(t=>{ met += LINES.filter(l=>lineMet(t.id,l)).length; });
+  // 注意： 配色语义（theme.css 令牌）：--wash 绿 = 进度/已达成，只能用在"确实有进展"的数字上。
+  //    「0 人可转正」用绿底会读成"很好"，是本研究里反复出现的语义倒挂 -> 零值一律走 .kpi.plain（中性）。
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi plain"><b>${canCert} / ${LINES.length}</b><span>可转正人数</span></div>
+    <div class="kpi plain"><b>${rows.length}</b><span>在训学员</span></div>
+    <div class="kpi ${allPass?'hot':'plain'}"><b>${allPass}</b><span>达标线全过的人</span></div>
+    <div class="kpi ${met?'hot':'plain'}"><b>${met}</b><span>已达标项 / 共 ${total} 项</span></div>`;
+  // 风险提示：谁最接近、谁缺带教
+  const near=rows.slice().sort((a,b)=>cntMet(b.id)-cntMet(a.id))[0];
+  const noMentor=rows.filter(t=>!t.mentorId);
+  const parts=[];
+  if(rows.length) parts.push(`目前 ${rows.length} 名学员中 <b>${canCert} 人</b>满足全部 4 条。`);
+  if(near) parts.push(`最接近的是<b>${esc(near.name)}</b>（${LINES.map(l=>lineLabel(near.id,l)).join('、')}）。`);
+  if(noMentor.length) parts.push(`<b>${noMentor.map(t=>esc(t.name)).join('、')}</b>尚未指定带教导师 —— 任务卡没人批、考核没人审，尽快指定或转出。`);
+  document.getElementById('riskNote').innerHTML = `<div class="note ${noMentor.length?'danger':'warn'}" style="margin-bottom:var(--s5)">
+    <b>运营提示：</b>${parts.join(' ')}</div>`;
+}
+function cntMet(tid){ return MOCK.READINESS_LINES.filter(l=>lineMet(tid,l)).length; }
+// 单条线的达标判定 —— 与后端/readinessBadge 同源
+function lineMet(tid,line){
+  if(line.source==='site')
+    return MOCK.DB.levels.length>0 && MOCK.DB.levels.every(l=>MOCK.levelDone(tid,l));
+  const r=(MOCK.DB.readiness[tid]||{})[line.key];
+  return !!(r&&r.met===true);                    // 基线：met 严格 === true
+}
+function lineLabel(tid,line){
+  if(line.source==='site'){
+    const done=MOCK.DB.levels.filter(l=>MOCK.levelDone(tid,l)).length;
+    return `学习达标 ${done}/${MOCK.DB.levels.length} 关`;
+  }
+  const eff=MOCK.effectiveThreshold(line.key);
+  const r=(MOCK.DB.readiness[tid]||{})[line.key];
+  return `${line.name} ${r&&r.value!=null?r.value:'—'}/${eff.threshold} ${eff.unit}`;
+}
+function isReady(tid){
+  return MOCK.DB.levels.length>0 && MOCK.DB.levels.every(l=>MOCK.levelDone(tid,l))
+      && MOCK.READINESS_LINES.every(l=>lineMet(tid,l));
+}
+
+/* ---------- 逐学员明细（走 UI.readinessBadge 唯一口径） ---------- */
+function renderList(rows){
+  const box=document.getElementById('rdList');
+  if(!rows.length){ box.innerHTML='<div class="empty"><div class="big"><svg class="ic"><use href="#i-users"/></svg></div><b>没有在训学员</b></div>'; return; }
+  box.innerHTML=rows.map((t,i)=>{
+    const n=cntMet(t.id);
+    const mentor=MOCK.mentorOf(t.mentorId);
+    return `<div style="border-top:${i?'2px solid var(--line)':'0'};padding-top:var(--s5);margin-bottom:var(--s5)" data-tid="${esc(t.id)}">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:var(--s4)">
+        <span class="avatar">${esc((t.name||'?')[0])}</span>
+        <h3 style="font-size:17px">${esc(t.name)} <span class="tag ghost">${esc(t.id)}</span></h3>
+        <span class="tag ${n===4?'ok':'ghost'}">${n} / 4 条达标</span>
+        <span class="tag ghost">${mentor?('带教 '+esc(mentor.id)+' '+esc(mentor.name)):'<span class="tag warn" style="border:0;padding:0">带教未指定</span>'} · 第 ${t.week||1} 周</span>
+        ${isReady(t.id)?'<span style="margin-left:auto" class="tag ok">可转正</span>':'<span style="margin-left:auto" class="tag warn">未达标</span>'}
+      </div>
+      ${MOCK.READINESS_LINES.map((line,li)=>rdRow(t,line,li)).join('')}
+    </div>`;
+  }).join('');
+  // rdRow 里的 data-ic 需要注入（本页每次重绘都会重建 DOM）
+  if(window.injectIcons) injectIcons();
+}
+function rdRow(t,line,li){
+  const isSite=line.source==='site';
+  const badge=UI.readinessBadge(line.key,t.id);
+  const eff=badge.eff;
+  const rec=(MOCK.DB.readiness[t.id]||{})[line.key];
+  // 未到关卡：该线涉及的关卡还没解锁 -> 显示灰锁而不是红字"不达标"（没到 ≠ 没达标）
+  let sub='';
+  if(isSite){
+    sub=`系统自动判定（source = site）。看完视频 + 考核通过即记通关，无需人工登记。`;
+  }else{
+    sub=esc(line.hint||'口径以飞书为准');
+  }
+  const valTxt = isSite
+    ? `${MOCK.DB.levels.filter(l=>MOCK.levelDone(t.id,l)).length} / ${MOCK.DB.levels.length} 关`
+    : (rec&&rec.value!=null ? `${rec.value} / ${eff.threshold} ${eff.unit}` : '—');
+  const tag = isSite
+    ? `<span class="tag ${badge.cls==='ok'?'ok':'ghost'}" style="font-size:11px">自动 · ${badge.tag}</span>`
+    : (rec&&rec.value!=null
+        ? `<span class="tag ${badge.cls==='ok'?'ok':'warn'}" style="font-size:11px">${badge.tag}</span>`
+        : `<span class="tag lock" style="font-size:11px">暂无数据</span>`);
+  const acts = isSite ? '' : `
+    <span class="acts" style="flex:none;display:flex;flex-direction:column;gap:6px">
+      <button class="btn sm" onclick="UI.openReadiness('${esc(t.id)}','${esc(line.key)}')">登记</button>
+      ${rec?'<button class="btn sm ghost" onclick="UI.openReadiness(\''+esc(t.id)+'\',\''+esc(line.key)+'\')">查看</button>':''}
+    </span>`;
+  // 进度条：site 用关卡比，其余用 数值/阈值（lt 线取反：越小越好）
+  let pct=0;
+  if(isSite){
+    pct=Math.round(MOCK.DB.levels.filter(l=>MOCK.levelDone(t.id,l)).length/MOCK.DB.levels.length*100);
+  }else if(rec&&rec.value!=null){
+    const v=rec.value, th=eff.threshold;
+    pct = eff.compare==='lt' ? Math.max(4,Math.min(100,Math.round(th/v*100))) : Math.max(0,Math.min(100,Math.round(v/th*100)));
+  }
+  const icons=['i-book','i-chart','i-film','i-users'];
+  return `<div class="rd ${badge.cls==='ok'?'ok':'no'}">
+    <span class="rdic" data-ic2="${icons[li]||'i-book'}"></span>
+    <span class="rdbody">
+      <b>${['<svg class="ic"><use href="#i-num1"/></svg>','<svg class="ic"><use href="#i-num2"/></svg>','<svg class="ic"><use href="#i-num3"/></svg>','<svg class="ic"><use href="#i-num4"/></svg>'][li]} ${esc(line.name)} · ${eff.compare==='lt'?('&lt; '+eff.threshold):('≥ '+eff.threshold)} ${esc(eff.unit)}${eff.custom?' <span class="tag warn" style="font-size:11px">阈值已自定义</span>':''}</b>
+      <span class="rq">${sub}</span>
+      <span class="rv">${esc(valTxt)} ${tag}</span>
+      ${pct?`<div class="bar" style="margin-top:8px"><i style="width:${pct}%"></i></div>`:''}
+    </span>${acts}</div>`;
+}
+
+/* ---------- 转正审批 ---------- */
+function renderCert(rows){
+  const ready=rows.filter(t=>isReady(t.id));
+  const certed=rows.filter(t=>((MOCK.DB.readiness[t.id]||{}).certifiedAt));
+  document.getElementById('certTag').textContent =
+    ready.length ? ('当前 '+ready.length+' 人可转正') : '当前 0 人可转正';
+  document.getElementById('certTag').className = 'tag '+(ready.length?'ok':'lock');
+  const box=document.getElementById('certBox');
+  if(!ready.length && !certed.length){
+    box.innerHTML=`<div class="empty">
+      <div class="big"><svg class='ic'><use href='#i-clipboard'/></svg></div><b>暂无待审批</b>
+      <p style="font-size:13px;margin-top:6px">当前 ${rows.length} 名学员全部未达标。${rows.length?('最接近的 '+esc(rows.slice().sort((a,b)=>cntMet(b.id)-cntMet(a.id))[0].name)+' 还差 '+(4-cntMet(rows.slice().sort((a,b)=>cntMet(b.id)-cntMet(a.id))[0].id))+' 条达标线。'):''}</p>
+    </div>
+    `;
+    return;
+  }
+  box.innerHTML=`<div class="tblwrap"><table><thead><tr><th>学员</th><th>达标情况</th><th>状态</th><th>操作</th></tr></thead><tbody>
+    ${rows.map(t=>{
+      const ok=isReady(t.id), r=MOCK.DB.readiness[t.id]||{};
+      return `<tr data-tid="${esc(t.id)}"><td><b>${esc(t.name)}</b> <span class="tag ghost">${esc(t.id)}</span></td>
+        <td>${cntMet(t.id)} / 4 条 <span class="hint">学习 ${MOCK.DB.levels.filter(l=>MOCK.levelDone(t.id,l)).length}/${MOCK.DB.levels.length} 关</span></td>
+        <td>${r.certifiedAt?'<span class="tag ok">已认证转正</span>':(ok?'<span class="tag warn">待审批</span>':'<span class="tag ghost">未达标</span>')}</td>
+        <td>${r.certifiedAt
+            ? '<span class="tag ok">已认证</span>'
+            : (ok?`<button class="btn sm" onclick="mockCertify('${esc(t.id)}')">认证转正</button>`:'<span class="hint">—</span>')}</td></tr>`;
+    }).join('')}
+  </tbody></table></div>`;
+}
+
+/* ---------- 达标线规则表（阈值可真改） ---------- */
+function renderRules(){
+  const rows=MOCK.READINESS_LINES.map(line=>{
+    const eff=MOCK.effectiveThreshold(line.key);
+    const isSite=line.source==='site';
+    const th = isSite ? (MOCK.DB.levels.length+' 关全通关') : (eff.compare==='lt'?('&lt; '+eff.threshold):('≥ '+eff.threshold))+' '+esc(eff.unit);
+    const srcTag = isSite?'本站':'飞书多维表格';
+    const wayTag = isSite?'<span class="tag ok">系统自动</span>':'<span class="tag warn">人工登记</span>';
+    const custom = eff.custom?`<div class="hint" style="font-size:11px">自定义 · ${esc(eff.byName||'')}</div>`:'';
+    const act = isSite
+      ? '<span class="tag lock">系统决定</span>'
+      : '<span class="tag ghost">统一口径</span>';
+    return `<tr data-key="${esc(line.key)}"><td><b>${esc(line.name)}</b></td>
+      <td>${th}${custom}</td><td>${srcTag}</td><td>${wayTag}</td><td>${act}</td></tr>`;
+  }).join('');
+  document.getElementById('ruleTbl').innerHTML=`<div class="tblwrap"><table>
+    <thead><tr><th>达标线</th><th>阈值</th><th>数据来源</th><th>判定方式</th><th>可改</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+</script>
+</body>
+</html>

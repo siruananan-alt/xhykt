@@ -1,0 +1,290 @@
+/* ============================================================
+   沙盒共用样式（sandbox.css）
+   ------------------------------------------------------------
+   与 theme.css 的分工：
+     theme.css   = 产品视觉规范（令牌 + 组件），**将来要搬进生产**
+     sandbox.css = 沙盒/演示专用（沙盒首页的目录卡、色板、组件陈列台）
+   生产改造时只需搬 theme.css，sandbox.css 整个文件不带走。
+   ============================================================ */
+
+/* ---------- 沙盒首页：Hero ---------- */
+.hero{border-bottom:2px solid var(--line);padding:var(--s10) 0 var(--s8);margin-bottom:var(--s8)}
+.hero h1{font-size:34px;max-width:760px}
+.hero .lead{font-size:16px;color:var(--muted);max-width:720px;margin-top:var(--s3);line-height:1.7}
+.hero .meta{display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:var(--s5)}
+
+/* ---------- 分组标题 ---------- */
+.pgroup{margin-bottom:var(--s8)}
+.pgroup>.gh{display:flex;align-items:baseline;gap:var(--s3);margin-bottom:var(--s4);flex-wrap:wrap}
+.pgroup>.gh .n{font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--ink);
+  background:var(--wash);border:2px solid var(--ok);border-radius:999px;padding:2px 12px;flex:none}
+.pgroup>.gh h2{font-size:19px}
+.pgroup>.gh .d{font-size:13px;color:var(--muted)}
+
+/* ---------- 页面入口卡 ---------- */
+.pcard{
+  display:block;background:var(--bg);border:2px solid var(--line);border-radius:var(--radius);
+  padding:var(--s4);color:inherit;text-decoration:none;height:100%;
+  transition:border-color .16s,transform .12s,box-shadow .12s;
+}
+.pcard:hover{border-color:var(--ok);text-decoration:none;transform:translateY(-2px);box-shadow:0 4px 0 var(--ok)}
+.pcard:active{transform:translateY(2px);box-shadow:none}
+.pcard .jj{font-size:13px;color:var(--muted);margin-top:var(--s2);line-height:1.55}
+.pcard .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:var(--s3)}
+.pcard .fn{font-family:var(--font-mono);font-size:11.5px;color:var(--link-ink);
+  background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:2px 7px;display:inline-block;margin-top:var(--s3)}
+
+/* ---------- 色板 ---------- */
+.sw{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--s3)}
+.sw .s{border:2px solid var(--line);border-radius:var(--radius-btn);overflow:hidden}
+.sw .s .chip{height:52px}
+.sw .s .lb{padding:8px 10px;background:var(--bg)}
+.sw .s .lb b{display:block;font-size:13px}
+.sw .s .lb code{font-size:11px;background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.sw .s .lb small{display:block;color:var(--muted);font-size:11px;margin-top:3px;line-height:1.4}
+
+/* ---------- 组件陈列台 ---------- */
+.demo{border:2px dashed var(--edge);border-radius:var(--radius);padding:var(--s5);background:var(--soft2)}
+.demo>.lb{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.05em;
+  text-transform:uppercase;margin-bottom:var(--s3);display:block}
+.demo .row{display:flex;gap:var(--s3);flex-wrap:wrap;align-items:center}
+
+/* ---------- 紧凑规格表（不被 min-width:720px 撑爆） ---------- */
+table.spec{width:100%;min-width:0;font-size:12.5px}
+table.spec th,table.spec td{padding:9px 10px}
+table.spec th{background:var(--soft2)}
+
+/* ---------- 通用：页内锚点目录（长页面导航） ---------- */
+.jump{display:flex;gap:var(--s2);flex-wrap:wrap;margin:var(--s4) 0}
+/* 筛选 chip：min-height 44px 满足触控（此前 33px）。pill 造型不变，
+   高度靠 min-height 而非 padding 撑 -> 三档筛选并列时视觉密度不变。 */
+.jump a{font-size:12.5px;font-weight:700;color:var(--muted);background:var(--soft);
+  border:2px solid var(--line);border-radius:999px;padding:4px 12px;min-height:44px;
+  display:inline-flex;align-items:center}
+.jump a:hover{background:var(--ok-bg);border-color:var(--ok);color:var(--ok-ink);text-decoration:none}
+/* 主导航变体（学员端手机主导航，4 个页面共用）
+   【2026-10-05】此前 1.筛选 chip 与 2.主导航 共用 .jump 一个类：pill 造型适合"可选中的筛选项"，
+   但作为**主导航**它只有 33px 高（check-mobile 实测全部 <44px 触控），且视觉权重和
+   筛选 chip 完全一样 -> 用户看不出哪个是导航、哪个是筛选。拆成两个组件类：
+   .jump      = 筛选 chip（保持原尺寸，密集排布是优点）
+   .jump.nav  = 主导航（≥44px 触控 + 更明确的当前态）
+   注意： 只加类不改结构、不改路由。 */
+.jump.nav{gap:var(--s3);margin:var(--s5) 0 var(--s2)}
+.jump.nav a{
+  font-size:15px;min-height:44px;display:inline-flex;align-items:center;
+  padding:0 20px;border-width:2px;
+}
+.jump.nav a.on,.jump.nav a[aria-current=page]{
+  background:var(--ok-bg);border-color:var(--ok);color:var(--ok-ink);
+}
+/* 筛选 chip 的选中态用 .on 类表达（admin-courses 的「全部/已就绪/…」靠 JS 切 class，
+   不能只靠 :hover —— 手离开鼠标就看不出选中哪个）。 */
+.jump a.on{background:var(--ok-bg);border-color:var(--ok);color:var(--ok-ink)}
+
+/* ---------- 课程页：搜索 + 筛选条 ---------- */
+/* 搜索框与 chip 同排；窄屏自动折行（搜索框占满一行） */
+.filterbar{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;margin:var(--s4) 0}
+.filterbar .jump{margin:0}
+.search{position:relative;flex:1;min-width:200px;max-width:380px;display:flex;align-items:center}
+.search .ic{position:absolute;left:12px;display:inline-flex;width:16px;height:16px;color:var(--muted);pointer-events:none}
+.search .ic svg,.search .ic img{width:16px;height:16px}
+.search input{width:100%;font:inherit;font-size:13.5px;color:var(--text);
+  background:var(--soft);border:2px solid var(--line);border-radius:999px;
+  padding:9px 14px 9px 36px;outline:none}
+.search input::placeholder{color:var(--muted)}
+.search input:focus{background:#fff;border-color:var(--ok)}
+@media(max-width:640px){
+  .search{max-width:none;flex-basis:100%}
+}
+
+/* ---------- 课程页：筛选无结果空态 ---------- */
+.empty-note{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);padding:var(--s6) var(--s5)}
+.empty-note b{font-size:15px}
+.empty-note span{font-size:13.5px;color:var(--muted);line-height:1.6}
+
+/* ---------- 通用：字段网格（详情页 label/value） ---------- */
+.dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--s3);margin:var(--s3) 0}
+.dl .it{background:var(--soft2);border:2px solid var(--line);border-radius:var(--radius-btn);padding:10px 12px}
+.dl .it .k{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.03em}
+.dl .it .v{font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--text);margin-top:3px}
+.dl .it .v small{font-size:11.5px;font-weight:500;color:var(--muted)}
+
+/* ---------- 通用：阶段编号大字（关卡路径） ---------- */
+.lvno{font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--ink);line-height:1;flex:none}
+.lvcard{
+  display:flex;gap:var(--s4);align-items:flex-start;background:var(--bg);
+  border:2px solid var(--line);border-radius:var(--radius);padding:var(--s4);
+  margin-bottom:var(--s3);text-decoration:none;color:inherit;
+  transition:border-color .16s,transform .12s,box-shadow .12s;
+}
+.lvcard:hover{border-color:var(--ok);text-decoration:none;transform:translateX(2px)}
+.lvcard.cur{border:3px solid var(--ok);padding:15px 16px;background:var(--ok-bg)}
+.lvcard.lock{background:var(--lock-bg);border-style:dashed;cursor:not-allowed}
+.lvcard.lock:hover{transform:none;border-color:var(--lock)}
+.lvcard .lvbody{flex:1;min-width:0}
+.lvcard .lvbody b{font-family:var(--font-display);font-size:16px;font-weight:800;display:block}
+.lvcard .lvbody .m{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.55}
+.lvcard .lvstages{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+
+@media(max-width:640px){
+  .hero{padding:var(--s6) 0 var(--s6)}
+  .hero h1{font-size:26px}
+  .hero .lead{font-size:15px}
+  .pcard{height:auto}
+}
+
+/* ============================================================
+   达标线徽章（视觉方案 B）
+   ------------------------------------------------------------
+   为什么不用 .tag：达标线是这个项目的转正闸门，必须一眼看出"还差多少"，
+   所以给它独立组件——数值 + 缺口 + 进度条三件套，而不是一个小标签。
+   学员端「我的」和管理端「达标线登记」共用。
+   ============================================================ */
+.rd{
+  display:flex;gap:var(--s4);align-items:flex-start;padding:var(--s4);
+  border:2px solid var(--line);border-radius:var(--radius);background:var(--bg);margin-bottom:var(--s3);
+}
+.rd .rdic{
+  width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;
+  border:2px solid var(--line);background:var(--soft);color:var(--muted);
+}
+.rd .rdbody{flex:1;min-width:0}
+.rd .rdbody b{font-family:var(--font-display);font-size:15.5px;display:block}
+.rd .rdbody .rq{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.55}
+.rd .rdbody .rv{font-family:var(--font-display);font-size:19px;font-weight:800;margin-top:6px}
+.rd.ok{border-color:var(--ok);background:var(--ok-bg)}
+.rd.ok .rdic{background:var(--ok);border-color:var(--ink);color:#fff}
+.rd.ok .rdbody .rv{color:var(--ok-ink)}
+.rd.no{border-color:var(--warn)}
+.rd.no .rdic{background:var(--warn-bg);border-color:var(--warn);color:var(--warn-ink)}
+.rd.no .rdbody .rv{color:var(--warn-ink)}
+/* 变体：紧凑（管理端表格里用） */
+.rd.sm{padding:var(--s3);gap:var(--s3);margin-bottom:var(--s2)}
+.rd.sm .rdic{width:34px;height:34px;border-radius:10px}
+.rd.sm .rdbody b{font-size:14px}
+.rd.sm .rdbody .rv{font-size:16px}
+
+/* ---------- PRD 5.3-B 转正达标线徽章格子（学员「我的」页） ----------
+   4 张贴纸卡，紧凑到能一屏并排（对齐 Duolingo 成就徽章）。
+   三态：ok=绿实底已达成 / no=橙描边未达标 / todo=灰虚边未开始（无任何记录）
+   注意： 用 grid minmax 自适应，别写死 4 列 —— 学员端手机 390px 要能折成 2 列。 */
+.rd-badges{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3)}
+.rd-badge{
+  border:2px solid var(--line);border-radius:var(--radius);background:var(--bg);
+  padding:var(--s3);display:flex;flex-direction:column;gap:5px;min-width:0;
+  align-items:flex-start;
+}
+.rd-badge .rb-ic{
+  width:32px;height:32px;border-radius:10px;border:2px solid var(--edge);background:var(--soft);
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
+}
+.rd-badge .rb-ic .ic{width:17px;height:17px;stroke-width:2.2}
+.rd-badge b{font-family:var(--font-display);font-size:13.5px;line-height:1.25}
+.rd-badge .rb-val{font-family:var(--font-mono);font-size:12.5px;font-weight:800;color:var(--muted)}
+.rd-badge .rb-src{font-size:10.5px;color:var(--faint);font-weight:700}
+/* 三态：绿实底 = 达成；橙描边 = 未达标；灰虚边 = 无记录 */
+.rd-badge.ok{border-color:var(--ok);background:var(--ok-bg)}
+.rd-badge.ok .rb-ic{background:var(--ok);border-color:var(--ink);color:#fff}
+.rd-badge.ok .ic{stroke:#fff}
+.rd-badge.ok b,.rd-badge.ok .rb-val{color:var(--ok-ink)}
+.rd-badge.no{border-color:var(--warn)}
+.rd-badge.no .rb-ic{background:var(--warn-bg);border-color:var(--warn);color:var(--warn-ink)}
+.rd-badge.no .rb-val{color:var(--warn-ink)}
+.rd-badge.todo{border-style:dashed;border-color:var(--edge)}
+.rd-badge.todo b,.rd-badge.todo .rb-val{color:var(--muted)}
+@media(max-width:760px){.rd-badges{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ---------- 胜任力清单（只读勾选框） ---------- */
+.chk{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:2px solid var(--line)}
+.chk:last-child{border-bottom:0}
+.chk .bx{
+  width:26px;height:26px;border-radius:8px;border:2px solid var(--edge);background:var(--bg);
+  display:grid;place-items:center;flex:none;color:#fff;font-size:15px;font-weight:800;
+}
+.chk.on .bx{background:var(--ok);border-color:var(--ok-ink)}
+.chk.off .bx{background:var(--bg);border-style:dashed}
+.chk .cb b{display:block;font-size:14.5px}
+.chk .cb .d{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.5}
+.chk.on .cb b{color:var(--ok-ink)}
+
+/* ---------- 关卡折叠块 .lvd（导师端逐关明细） ----------
+   12 个关卡纵向排列，已通关的收起、当前关展开。
+   状态区分靠：summary 上的标签 + .mx 状态格 + 当前关 3px 深墨描边。 */
+.lvd{transition:border-color .16s,background .16s}
+.lvd[open]{box-shadow:0 2px 0 rgba(0,4,55,.06)}
+.lvd>summary::-webkit-details-marker{display:none}
+.lvd>summary:hover b{color:var(--ok-ink)}
+.lvd>summary:hover{background:rgba(215,255,184,.35);border-radius:8px}
+.lvd summary .mxrow{opacity:.95}
+/* 未解锁关卡：整块压暗 + 虚线，明确"不可达" */
+.lvd.locked{border-style:dashed;background:var(--lock-bg)}
+/* 行高对齐：summary 里的标题块不换行挤压 */
+.lvd>summary{align-items:center}
+/* summary 中间标题块：占满剩余宽度并允许省略 */
+.lvd>summary .lvs{flex:1;min-width:0}
+.lvd>summary .lvs b{font-family:var(--font-display);font-size:15.5px;display:block}
+.lvd>summary .lvs .hint{display:block;margin:2px 0 0}
+/* 展开区正文 */
+.lvd .lvbody{margin-top:var(--s4);padding-top:var(--s4);border-top:2px solid var(--line)}
+
+/* 课程管理：summary 左侧的课程 id 徽标（替代原来的封面占位图） */
+.lvd>summary .cover{
+  flex:none;width:46px;height:46px;border-radius:10px;background:var(--wash);
+  border:2px solid var(--ink);display:grid;place-items:center;
+  font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--ok-ink);
+}
+
+/* 通用：弹性布局里把后面的元素推到右侧 */
+.spacer{flex:1;min-width:0}
+
+/* ---------- 返回上级链接（上下文页顶部） ---------- */
+.backlink{display:inline-flex;align-items:center;gap:6px;font-size:13px;
+  font-weight:700;margin-bottom:var(--s3);text-decoration:none;color:var(--text)}
+.backlink:hover{color:var(--ok-ink)}
+/* 【2026-10-05】返回链是页面唯一的"后退"动作，手机上却是全页最难点中的元素
+   （实测 h=21px）。给 min-height 44px + 负 margin 抵消新增高度 -> 视觉间距不变。 */
+.backlink{min-height:44px;margin-top:calc(-1 * (var(--s2) + 4px))}
+
+/* ---------- 学员速览头部（导师端徒弟详情 / 管理端学员详情共用） ----------
+   原硬编码头部是 inline style 堆出来的，收集成类，手机端可整体折行。 */
+.hero-flex{display:flex;gap:var(--s4);align-items:flex-start;flex-wrap:wrap}
+.hero-main{flex:1;min-width:240px}
+.hero-main h2{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hero-acts{flex:none;display:flex;flex-direction:column;gap:8px}
+.avatar.av-lg{width:56px;height:56px;font-size:22px}
+@media(max-width:640px){
+  .hero-acts{flex-direction:row;flex-wrap:wrap;width:100%}
+  .hero-acts .btn{flex:1;min-width:120px}
+}
+
+/* ---------- 登录页布局（沙盒专用） ---------- */
+
+  /* 本页专属：登录左右分栏（品牌侧 / 表单侧） */
+  .auth{display:grid;grid-template-columns:1.05fr .95fr;min-height:100vh}
+  .side{
+    background:var(--wash);border-right:2px solid var(--ink);
+    padding:var(--s12) var(--s10);display:flex;flex-direction:column;justify-content:center
+  }
+  .side h1{font-size:32px;line-height:1.2}
+  .side .lead{font-size:15px;color:var(--ok-ink);margin-top:var(--s4);line-height:1.7;max-width:420px}
+  .side .stages{display:flex;flex-direction:column;gap:10px;margin-top:var(--s8)}
+  .side .stages .s{display:flex;align-items:center;gap:10px;background:var(--bg);
+    border:2px solid var(--ok);border-radius:var(--radius-btn);padding:10px 14px}
+  .side .stages .s b{font-family:var(--font-display);font-size:14.5px;flex:none}
+  .side .stages .s span{font-size:12.5px;color:var(--muted);line-height:1.45}
+  .formside{padding:var(--s12) var(--s10);display:flex;flex-direction:column;justify-content:center;max-width:520px}
+  .formside h2{font-size:24px}
+  .formside .sub2{font-size:13.5px;color:var(--muted);margin:8px 0 var(--s8);line-height:1.6}
+  .demo-accounts{border:2px dashed var(--edge);border-radius:var(--radius);padding:var(--s4);margin-top:var(--s6);background:var(--soft2)}
+  .demo-accounts .t{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em;margin-bottom:10px}
+  .demo-accounts .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .demo-accounts .row:last-child{margin-bottom:0}
+  .demo-accounts .row .nm{font-size:13.5px;font-weight:700;width:96px;flex:none}
+  .demo-accounts .row .rl{font-size:11.5px;color:var(--muted);flex:1;min-width:100px}
+  @media(max-width:860px){
+    .auth{grid-template-columns:1fr}
+    .side{border-right:0;border-bottom:2px solid var(--ink);padding:var(--s8) var(--s5)}
+    .side h1{font-size:24px}
+    .side .stages{margin-top:var(--s5)}
+    .formside{padding:var(--s8) var(--s5);max-width:100%}
+  }

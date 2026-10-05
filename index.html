@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>企业内部学习站 · 5 周 12 关，4 条线达标就转正</title>
+<meta name="description" content="星禾云课堂 · 5 周 12 关闯关路径、9 门课、13 张任务卡、4 条转正达标线。">
+<link rel="stylesheet" href="app/assets/theme.css">
+<link rel="stylesheet" href="app/assets/sandbox.css">
+<link rel="stylesheet" href="app/assets/landing.css">
+</head>
+<!-- data-public="1"：这是给所有访客看的公开页，未登录也能完整浏览。
+     app.js 见到它会跳过身份注入（不显示任何人的姓名/角色），右上角只给「登录」入口。 -->
+<body data-public="1" data-nav-done="1">
+
+<!-- 顶栏：始终吸顶（.topbar 本身 position:sticky）。滚动后压缩由 app.js 加 .scrolled -->
+<header class="topbar">
+  <div class="tb-in">
+    <!-- 品牌区：点回首页（顶部）。href 用相对路径 index.html —— 落地页本来就在站点根，
+         相对链接在沙箱(proto/index.html)与线上(/training-courses/index.html)都解析到自身。
+         注意： 不要改成 app.js 的 homeUrl()：本页 data-public="1"，不加载任何工作页逻辑，
+         且落地页自己就是首页，链接指向自己即可。 -->
+    <a class="brand" href="index.html" aria-label="返回首页：企业内部学习站">
+      <span class="logo">学</span>
+      <span class="bn">企业内部学习站<span class="bn2">星禾云课堂</span></span>
+    </a>
+    <!-- data-spy：chip 指向页内区块，由 initScrollSpy() 做滚动联动高亮 -->
+    <nav class="nav2" data-spy aria-label="主导航">
+      <a href="#top">首页</a>
+      <a href="#feat">闯关</a>
+      <a href="#lib">课程库</a>
+      <a href="#me">我的档案</a>
+      <a href="#team">带教团队</a>
+      <a href="#about">关于</a>
+    </nav>
+    <!-- 登录入口：app.js 按登录态切成「登录」或「进入工作台」 -->
+    <div class="who" id="authSlot"><a class="btn sm" href="app/pages/login.html">登录</a></div>
+  </div>
+</header>
+
+<main>
+
+<!-- ================= 1. Hero ================= -->
+<section class="lp-hero" id="top">
+  <div class="lp-hero-tx">
+    <span class="lp-eyebrow">星禾云课堂 · 新人培养体系</span>
+    <h1>5 周走完 12 关<br>4 条线达标就转正</h1>
+    <p class="lp-lead">
+      不是课程平台，是一套<b>能验收的培养体系</b>。
+      看完视频自动过「学」，交任务卡 + 考核由带教导师<b>人工批改</b>，
+      4 条达标线全绿才能转正 —— 每一步谁做、做到什么程度，都留痕。
+    </p>
+    <div class="lp-cta">
+      <a class="btn lg" href="app/pages/login.html" data-ic2="i-user">登录，开始我的 5 周</a>
+      <a class="btn lg ghost" href="#feat">先看看闯关怎么走</a>
+    </div>
+    <p class="lp-note" id="authWho">未登录</p>
+  </div>
+  <div class="lp-hero-fig">
+    <!-- 主视觉：Q 版团队贴纸（2026-10-05 用户指定，替换原 12 关阶梯 SVG 插画） -->
+    <figure class="lpv hero-illu" role="img" aria-label="星禾云课堂 Q 版团队贴纸：导师与学员一起达标转正">
+      <img src="https://micheal-enviorment1-d0bh1b0787c0-1492265383.tcloudbaseapp.com/training-courses/app/assets/img/hero-team.jpg?v=2" alt="星禾云课堂 Q 版团队贴纸" width="1080" height="1080">
+    </figure>
+  </div>
+</section>
+
+<!-- ================= 2. 关键数字 ================= -->
+<section class="lp-nums">
+  <div class="lp-num"><b>12</b><span>道闯关</span><small>分 3 段递进</small></div>
+  <div class="lp-num"><b>9</b><span>门课程</span><small>视频 + PDF 资源</small></div>
+  <div class="lp-num"><b>13</b><span>张任务卡</span><small>练环节必交</small></div>
+  <div class="lp-num"><b>4</b><span>条达标线</span><small>全绿才转正</small></div>
+  <div class="lp-num"><b>5</b><span>周周期</span><small>新手到能独立操盘</small></div>
+</section>
+
+<!-- ================= 3. 闯关（3 张功能卡） ================= -->
+<section class="lp-sec" id="feat">
+  <div class="lp-sec-hd">
+    <span class="lp-kicker">闯关</span>
+    <h2>12 关不是目录，是一条解锁链</h2>
+    <p>看完第 N 关课程，才解锁第 N+1 关。「学」看完视频自动过，「练」和「考」要交任务卡 + 人工批改 —— 走不完就是走不完。</p>
+  </div>
+
+  <div class="lp-3">
+    <article class="lp-card">
+      <figure class="lpv" role="img" aria-label="12 格闯关矩阵示意：前三关已通过，当前关进行中">
+        <svg viewBox="0 0 480 270" xmlns="http://www.w3.org/2000/svg">
+          <rect x="36"  y="40" width="60" height="60" rx="8" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="2"/>
+          <path d="M52 70 L63 81 L82 58" fill="none" stroke="var(--ok-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="108" y="40" width="60" height="60" rx="8" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="2"/>
+          <path d="M124 70 L135 81 L154 58" fill="none" stroke="var(--ok-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="180" y="40" width="60" height="60" rx="8" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="2"/>
+          <path d="M196 70 L207 81 L226 58" fill="none" stroke="var(--ok-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="252" y="40" width="60" height="60" rx="8" fill="#ffffff" stroke="var(--ok)" stroke-width="3"/>
+          <circle cx="282" cy="70" r="7" fill="var(--ok)"/>
+          <rect x="324" y="40" width="60" height="60" rx="8" fill="var(--lock-bg)" stroke="var(--lock)" stroke-width="2" stroke-dasharray="5 4"/>
+          <rect x="396" y="40" width="60" height="60" rx="8" fill="var(--lock-bg)" stroke="var(--lock)" stroke-width="2" stroke-dasharray="5 4"/>
+          <rect x="36"  y="112" width="60" height="60" rx="8" fill="var(--lock-bg)" stroke="var(--lock)" stroke-width="2" stroke-dasharray="5 4"/>
+          <rect x="108" y="112" width="60" height="60" rx="8" fill="var(--lock-bg)" stroke="var(--lock)" stroke-width="2" stroke-dasharray="5 4"/>
+          <rect x="180" y="112" width="60" height="60" rx="8" fill="var(--lock-bg)" stroke="var(--lock)" stroke-width="2" stroke-dasharray="5 4"/>
+          <rect x="252" y="112" width="60" height="60" rx="8" fill="var(--lock-bg)" stroke="var(--lock)" stroke-width="2" stroke-dasharray="5 4"/>
+          <rect x="324" y="112" width="60" height="60" rx="8" fill="var(--lock-bg)" stroke="var(--lock)" stroke-width="2" stroke-dasharray="5 4"/>
+          <rect x="396" y="112" width="60" height="60" rx="8" fill="var(--lock-bg)" stroke="var(--lock)" stroke-width="2" stroke-dasharray="5 4"/>
+          <rect x="36" y="212" width="408" height="14" rx="7" fill="var(--lock-bg)"/>
+          <rect x="36" y="212" width="120" height="14" rx="7" fill="var(--ok)"/>
+          <text x="36" y="252" font-size="12" font-weight="700" fill="var(--muted)" font-family="Nunito,'PingFang SC',sans-serif">已过 3 关 · 当前第 4 关</text>
+        </svg>
+      </figure>
+      <h3>闯关路径</h3>
+      <p>5 周 12 关，按「新手期 <svg class="ic"><use href="#i-arrow-r"/></svg> 成长期 <svg class="ic"><use href="#i-arrow-r"/></svg> 成熟期」三段递进。每关都由学 / 练 / 考三个环节组成，状态实时可见。</p>
+      <ul class="lp-li">
+        <li><b>学</b>看完章节视频自动判定，多视频章节需全看完</li>
+        <li><b>练</b>13 张任务卡，导师逐张批：通过 / 打回 + 原因</li>
+        <li><b>考</b>阶段考核，人工代录判定，可打回重考</li>
+      </ul>
+    </article>
+
+    <article class="lp-card">
+      <figure class="lpv" role="img" aria-label="课程播放器与章节清单示意">
+        <svg viewBox="0 0 480 270" xmlns="http://www.w3.org/2000/svg">
+          <rect x="28" y="34" width="256" height="170" rx="10" fill="var(--ink)"/>
+          <path d="M138 100 L138 140 L172 120 Z" fill="#ffffff"/>
+          <rect x="40" y="182" width="232" height="8" rx="4" fill="rgba(255,255,255,.25)"/>
+          <rect x="40" y="182" width="150" height="8" rx="4" fill="var(--ok)"/>
+          <rect x="28" y="222" width="256" height="12" rx="6" fill="var(--lock-bg)"/>
+          <rect x="300" y="40" width="152" height="42" rx="8" fill="#ffffff" stroke="var(--line)" stroke-width="2"/>
+          <circle cx="320" cy="61" r="9" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="2"/>
+          <path d="M316 61 L319 64 L325 57" fill="none" stroke="var(--ok-ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="336" y="52" width="100" height="7" rx="3.5" fill="var(--soft)"/>
+          <rect x="336" y="64" width="70" height="7" rx="3.5" fill="var(--soft)"/>
+          <rect x="300" y="94" width="152" height="42" rx="8" fill="#ffffff" stroke="var(--line)" stroke-width="2"/>
+          <circle cx="320" cy="115" r="9" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="2"/>
+          <path d="M316 115 L319 118 L325 111" fill="none" stroke="var(--ok-ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="336" y="106" width="100" height="7" rx="3.5" fill="var(--soft)"/>
+          <rect x="336" y="118" width="70" height="7" rx="3.5" fill="var(--soft)"/>
+          <rect x="300" y="148" width="152" height="42" rx="8" fill="#ffffff" stroke="var(--line)" stroke-width="2"/>
+          <rect x="308" y="156" width="34" height="26" rx="5" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="2"/>
+          <text x="315" y="174" font-size="11" font-weight="800" fill="var(--warn-ink)" font-family="Nunito,sans-serif">PDF</text>
+          <rect x="350" y="160" width="90" height="7" rx="3.5" fill="var(--soft)"/>
+          <rect x="350" y="172" width="60" height="7" rx="3.5" fill="var(--soft)"/>
+          <text x="28" y="256" font-size="12" font-weight="700" fill="var(--muted)" font-family="Nunito,'PingFang SC',sans-serif">视频 + PDF 配套资料，学完自动回写进度</text>
+        </svg>
+      </figure>
+      <h3>课程库</h3>
+      <p>9 门课按「可学 / 未解锁」分色。每门课拆到章节，章节下挂视频与 PDF 清单，学完立刻回写闯关进度。</p>
+      <ul class="lp-li">
+        <li>视频在线播放，随时回看</li>
+        <li>PDF 配套资料可下载（checklist / 话术卡）</li>
+        <li>未解锁课程置灰，不占注意力</li>
+      </ul>
+    </article>
+
+    <article class="lp-card" id="me">
+      <figure class="lpv" role="img" aria-label="个人档案示意：积分与 4 条转正达标线进度">
+        <svg viewBox="0 0 480 270" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="86" cy="128" r="52" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="3"/>
+          <text x="86" y="128" text-anchor="middle" font-size="26" font-weight="800" fill="var(--ok-ink)" font-family="Nunito,sans-serif">26</text>
+          <text x="86" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ok-ink)" font-family="Nunito,'PingFang SC',sans-serif">闯关积分</text>
+          <text x="170" y="52" font-size="13" font-weight="700" fill="var(--text)" font-family="Nunito,'PingFang SC',sans-serif">学习达标</text>
+          <rect x="266" y="38" width="180" height="18" rx="9" fill="var(--lock-bg)"/>
+          <rect x="266" y="38" width="180" height="18" rx="9" fill="var(--ok)"/>
+          <text x="170" y="102" font-size="13" font-weight="700" fill="var(--text)" font-family="Nunito,'PingFang SC',sans-serif">月引流 800</text>
+          <rect x="266" y="88" width="180" height="18" rx="9" fill="var(--lock-bg)"/>
+          <rect x="266" y="88" width="99" height="18" rx="9" fill="var(--warn)"/>
+          <text x="170" y="152" font-size="13" font-weight="700" fill="var(--text)" font-family="Nunito,'PingFang SC',sans-serif">剪辑效率 1.5h</text>
+          <rect x="266" y="138" width="180" height="18" rx="9" fill="var(--lock-bg)"/>
+          <rect x="266" y="138" width="72" height="18" rx="9" fill="var(--warn)"/>
+          <text x="170" y="202" font-size="13" font-weight="700" fill="var(--text)" font-family="Nunito,'PingFang SC',sans-serif">运营 4 账号</text>
+          <rect x="266" y="188" width="180" height="18" rx="9" fill="var(--lock-bg)" stroke="var(--lock)" stroke-width="2" stroke-dasharray="5 4"/>
+          <text x="170" y="252" font-size="12" font-weight="700" fill="var(--muted)" font-family="Nunito,'PingFang SC',sans-serif">4 条线全绿才转正，每条都能查证</text>
+        </svg>
+      </figure>
+      <h3>我的档案</h3>
+      <p>一个人的转正全景：闯关积分怎么拆、4 条达标线各差多少、胜任力逐项勾选状态。缺什么、差多少，一屏说清。</p>
+      <ul class="lp-li">
+        <li>闯关积分按环节计：学 10 + 练 8 + 考 8 = 26 分</li>
+        <li>4 条达标线：学习达标 / 月引流 ≥800 / 剪辑效率 &lt;1.5h / 运营 4 账号</li>
+        <li>胜任力清单由带教勾选，学员只看结果</li>
+      </ul>
+    </article>
+  </div>
+</section>
+
+<!-- ================= 4. 12 关长什么样（横向时间轴） ================= -->
+<section class="lp-sec alt" id="lib">
+  <div class="lp-sec-hd">
+    <span class="lp-kicker">12 关</span>
+    <h2>每一关都有名字，不是「第一章」</h2>
+    <p>课程名直接用业务动作命名 —— 看完就知道要会什么。以下为真实课程结构。</p>
+  </div>
+
+  <ol class="lp-lv">
+    <li class="lp-lv-i wk1"><span class="w">第 1 周</span><b>L01 新人启动课堂</b><span class="d">L02 剪辑基础课与剪映提效</span><span class="d">L03 飞书高效实战</span><span class="d">L04 流量一站式入门</span><span class="d">L05 账号冷启动</span><span class="d">L06 行业内部爆款讲解</span></li>
+    <li class="lp-lv-i wk2"><span class="w">第 2–3 周</span><b>L07 百万爆款之剪辑工作流</b><span class="d">L08 高导粉获客秘籍</span><span class="d">L09 矩阵分发</span></li>
+    <li class="lp-lv-i wk3"><span class="w">第 4–5 周</span><b>L10 账号分配方案</b><span class="d">L11 数据复盘与诊断</span><span class="d">L12 转正项目</span></li>
+  </ol>
+
+  <figure class="lpv" role="img" aria-label="5 周学习地图：三段时间条，第 1 周过 6 关，第 2–3 周过 3 关，第 4–5 周过 3 关">
+    <svg viewBox="0 0 1000 300" xmlns="http://www.w3.org/2000/svg">
+      <rect x="24" y="46" width="460" height="200" rx="12" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="2"/>
+      <text x="48" y="90" font-size="20" font-weight="800" fill="var(--ink)" font-family="Nunito,'PingFang SC',sans-serif">第 1 周</text>
+      <text x="48" y="118" font-size="14" font-weight="700" fill="var(--ok-ink)" font-family="Nunito,'PingFang SC',sans-serif">新手期 · 过 6 关</text>
+      <text x="48" y="146" font-size="13" fill="var(--text)" font-family="Nunito,'PingFang SC',sans-serif">跑通一次完整推流，账号冷启动</text>
+      <text x="48" y="168" font-size="13" fill="var(--text)" font-family="Nunito,'PingFang SC',sans-serif">L01 启动 · L02 剪辑 · L03 飞书</text>
+      <text x="48" y="190" font-size="13" fill="var(--text)" font-family="Nunito,'PingFang SC',sans-serif">L04 流量 · L05 冷启动 · L06 爆款</text>
+      <path d="M496 146 L512 146 M504 138 L512 146 L504 154" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="524" y="46" width="224" height="200" rx="12" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="2"/>
+      <text x="548" y="90" font-size="20" font-weight="800" fill="var(--ink)" font-family="Nunito,'PingFang SC',sans-serif">第 2–3 周</text>
+      <text x="548" y="118" font-size="14" font-weight="700" fill="var(--warn-ink)" font-family="Nunito,'PingFang SC',sans-serif">成长期 · 过 3 关</text>
+      <text x="548" y="146" font-size="13" fill="var(--text)" font-family="Nunito,'PingFang SC',sans-serif">沉淀剪辑模板，冲月引流 800 人</text>
+      <text x="548" y="168" font-size="13" fill="var(--text)" font-family="Nunito,'PingFang SC',sans-serif">L07 剪辑工作流 · L08 高导粉</text>
+      <text x="548" y="190" font-size="13" fill="var(--text)" font-family="Nunito,'PingFang SC',sans-serif">L09 矩阵分发</text>
+      <path d="M760 146 L776 146 M768 138 L776 146 L768 154" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="788" y="46" width="188" height="200" rx="12" fill="var(--ink)"/>
+      <text x="812" y="90" font-size="20" font-weight="800" fill="#ffffff" font-family="Nunito,'PingFang SC',sans-serif">第 4–5 周</text>
+      <text x="812" y="118" font-size="14" font-weight="700" fill="var(--wash)" font-family="Nunito,'PingFang SC',sans-serif">成熟期 · 过 3 关</text>
+      <text x="812" y="146" font-size="13" fill="rgba(255,255,255,.85)" font-family="Nunito,'PingFang SC',sans-serif">独立操盘 4 个账号</text>
+      <text x="812" y="168" font-size="13" fill="rgba(255,255,255,.85)" font-family="Nunito,'PingFang SC',sans-serif">L10 分配 · L11 复盘</text>
+      <text x="812" y="190" font-size="13" fill="rgba(255,255,255,.85)" font-family="Nunito,'PingFang SC',sans-serif">L12 转正项目</text>
+      <text x="24" y="282" font-size="12" font-weight="700" fill="var(--muted)" font-family="Nunito,'PingFang SC',sans-serif">周次与关卡为真实课程结构，不是示意图</text>
+    </svg>
+  </figure>
+</section>
+
+<!-- ================= 5. 带教团队 ================= -->
+<section class="lp-sec" id="team">
+  <div class="lp-sec-hd">
+    <span class="lp-kicker">带教</span>
+    <h2>不是自学，是有人盯着你过</h2>
+    <p>每个新人配一位带教导师，练与考由导师人工批改；教务管理员平行兜底、看整体卡点。三个角色各看各的板。</p>
+  </div>
+
+  <div class="lp-4">
+    <article class="lp-role r-stu"><h3>学员</h3><p>只关心「我下一步做什么」：12 关路径、课程库、我的档案。手机竖屏单手操作。</p></article>
+    <article class="lp-role r-men"><h3>带教导师</h3><p>关心「先批谁、谁掉队」：待批改队列 + 徒弟 12 格矩阵 + 逐关任务卡总览。</p></article>
+    <article class="lp-role r-adm"><h3>教务管理员</h3><p>关心「整体卡在哪一关」：12 关通过率、阶段卡点预警、达标线登记、课程管理；与导师平行可批改。</p></article>
+  </div>
+
+  <figure class="lpv" role="img" aria-label="带教团队示意：导师与学员一对一陪伴，管理员兜底">
+    <svg viewBox="0 0 960 360" xmlns="http://www.w3.org/2000/svg">
+      <line x1="80" y1="306" x2="880" y2="306" stroke="var(--line)" stroke-width="2"/>
+      <circle cx="240" cy="150" r="40" fill="var(--ok-bg)" stroke="var(--ink)" stroke-width="2"/>
+      <path d="M176 306 C176 250 200 226 240 226 C280 226 304 250 304 306 Z" fill="var(--ok-bg)" stroke="var(--ink)" stroke-width="2"/>
+      <circle cx="480" cy="150" r="40" fill="var(--wash)" stroke="var(--ink)" stroke-width="2"/>
+      <path d="M416 306 C416 250 440 226 480 226 C520 226 544 250 544 306 Z" fill="var(--wash)" stroke="var(--ink)" stroke-width="2"/>
+      <circle cx="720" cy="150" r="40" fill="var(--warn-bg)" stroke="var(--ink)" stroke-width="2"/>
+      <path d="M656 306 C656 250 680 226 720 226 C760 226 784 250 784 306 Z" fill="var(--warn-bg)" stroke="var(--ink)" stroke-width="2"/>
+      <path d="M288 190 C330 160 390 160 432 190" fill="none" stroke="var(--ok)" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 12"/>
+      <path d="M528 190 C570 160 630 160 672 190" fill="none" stroke="var(--warn)" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 12"/>
+      <text x="240" y="338" text-anchor="middle" font-size="13" font-weight="700" fill="var(--muted)" font-family="Nunito,'PingFang SC',sans-serif">学员</text>
+      <text x="480" y="338" text-anchor="middle" font-size="13" font-weight="700" fill="var(--muted)" font-family="Nunito,'PingFang SC',sans-serif">带教导师</text>
+      <text x="720" y="338" text-anchor="middle" font-size="13" font-weight="700" fill="var(--muted)" font-family="Nunito,'PingFang SC',sans-serif">教务管理员</text>
+    </svg>
+  </figure>
+</section>
+
+<!-- ================= 6. 简介 + 配文交替 ================= -->
+<section class="lp-sec alt" id="about">
+  <div class="lp-sec-hd">
+    <span class="lp-kicker">关于</span>
+    <h2>这套东西为谁而做</h2>
+  </div>
+
+  <!-- 交替 1：左文右图 -->
+  <div class="lp-alt">
+    <div class="lp-alt-tx">
+      <h3>解决「招了人，三个月还不知道能不能用」</h3>
+      <p>新人带教最常见的失败不是不努力，是<b>没有可验收的标准</b>。看了多少课算入门？剪一条视频算合格？这些如果说不清，三个月后只能凭印象判断。</p>
+      <p>所以我们把整条路径拆成 12 关，每关都写明「学什么、练什么、考什么、谁批」，把主观判断变成逐关打钩。</p>
+      <ul class="lp-li">
+        <li>学：视频进度自动判定，不靠人记</li>
+        <li>练：任务卡带链接，导师能看到你交了什么</li>
+        <li>考：人工代录，能打回并写明原因</li>
+      </ul>
+    </div>
+    <figure class="lpv" role="img" aria-label="任务卡批改示意：提交、通过、打回三种结果">
+      <svg viewBox="0 0 560 420" xmlns="http://www.w3.org/2000/svg">
+        <rect x="60" y="50" width="380" height="320" rx="12" fill="#ffffff" stroke="var(--line)" stroke-width="2"/>
+        <rect x="88" y="82" width="120" height="16" rx="8" fill="var(--soft)"/>
+        <rect x="88" y="130" width="28" height="28" rx="8" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="2"/>
+        <path d="M96 144 L102 150 L112 138" fill="none" stroke="var(--ok-ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="128" y="136" width="180" height="12" rx="6" fill="var(--soft)"/>
+        <rect x="88" y="190" width="28" height="28" rx="8" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="2"/>
+        <path d="M96 204 L102 210 L112 198" fill="none" stroke="var(--ok-ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="128" y="196" width="150" height="12" rx="6" fill="var(--soft)"/>
+        <rect x="88" y="250" width="28" height="28" rx="8" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="2"/>
+        <path d="M98 258 L106 270 M106 258 L98 270" stroke="var(--warn-ink)" stroke-width="3" stroke-linecap="round"/>
+        <rect x="128" y="256" width="165" height="12" rx="6" fill="var(--soft)"/>
+        <circle cx="404" cy="306" r="44" fill="var(--ok)" stroke="var(--ink)" stroke-width="2"/>
+        <path d="M386 306 L398 318 L422 292" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </figure>
+  </div>
+
+  <!-- 交替 2：右文左图（图片在左，内容在右，节奏交替） -->
+  <div class="lp-alt rev">
+    <div class="lp-alt-tx">
+      <h3>转正不看工龄，看 4 条线</h3>
+      <p>到第 5 周能不能转正，只看 4 条线，全绿才行：</p>
+      <ul class="lp-rd">
+        <li><b>学习达标</b>12 关全部通关，26 分达标线拿到</li>
+        <li><b>月引流 ≥ 800</b>真实客资数，不是播放量</li>
+        <li><b>剪辑效率 &lt; 1.5 小时</b>一条成片，含脚本到导出</li>
+        <li><b>独立运营 4 个账号</b>分配方案 + 复盘诊断各交付一次</li>
+      </ul>
+      <p class="lp-say">这四条都能查证 —— 谁达标、卡在第几条、差多少，管理员端一眼看到。</p>
+    </div>
+    <figure class="lpv" role="img" aria-label="4 条达标线状态示意：一条达标，两条进行中，一条未开始">
+      <svg viewBox="0 0 560 420" xmlns="http://www.w3.org/2000/svg">
+        <rect x="50" y="56" width="460" height="70" rx="10" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="2"/>
+        <circle cx="86" cy="91" r="16" fill="var(--ok)" stroke="var(--ink)" stroke-width="2"/>
+        <path d="M79 91 L84 96 L94 85" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="116" y="76" width="150" height="12" rx="6" fill="var(--wash)"/>
+        <rect x="116" y="94" width="100" height="12" rx="6" fill="var(--wash)"/>
+        <text x="452" y="97" font-size="14" font-weight="800" fill="var(--ok-ink)" font-family="Nunito,'PingFang SC',sans-serif">达标</text>
+        <rect x="50" y="150" width="460" height="70" rx="10" fill="#ffffff" stroke="var(--warn)" stroke-width="2"/>
+        <circle cx="86" cy="185" r="16" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="2"/>
+        <rect x="116" y="170" width="150" height="12" rx="6" fill="var(--warn-bg)"/>
+        <rect x="116" y="188" width="100" height="12" rx="6" fill="var(--warn-bg)"/>
+        <text x="452" y="191" font-size="14" font-weight="800" fill="var(--warn-ink)" font-family="Nunito,'PingFang SC',sans-serif">差 216</text>
+        <rect x="50" y="244" width="460" height="70" rx="10" fill="#ffffff" stroke="var(--warn)" stroke-width="2"/>
+        <circle cx="86" cy="279" r="16" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="2"/>
+        <rect x="116" y="264" width="150" height="12" rx="6" fill="var(--warn-bg)"/>
+        <rect x="116" y="282" width="100" height="12" rx="6" fill="var(--warn-bg)"/>
+        <text x="452" y="285" font-size="14" font-weight="800" fill="var(--warn-ink)" font-family="Nunito,'PingFang SC',sans-serif">1.8h</text>
+        <rect x="50" y="338" width="460" height="70" rx="10" fill="var(--lock-bg)" stroke="var(--lock)" stroke-width="2" stroke-dasharray="6 5"/>
+        <circle cx="86" cy="373" r="16" fill="#ffffff" stroke="var(--lock)" stroke-width="2"/>
+        <rect x="116" y="358" width="150" height="12" rx="6" fill="var(--soft)"/>
+        <rect x="116" y="376" width="100" height="12" rx="6" fill="var(--soft)"/>
+        <text x="452" y="379" font-size="14" font-weight="800" fill="var(--muted)" font-family="Nunito,'PingFang SC',sans-serif">未开始</text>
+      </svg>
+    </figure>
+  </div>
+
+  <!-- 交替 3：纯文字 + 小图 -->
+  <div class="lp-alt">
+    <div class="lp-alt-tx">
+      <h3>它长什么样</h3>
+      <p>刻意做成「有边界的工具」而不是「像消费的 App」：2px 描边、方角、实心绿只用在真正要按的地方。颜色只编码业务状态，不做装饰。</p>
+      <ul class="lp-li">
+        <li>绿 = 通过 / 主行动　橙 = 待人介入　红 = 打回</li>
+        <li>灰锁 = 未解锁　蓝 = 链接与聚焦</li>
+        <li>不用柔和投影、不用渐变、不用毛玻璃</li>
+      </ul>
+    </div>
+    <figure class="lpv" role="img" aria-label="设计语言示意：状态色板与按钮组件">
+      <svg viewBox="0 0 560 420" xmlns="http://www.w3.org/2000/svg">
+        <rect x="60" y="60" width="56" height="56" rx="10" fill="var(--ok)" stroke="var(--ink)" stroke-width="2"/>
+        <rect x="128" y="60" width="56" height="56" rx="10" fill="var(--warn)" stroke="var(--ink)" stroke-width="2"/>
+        <rect x="196" y="60" width="56" height="56" rx="10" fill="var(--danger)" stroke="var(--ink)" stroke-width="2"/>
+        <rect x="264" y="60" width="56" height="56" rx="10" fill="var(--ink)" stroke="var(--ink)" stroke-width="2"/>
+        <rect x="332" y="60" width="56" height="56" rx="10" fill="var(--lock)" stroke="var(--ink)" stroke-width="2"/>
+        <rect x="60" y="164" width="200" height="56" rx="12" fill="var(--ok)" stroke="var(--ink)" stroke-width="2"/>
+        <rect x="60" y="210" width="200" height="6" fill="var(--primary-press)"/>
+        <text x="160" y="199" text-anchor="middle" font-size="16" font-weight="800" fill="#ffffff" font-family="Nunito,'PingFang SC',sans-serif">主行动</text>
+        <rect x="290" y="164" width="200" height="52" rx="12" fill="#ffffff" stroke="var(--ink)" stroke-width="2"/>
+        <text x="390" y="197" text-anchor="middle" font-size="16" font-weight="800" fill="var(--ink)" font-family="Nunito,'PingFang SC',sans-serif">次级行动</text>
+        <rect x="60" y="262" width="150" height="44" rx="10" fill="var(--lock-bg)" stroke="var(--lock)" stroke-width="2" stroke-dasharray="6 5"/>
+        <text x="135" y="290" text-anchor="middle" font-size="14" font-weight="700" fill="var(--muted)" font-family="Nunito,'PingFang SC',sans-serif">未解锁</text>
+        <rect x="234" y="262" width="150" height="44" rx="10" fill="var(--wash)" stroke="var(--ok)" stroke-width="2"/>
+        <text x="309" y="290" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ok-ink)" font-family="Nunito,'PingFang SC',sans-serif">已通过</text>
+        <text x="60" y="366" font-size="12" font-weight="700" fill="var(--muted)" font-family="Nunito,'PingFang SC',sans-serif">绿 = 通过 / 主行动 · 橙 = 待人介入 · 红 = 打回 · 灰 = 未解锁</text>
+      </svg>
+    </figure>
+  </div>
+</section>
+
+<!-- ================= 7. 结尾 CTA ================= -->
+<section class="lp-cta2">
+  <h2>准备好走这 5 周了吗</h2>
+  <p>账号由教务管理员统一创建，不提供自助注册。已有账号直接登录；想先看看结构，闯关页和课程库不用登录也能浏览。</p>
+  <div class="lp-cta2-b">
+    <a class="btn lg" href="app/pages/login.html" data-ic2="i-user">登录</a>
+    <a class="btn lg ghost" href="#feat">继续了解闯关</a>
+  </div>
+  <p class="lp-fine">星禾云课堂 · 内容以内部实际口径为准</p>
+</section>
+
+</main>
+
+<!-- ================= 8. 页脚 ================= -->
+<footer class="lp-foot">
+  <div class="lp-foot-c">
+    <div class="lp-foot-b">
+      <span class="logo">学</span>
+      <div>
+        <b>企业内部学习站</b>
+        <span>星禾云课堂 · 新人培养体系</span>
+      </div>
+    </div>
+    <nav class="lp-foot-nav" aria-label="页脚导航">
+      <a href="#feat">闯关</a>
+      <a href="#lib">课程库</a>
+      <a href="#me">我的档案</a>
+      <a href="#team">带教团队</a>
+      <a href="#about">关于</a>
+      <a href="app/pages/login.html">登录</a>
+    </nav>
+    <div class="lp-foot-r"></div>
+  </div>
+  <p class="lp-fine">内部系统 · 数据以教务口径为准</p>
+</footer>
+
+<!--
+  ═══ 交互清单（公开首页）═══
+  1. 顶栏常驻：.topbar position:sticky，滚到底仍可点；滚过 24px 加 .scrolled（胶囊压扁一档）
+  2. 顶栏 chip 指向页内区块（#top/#feat/#lib/#me/#team/#about），由 IntersectionObserver
+     联动高亮（rootMargin -45%/-50% 只认屏幕中部带），不用 scroll 轮询
+  3. 右上角入口随登录态切换：未登录「登录」-> pages/login.html；已登录「进入工作台」
+     -> 该角色的落地页（落点表 app.js 的 ROLE_HOME，与 login.html 共用同一份）
+  4. Hero 主行动「登录，开始我的 5 周」实心绿，全页唯一；次级「先看看闯关怎么走」描边
+  5. 「学 / 练 / 考」三色卡：绿=通过 橙=待人介入 红=打回，颜色只编码状态
+  6. 12 关时间轴：3 段按周次分组，当前段用 3px 深墨描边（.cur 同款语言）
+  7. 四角色卡：4 列 -> ≤900px 两列 -> ≤560px 单列，纯 CSS grid 不改结构
+  8. 简介交替区：左文右图 / 右文左图 交替，节奏不重复
+  9. 图片位为成品插画（.lpv）：hero 主视觉是 Q 版团队贴纸位图（assets/img/hero-team.jpg，
+     2026-10-05 用户指定替换原 12 关阶梯 SVG），其余仍为扁平 SVG 插画，与站点色板一致
+  10. 移动端：Hero 单列、按钮全宽、时间轴横向滚、顶栏 chip 可横滑 + 右侧渐隐
+-->
+<div class="toasts" id="toasts"></div>
+<script></script>
+</body>
+</html>

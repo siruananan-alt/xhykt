@@ -1,0 +1,314 @@
+/* ============================================================
+   公开营销首页样式（landing.css）
+   ------------------------------------------------------------
+   严格分工：theme.css = 产品视觉规范（将来搬生产）
+             landing.css = 公开首页版式（也是产品的一部分，跟着走）
+             sandbox.css = 沙盒演示专用（不带走）
+
+   风格约束与全站一致：
+     · 零柔和阴影、零渐变、零毛玻璃
+     · 2px 描边 + 硬边投影（--lift / --lift-ink）
+     · 颜色只编码业务状态，不做装饰
+     · 实心绿 = 主行动，全页只给 1 个
+   ============================================================ */
+
+/* ---------- 顶栏滚动压缩 ----------
+   顶栏"始终在顶部"靠 .topbar 的 position:sticky（theme.css 已有）。
+   这里只做滚动后的轻微压缩，视觉语言与 Duolingo 一致，但不用柔和投影 ——
+   改用 2px 描边加深 + 胶囊高度收窄。 */
+.topbar.scrolled .tb-in{height:44px;border-color:var(--edge)}
+.topbar.scrolled .logo{width:30px;height:30px;font-size:15px}
+
+/* 品牌区两行：主名 + 副名。
+   【2026-10-05】规则已下沉到 theme.css（此前只有公开页有两行，工作页挤成一行），
+   此处只留说明，不重复声明，避免两处真源。 */
+
+
+/* 公开页顶栏：右侧是登录按钮（不是角色切换器），所以胶囊不放宽 */
+#authSlot{flex:none;display:flex;align-items:center;gap:var(--s2)}
+#authSlot .btn.sm{white-space:nowrap}
+
+/* ---------- 1. Hero ----------
+   刻意不居中：左文右图两栏。营销首页最容易写成"大标题+居中按钮"，
+   那样和内部工具页一个样，看不出这是个对外的页面。两栏更像产品介绍页。 */
+.lp-hero{
+  max-width:1280px;margin:0 auto;padding:var(--s10) var(--s4) var(--s9);
+  display:grid;grid-template-columns:1.05fr .95fr;gap:var(--s8);align-items:center;
+}
+.lp-hero-tx{min-width:0}
+.lp-hero-fig{min-width:0}
+.lp-eyebrow{
+  display:inline-block;font-size:12px;font-weight:700;color:var(--ok-ink);
+  background:var(--ok-bg);border:2px solid var(--ok);border-radius:999px;
+  padding:4px 14px;margin-bottom:var(--s4);
+}
+.lp-hero h1{
+  font-family:var(--font-display);font-size:clamp(30px,4.2vw,50px);
+  line-height:1.18;letter-spacing:-.025em;color:var(--ink);
+}
+.lp-lead{font-size:15.5px;line-height:1.8;color:var(--muted);margin-top:var(--s4);max-width:540px}
+.lp-lead b{color:var(--text)}
+/* 双按钮：主行动实心绿 + 次级描边。间距用 gap 不用 margin，窄屏换行时不会崩 */
+.lp-cta{display:flex;gap:var(--s3);flex-wrap:wrap;margin-top:var(--s6)}
+.lp-note{font-size:12.5px;color:var(--faint);margin-top:var(--s3)}
+
+/* Hero 图位：虚线占位符给足存在感，别让它缩成一个小方块 */
+.ph-hero{aspect-ratio:4/3;width:100%;background:var(--soft2)}
+
+/* ---------- 2. 关键数字条 ----------
+   5 个数字横排。数字用 display 字号（32px），说明 13px 灰字。
+   不用图标不用插画 —— 这一屏的诉求就是"5 个数说清规模"，加装饰会稀释。 */
+.lp-nums{
+  max-width:1280px;margin:0 auto var(--s10);padding:0 var(--s4);
+  display:grid;grid-template-columns:repeat(5,1fr);gap:var(--s2);
+  border-top:2px solid var(--line);border-bottom:2px solid var(--line);
+}
+.lp-num{
+  padding:var(--s5) var(--s2);text-align:center;
+  border-right:2px solid var(--line);
+}
+.lp-num:last-child{border-right:0}
+.lp-num b{display:block;font-family:var(--font-display);font-size:32px;font-weight:800;color:var(--ok-ink);line-height:1}
+.lp-num span{display:block;font-size:14px;font-weight:700;color:var(--ink);margin-top:6px}
+.lp-num small{display:block;font-size:11.5px;color:var(--muted);margin-top:3px}
+
+/* ---------- 3. 通用区块 ---------- */
+.lp-sec{max-width:1280px;margin:0 auto;padding:var(--s10) var(--s4)}
+/* 交替底色用 --soft2（极浅灰），不是白 —— 相邻白底区块之间需要一条视觉分隔 */
+.lp-sec.alt{background:var(--soft2)}
+.lp-sec-hd{max-width:640px;margin-bottom:var(--s7)}
+.lp-kicker{
+  display:inline-block;font-family:var(--font-display);font-size:12px;font-weight:800;
+  color:var(--ink);background:var(--wash);border:2px solid var(--ok);
+  border-radius:999px;padding:2px 12px;margin-bottom:var(--s3);
+}
+.lp-sec-hd h2{font-size:clamp(21px,2.4vw,28px);letter-spacing:-.02em;color:var(--ink)}
+.lp-sec-hd p{font-size:14.5px;color:var(--muted);margin-top:var(--s3);line-height:1.75}
+
+/* ---------- 4. 三张功能卡 ----------
+   卡片是"介绍"不是"入口"：图在上、标题在中、要点在下、链接在最后。
+   hover 只做 border + 2px 上移 + 硬边投影，与沙盒 .pcard 同一套语言。 */
+.lp-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s4)}
+.lp-card{
+  background:var(--bg);border:2px solid var(--line);border-radius:var(--radius);
+  padding:var(--s4);display:flex;flex-direction:column;
+  transition:border-color .18s,transform .12s,box-shadow .12s;
+}
+.lp-card:hover{border-color:var(--ok);transform:translateY(-2px);box-shadow:0 4px 0 var(--ok)}
+.lp-card h3{font-family:var(--font-display);font-size:18px;color:var(--ink);margin-top:var(--s4)}
+.lp-card>p{font-size:13.5px;color:var(--muted);line-height:1.7;margin-top:var(--s2)}
+.ph-cf{aspect-ratio:16/9;width:100%}
+/* 要点列表：用自定义方块而非圆点，呼应"工具感" */
+.lp-li{list-style:none;margin:var(--s3) 0 0;padding:0}
+.lp-li li{
+  font-size:13px;color:var(--text);line-height:1.6;padding:7px 0 7px 20px;
+  position:relative;border-top:1px solid var(--line);
+}
+.lp-li li:first-child{border-top:0}
+.lp-li li::before{
+  content:"";position:absolute;left:0;top:14px;width:8px;height:8px;
+  border:2px solid var(--ok);border-radius:2px;background:var(--bg);
+}
+.lp-li b{color:var(--ink);font-weight:800}
+.lp-more{
+  margin-top:auto;padding-top:var(--s3);font-size:13px;font-weight:700;color:var(--link-ink);
+}
+.lp-more::after{content:" <svg class='ic'><use href='#i-arrow-r'/></svg>"}
+.lp-more:hover{color:var(--ink)}
+
+/* ---------- 5. 12 关时间轴 ----------
+   3 段横排。段间用 2px 竖线分隔（不用箭头 —— 三段是并列的阶段，不是步骤图）。 */
+.lp-lv{
+  list-style:none;margin:0 0 var(--s6);padding:0;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:0;
+  border:2px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--bg);
+}
+.lp-lv-i{
+  padding:var(--s5);border-right:2px solid var(--line);
+  display:flex;flex-direction:column;gap:3px;
+}
+.lp-lv-i:last-child{border-right:0}
+.lp-lv-i .w{
+  font-family:var(--font-mono);font-size:11.5px;font-weight:700;letter-spacing:.04em;
+  color:var(--muted);margin-bottom:6px;
+}
+/* 段主标题用 3px 深墨描边的小色块标记当前段（与站内 .cur 语言一致） */
+.lp-lv-i b{
+  display:inline-block;align-self:flex-start;font-family:var(--font-display);
+  font-size:15.5px;color:var(--ink);background:var(--wash);
+  border:2px solid var(--ok);border-radius:var(--radius-sm);padding:4px 10px;margin-bottom:4px;
+}
+.lp-lv-i .d{font-size:13px;color:var(--muted);line-height:1.65}
+/* 三段用「阶段色」区分：新手=绿(已过) / 成长=橙(当前) / 成熟=灰(未解锁)。
+   仍取站内状态色，不新造色板 —— 颜色在首页和内部页必须同义。 */
+.lp-lv-i.wk1{background:var(--bg)}
+.lp-lv-i.wk2{background:var(--ok-bg)}
+.lp-lv-i.wk2 b{border-color:var(--ok)}
+.lp-lv-i.wk3{background:var(--lock-bg)}
+.lp-lv-i.wk3 b{background:var(--bg);border-color:var(--edge);color:var(--muted)}
+.ph-wide{aspect-ratio:10/3;width:100%}
+
+/* ---------- 6. 四角色卡 ----------
+   顶边 4px 实色区分角色，但颜色仍取状态色而非新造色板：
+   学员=绿(可操作) 导师=橙(带教介入) 培训师=蓝(考核链接) 管理员=深墨(治理) */
+/* 【2026-10-04 决策】培训师角色移除，四角色卡 -> 三角色卡 */
+.lp-4{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s3);margin-bottom:var(--s6)}
+.lp-role{
+  background:var(--bg);border:2px solid var(--line);border-top-width:4px;
+  border-radius:var(--radius);padding:var(--s4);
+  display:flex;flex-direction:column;
+}
+.lp-role h3{font-family:var(--font-display);font-size:16px;color:var(--ink)}
+.lp-role p{font-size:12.5px;color:var(--muted);line-height:1.65;margin-top:var(--s2);flex:1}
+.lp-role a{font-size:12.5px;font-weight:700;color:var(--link-ink);margin-top:var(--s3)}
+.lp-role a::after{content:" <svg class='ic'><use href='#i-arrow-r'/></svg>"}
+.lp-role.r-stu{border-top-color:var(--ok)}
+.lp-role.r-men{border-top-color:var(--warn)}
+.lp-role.r-trn{border-top-color:var(--link)}
+.lp-role.r-adm{border-top-color:var(--ink)}
+.ph-team{aspect-ratio:8/3;width:100%}
+
+/* ---------- 7. 简介交替区 ----------
+   .rev 是"右文左图"：HTML 里仍是 图/文 两块，用 order 反过来。
+   用 order 而不是写两份 DOM，屏幕阅读器读到的顺序会变成 图->文，与视觉不一致，
+   所以 rev 的 HTML 里图也写在后（见 index.html），靠 order 翻回来。 */
+.lp-alt{
+  display:grid;grid-template-columns:1fr 1fr;gap:var(--s8);align-items:center;
+  padding:var(--s7) 0;border-top:2px solid var(--line);
+}
+.lp-alt:first-of-type{border-top:0}
+.lp-alt-tx h3{font-family:var(--font-display);font-size:clamp(18px,2vw,22px);color:var(--ink);letter-spacing:-.015em}
+.lp-alt-tx>p{font-size:14px;color:var(--muted);line-height:1.8;margin-top:var(--s3)}
+.lp-alt-tx>p b{color:var(--text)}
+.ph-alt{aspect-ratio:4/3;width:100%}
+/* 4 条达标线清单：数字序号用等宽字体，扫读时能对齐 */
+.lp-rd{list-style:none;margin:var(--s4) 0 0;padding:0;counter-reset:rd}
+.lp-rd li{
+  counter-increment:rd;position:relative;padding:10px 0 10px 38px;
+  font-size:13.5px;color:var(--text);border-top:1px solid var(--line);line-height:1.6;
+}
+.lp-rd li:first-child{border-top:0}
+.lp-rd li::before{
+  content:counter(rd);position:absolute;left:0;top:10px;
+  width:24px;height:24px;border-radius:7px;background:var(--ok-bg);
+  border:2px solid var(--ok);color:var(--ok-ink);
+  font-family:var(--font-mono);font-size:12px;font-weight:800;
+  display:grid;place-items:center;
+}
+.lp-rd b{display:block;color:var(--ink);font-weight:800;margin-bottom:1px}
+.lp-say{
+  font-size:13.5px!important;color:var(--ok-ink)!important;font-weight:700;
+  border-left:3px solid var(--ok);padding-left:12px;margin-top:var(--s4)!important;
+}
+
+/* ---------- 8. 结尾 CTA ----------
+   深墨底 + 白字：全页唯一一次反色。用它收尾，把"看完 -> 行动"的落差做实。 */
+.lp-cta2{
+  background:var(--ink);color:#fff;padding:var(--s10) var(--s4);text-align:center;
+}
+.lp-cta2 h2{font-family:var(--font-display);font-size:clamp(22px,2.6vw,30px);color:#fff;letter-spacing:-.02em}
+.lp-cta2>p{font-size:14px;color:rgba(255,255,255,.72);margin-top:var(--s3);line-height:1.75;max-width:560px;margin-left:auto;margin-right:auto}
+.lp-cta2-b{display:flex;gap:var(--s3);justify-content:center;flex-wrap:wrap;margin-top:var(--s6)}
+/* 反色区里的次级按钮：白底深墨字，否则描边按钮在深底上看不见 */
+.lp-cta2 .btn.ghost{background:transparent;border-color:rgba(255,255,255,.5);color:#fff}
+.lp-cta2 .btn.ghost:hover{background:rgba(255,255,255,.12);border-color:#fff}
+.lp-cta2 .lp-fine{color:rgba(255,255,255,.5)!important}
+
+/* ---------- 9. 页脚 ---------- */
+.lp-foot{background:var(--soft);border-top:2px solid var(--line);padding:var(--s7) var(--s4) var(--s5)}
+.lp-foot-c{
+  max-width:1280px;margin:0 auto;display:grid;
+  grid-template-columns:1fr auto auto;gap:var(--s6);align-items:center;
+}
+.lp-foot-b{display:flex;align-items:center;gap:12px}
+.lp-foot-b b{display:block;font-size:14.5px;color:var(--ink)}
+.lp-foot-b span{font-size:12px;color:var(--muted)}
+.lp-foot-nav{display:flex;gap:var(--s2);flex-wrap:wrap}
+.lp-foot-nav a{
+  font-size:12.5px;font-weight:700;color:var(--muted);
+  background:var(--bg);border:2px solid var(--line);border-radius:999px;padding:5px 13px;
+}
+.lp-foot-nav a:hover{border-color:var(--ok);color:var(--ok-ink);text-decoration:none;background:var(--ok-bg)}
+/* 企微群二维码位：虚线方块 + 说明文字，交付时替换成真图 */
+.lp-sq{
+  display:grid;place-items:center;width:84px;height:84px;
+  border:2px dashed var(--edge);border-radius:var(--radius-btn);
+  background:var(--bg);text-align:center;
+}
+.lp-sq span{font-size:11px;line-height:1.5;color:var(--muted);font-weight:700}
+.lp-fine{font-size:11.5px;color:var(--faint);text-align:center;margin-top:var(--s5);line-height:1.7}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+
+/* 平板：Hero 两栏比例偏向文字；3 卡改 2 列；4 角色改 2 列；时间轴改 1 列 */
+@media(max-width:1000px){
+  .lp-hero{grid-template-columns:1fr 1fr;gap:var(--s6);padding:var(--s8) var(--s4) var(--s7)}
+  .lp-3{grid-template-columns:repeat(2,1fr)}
+  .lp-4{grid-template-columns:repeat(2,1fr)}
+  .lp-lv{grid-template-columns:1fr}
+  .lp-lv-i{border-right:0;border-bottom:2px solid var(--line);padding:var(--s4)}
+  .lp-lv-i:last-child{border-bottom:0}
+  .lp-alt{gap:var(--s6);padding:var(--s6) 0}
+  .lp-foot-c{grid-template-columns:1fr auto}
+  .lp-foot-r{grid-column:2}
+}
+/* 数字条在平板就换行，别硬撑 5 列 */
+@media(max-width:860px){
+  .lp-nums{grid-template-columns:repeat(3,1fr)}
+  .lp-num{border-bottom:2px solid var(--line)}
+  .lp-num:nth-child(3n){border-right:0}
+  .lp-num:nth-last-child(-n+3){border-bottom:0}
+  .lp-num:nth-child(4){border-right:2px solid var(--line)}
+}
+
+/* 手机：全单列。营销页在手机上第一屏只能装一件事 -> 标语 + 主按钮 */
+@media(max-width:640px){
+  .lp-hero{grid-template-columns:1fr;padding:var(--s6) var(--s3) var(--s6);gap:var(--s5)}
+  .lp-hero h1{font-size:29px}
+  .lp-lead{font-size:14.5px;margin-top:var(--s3)}
+  /* 主行动全宽：拇指够得着的宽度比视觉平衡重要 */
+  .lp-cta{flex-direction:column;align-items:stretch;margin-top:var(--s5)}
+  .lp-cta .btn{width:100%;min-height:52px}
+  .lp-sec{padding:var(--s7) var(--s3)}
+  .lp-nums{margin-bottom:var(--s7);padding:0 var(--s3);grid-template-columns:repeat(2,1fr)}
+  .lp-num{padding:var(--s4) var(--s2);border-right:2px solid var(--line)!important;border-bottom:2px solid var(--line)}
+  .lp-num:nth-child(2n){border-right:0!important}
+  .lp-num:last-child{grid-column:1/-1;border-bottom:0}
+  .lp-3,.lp-4{grid-template-columns:1fr}
+  .lp-alt{grid-template-columns:1fr;gap:var(--s4);padding:var(--s6) 0}
+  .lp-alt .ph-alt{order:-1}          /* 手机上图在文之上，先看图再看解释 */
+  .lp-cta2{padding:var(--s7) var(--s3)}
+  .lp-cta2-b{flex-direction:column;align-items:stretch}
+  .lp-foot{padding:var(--s6) var(--s3) var(--s4)}
+  .lp-foot-c{grid-template-columns:1fr;gap:var(--s4);text-align:left}
+  .lp-foot-r{grid-column:auto}
+  .lp-foot-nav{gap:6px}
+  /* 页脚链接也是触控目标：padding 5px + 12px 字只有 ~29px，
+     手机上必须撑到 44px，否则和顶栏 chip 的标准不一致（顶栏已由 theme.css 保证）。 */
+  .lp-foot-nav a{display:inline-flex;align-items:center;min-height:44px;padding:6px 12px;font-size:12px}
+  .lp-sq{width:72px;height:72px}
+}
+
+/* 手机顶栏：品牌文字只留主名，chip 挤不下时靠已有的 has-over 渐隐 + 横滑提示 */
+@media(max-width:640px){
+  .lp-hero .ph-hero{max-width:none}
+}
+
+/* ============================================================
+   2026-10-05 上线收口：图片位由「虚线占位符」替换为成品扁平插画
+   ------------------------------------------------------------
+   .lpv = 插画容器。宽 100%，高度由 SVG viewBox 的宽高比自然撑起
+   （4:3 / 16:9 / 10:3 / 8:3 与原 .ph-* 占位一致，布局不跳动）。
+   插画只用站点既有色板：--ok/--warn/--danger/--ink/--wash 等，
+   保持「硬边扁平、无渐变无投影」的产品语言。
+   ============================================================ */
+.lpv{display:block;width:100%;margin:0;background:var(--bg);
+  border:2px solid var(--line);border-radius:var(--radius-sm);overflow:hidden}
+.lpv svg{display:block;width:100%;height:auto}
+/* 2026-10-05：hero 主视觉换成 Q 版团队贴纸位图（白底）——
+   容器底色同步改纯白，避免贴纸白底与容器底色出现色差边框；
+   img 宽度自适应、高度按 1:1 原比例，桌面两栏列宽约 460px、窄屏全宽。 */
+.lpv.hero-illu{border-color:var(--ok);background:#fff}
+.lpv.hero-illu img{display:block;width:100%;height:auto}

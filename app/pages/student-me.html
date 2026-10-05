@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>我的 · 学员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-student" data-role="student" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap">
+
+  <div class="pg-head">
+    <span class="eyebrow" id="eyebrow">—</span>
+    <h1>我的</h1>
+  </div>
+
+  <!-- 1. 转正达标线徽章（PRD 5.3-B）—— 4 张贴纸卡，由 UI.rdBadgeGrid() 真实判定渲染 -->
+  <div class="card">
+    <div class="card-h">
+      <div style="display:flex;align-items:center;gap:10px">
+        <h2>转正达标线</h2>
+        <span class="badge" id="rdLeft" style="background:var(--warn)">—</span>
+      </div>
+    </div>
+
+    <div id="rdGrid"></div>
+
+  </div>
+
+  <!-- 2. 闯关积分（26 分制：学 10 + 练 8 + 考 8） -->
+  <div class="card">
+    <div class="card-h">
+      <h2>闯关积分</h2>
+      <span class="tag ghost">达标线 <span id="scoreLine">—</span> 分</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:var(--s3)">
+      <span id="scoreNum" style="font-family:var(--font-display);font-size:40px;font-weight:800;color:var(--ink);line-height:1">—</span>
+      <span style="font-size:15px;color:var(--muted);font-weight:700">/ <span id="scoreTot">—</span> 分</span>
+    </div>
+    <div class="bar" style="height:14px"><i id="scoreBar" style="width:0%"></i></div>
+
+    <div class="grid g3" style="margin-top:var(--s5)" id="scoreKpis"></div>
+
+    <details class="plain link" style="margin-top:var(--s4)">
+      <summary>积分怎么算的？</summary>
+      <div class="note" style="margin-top:var(--s3)" id="scoreHow">—</div>
+    </details>
+  </div>
+
+  <!-- 3. 12 关进度摘要（真实判定） -->
+  <div class="card">
+    <div class="card-h">
+      <h2>我的 5 周进度</h2>
+      <a href="student-journey.html" class="more">全部关卡 <svg class="ic"><use href="#i-arrow-r"/></svg></a>
+    </div>
+    <div id="stagebarBox"></div>
+  </div>
+
+  <!-- 4. 我的带教与联系方式（真实账号数据） -->
+  <div class="card">
+    <div class="card-h"><h2>我的带教</h2></div>
+    <div id="mentorBox"></div>
+  </div>
+
+  <!-- 5. 近期时间线（真实记录） -->
+  <div class="card">
+    <div class="card-h">
+      <h2>最近动态</h2>
+      <a href="student-journey.html" class="more">全部记录 <svg class="ic"><use href="#i-arrow-r"/></svg></a>
+    </div>
+    <div class="tl" id="tlBox"></div>
+  </div>
+
+  <div class="jump nav">
+    <a href="student-journey.html">闯关</a>
+    <a href="student-courses.html">课程</a>
+    <a href="student-me.html" class="on" aria-current="page">我的</a>
+  </div>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<!--
+  本页交互清单：
+  1. 达标线徽章（.rd-badges）：三态由 metsite/met===true 真实决定 —— 绿实底=达成，
+     橙描边=未达标，灰虚边=无记录。数值一律走 MOCK.effectiveThreshold（改阈值后同步）。
+  2. 「26 分怎么算的」折叠区：summary 点击展开/收起。
+  3. 本页**只读**：没有任何写操作，学员看不到也点不动登记入口。
+  4. 「看全部 12 关 / 闯关记录」-> 跳 student-journey.html。
+  5. 带教联系人来自真实 users 表（M1 郑丽薪；M2 曾锃湘真实角色是导师，非培训师）。
+-->
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('student','student-me.html');
+  if(typeof injectIcons==='function') injectIcons();
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+  render();
+});
+
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const wid=MOCKAPI.S.wid;
+  renderHead(wid);
+  renderReadiness(wid);
+  renderScore(wid);
+  document.getElementById('stagebarBox').innerHTML = UI.stagebar(wid);
+  renderMentor(wid);
+  renderTimeline(wid);
+  // 注意：【2026-10-04】图标必须在**所有 innerHTML 写入之后**再注入一次 ——
+  //    renderReadiness 生成的 .rb-ic[data-ic] 是运行时插入的，
+  //    DOMContentLoaded 里那次 injectIcons() 跑的时候 #rdGrid 还是空的（0 个槽位）。
+  if(typeof injectIcons==='function') injectIcons();
+}
+
+/* 头部：真实姓名 / 校区 / 入职天数 */
+function renderHead(wid){
+  const me=MOCK.userOf(wid);
+  const t=MOCK.traineeOf(wid);
+  const days = t&&t.joinDate ? Math.max(1,Math.floor((Date.now()-new Date(t.joinDate).getTime())/86400000)+1) : null;
+  document.getElementById('eyebrow').textContent =
+    wid+' · '+((me&&me.dept)||'—')+(days?(' · 入职第 '+days+' 天'):'');
+}
+
+/* 1. 达标线徽章 + 剩余条数 */
+function renderReadiness(wid){
+  document.getElementById('rdGrid').innerHTML = UI.rdBadgeGrid(wid);
+  const left=MOCK.READINESS_LINES.filter(l=>!readinessMet(l,wid)).length;
+  const el=document.getElementById('rdLeft');
+  el.textContent = String(left);
+  el.style.background = left ? 'var(--warn)' : 'var(--ok)';
+}
+
+/* 单条达标线是否达成 —— 与 readinessBadge 同源 */
+function readinessMet(line,wid){
+  if(line.source==='site')
+    return MOCK.DB.levels.length>0 && MOCK.DB.levels.every(l=>MOCK.levelDone(wid,l));
+  const r=(MOCK.DB.readiness[wid]||{})[line.key];
+  return !!(r&&r.met===true);
+}
+
+/* 2. 积分（真实 scoreOf + 分环节明细）
+   注意：【2026-10-04 修正】明细口径必须与 MOCK.scoreOf 完全一致 ——
+      scoreOf 的规则是「**每个存在的环节记 1 分**，上限 = 实际环节总数」
+      （对齐基线 L420 注释：**不自造「每章 2 分」细则**）。
+      原实现自造了「每章 2 分/每卡 2 分」-> 明细 10 分 ≠ 总分 7 分，自相矛盾。
+      现改为逐环节累加：学 = 该关 study 过 ? 1 : 0，练/考同理。 */
+function scoreDetail(wid){
+  const d={study:0,practice:0,exam:0}, cap={study:0,practice:0,exam:0};
+  MOCK.DB.levels.forEach(lv=>{
+    ['study','practice','exam'].forEach(s=>{
+      if(!(lv.stages&&lv.stages[s])) return;
+      cap[s]++;
+      const ok = s==='practice' ? MOCK.practiceDone(wid,lv.id) : MOCK.lvStageOk(wid,lv.id,s);
+      if(ok) d[s]++;
+    });
+  });
+  return { got:d, cap };
+}
+function renderScore(wid){
+  const score=MOCK.scoreOf(wid);
+  const total=Object.values(scoreDetail(wid).cap).reduce((a,b)=>a+b,0) || MOCK.SCORE_TOTAL;
+  document.getElementById('scoreNum').textContent = String(score);
+  document.getElementById('scoreTot').textContent = String(total);
+  document.getElementById('scoreLine').textContent= String(MOCK.SCORE_TOTAL);
+  document.getElementById('scoreBar').style.width = (total?Math.round(score/total*100):0)+'%';
+
+  const {got,cap}=scoreDetail(wid);
+  // 注意： 零值必须走 .kpi.plain（中性）—— 绿底会被读成"很好"（语义倒挂）
+  const cell=(v,c,label)=>`<div class="kpi ${v?(v===c?'':'hot'):'plain'}"><b>${v}</b><span>${label} · 满分 ${c}</span></div>`;
+  document.getElementById('scoreKpis').innerHTML=
+    cell(got.study,cap.study,'学')+cell(got.practice,cap.practice,'练')+cell(got.exam,cap.exam,'考');
+
+  document.getElementById('scoreHow').innerHTML = `
+        <b>学：</b>每关的「学」环节通过记 1 分（共 ${cap.study} 关有「学」）。<br>
+        <b>练：</b>每关的「练」环节全部任务卡通过记 1 分（共 ${cap.practice} 关有「练」）。<br>
+        <b>考：</b>每关的「考」环节通过记 1 分（共 ${cap.exam} 关有「考」）。<br>
+        <span style="color:var(--muted)"><b>说明：</b>本页按 ${MOCK.SCORE_TOTAL} 分制显示积分。</span>`;
+}
+
+/* 4. 带教：真实导师 + 教务 */
+function renderMentor(wid){
+  const me=MOCK.userOf(wid);
+  const t=MOCK.traineeOf(wid);
+  const m=t&&t.mentorId?MOCK.userOf(t.mentorId):null;
+  const rows=[];
+  if(m){
+    rows.push(`<div class="rowitem">
+      <span class="avatar" style="width:44px;height:44px;font-size:17px">${esc(av(m.name))}</span>
+      <span class="mid">
+        <b>${esc(m.name)}（${esc(m.id)}）· 带教导师</b>
+        <span class="d">${esc(m.dept||'—')}</span>
+      </span>
+    </div>`);
+  }
+  // 其他导师（M2）：真实角色是 mentor，不是培训师
+  // 注意：【2026-10-04 修正】users 表主键字段是 **wid**（不是 id）——
+  //    原写法 `uid===m.id` 因 `m.id===undefined` 永远不成立 -> 带教导师被渲染两遍。
+  Object.keys(MOCK.DB.users).forEach(uid=>{
+    const u=MOCK.DB.users[uid];
+    if(u.role!=='mentor') return;
+    if(m && uid===m.wid) return;
+    rows.push(`<div class="rowitem">
+      <span class="avatar" style="width:44px;height:44px;font-size:17px;background:var(--warn-bg);border-color:var(--warn)">${esc(av(u.name))}</span>
+      <span class="mid">
+        <b>${esc(u.name)}（${esc(uid)}）· 带教导师</b>
+        <span class="d">${esc(u.dept||'—')} · 跨区带教</span>
+      </span>
+    </div>`);
+  });
+  Object.keys(MOCK.DB.users).forEach(uid=>{
+    const u=MOCK.DB.users[uid];
+    if(u.role!=='admin') return;
+    rows.push(`<div class="rowitem">
+      <span class="avatar" style="width:44px;height:44px;font-size:17px;background:var(--soft);border-color:var(--edge)">${esc(av(u.name))}</span>
+      <span class="mid">
+        <b>${esc(u.name)} · 教务管理员</b>
+        <span class="d">转正审批、账号分配、课程问题</span>
+      </span>
+    </div>`);
+  });
+  document.getElementById('mentorBox').innerHTML = rows.join('');
+}
+function av(n){ return String(n||'').slice(-1); }
+
+/* 5. 时间线：从真实 tasks 记录 / learn 事件流抽取最近记录
+   注意：【2026-10-04 修正】LearnRec **没有 at 字段**（基线 L244 注释：只有 done/speed/resumeAt/
+     dragSkip/events[]/wrong[]）-> 时间只能取 events[].ts 的最大值。
+     线上 DB_TASKS.S001 = {} 为空对象，所以当前时间线主要由 learn 事件撑起来 —— 这是**真实状态**，
+     不要为了"看起来丰富"造假数据。 */
+function renderTimeline(wid){
+  const evs=[];
+  Object.keys(MOCK.DB.tasks[wid]||{}).forEach(lv=>{
+    Object.keys(MOCK.DB.tasks[wid][lv]||{}).forEach(tid=>{
+      const r=MOCK.DB.tasks[wid][lv][tid];
+      if(!r||!r.at) return;
+      const def=MOCK.TASK_DEFS.find(d=>d.id===tid);
+      const title = tid===MOCK.EXAM_TASK ? (lv+' 关考核') : (def?def.title:tid);
+      const st=TASK_ST_CN2(r.status);
+      evs.push({ at:r.at, tx:`${st.pre} <b>${esc(lv)} ${esc(title)}</b>${st.post}` });
+    });
+  });
+  Object.keys(MOCK.DB.learn||{}).forEach(k=>{
+    const seg=k.split('|');
+    if(seg[0]!==wid) return;
+    const cid=seg[1];
+    const rec=MOCK.DB.learn[k]||{};
+    const ev=(rec.events||[]).slice().sort((a,b)=>String(b.ts||'').localeCompare(String(a.ts||'')))[0];
+    if(!ev||!ev.ts) return;
+    const n=(rec.done||[]).length;
+    evs.push({ at:ev.ts, tx:`看完 <b>${esc(cid)}</b> · ${n} 个章节` });
+  });
+  evs.sort((a,b)=> String(b.at).localeCompare(String(a.at)));
+  const top=evs.slice(0,6);
+  document.getElementById('tlBox').innerHTML = top.length ? top.map(e=>`
+    <div class="ev">
+      <div class="ts">${esc(fmt(e.at))}</div>
+      <div class="tx">${e.tx}</div>
+    </div>`).join('') : '<div class="hint">暂无记录</div>';
+}
+function TASK_ST_CN2(st){
+  if(st==='passed')   return { pre:'通过', post:' <svg class="ic"><use href="#i-check"/></svg>' };
+  if(st==='rejected') return { pre:'打回', post:'' };
+  return { pre:'待批改', post:'' };
+}
+function fmt(s){
+  if(!s) return '';
+  const d=new Date(s);
+  if(isNaN(d)) return String(s).slice(0,16).replace('T',' ');
+  const p=n=>String(n).padStart(2,'0');
+  return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+</script>
+</body>
+</html>

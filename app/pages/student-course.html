@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>课程详情</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-student" data-role="student" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap" id="page"></main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* 课程详情页：基线 viewCourseApple
+   保留功能：锁页 / 资料文档 / 视频章节 / 随堂测验 / 带教同频节点 /
+             播放第一个未完成 / 学习进度勾选 / 关卡徽章 / 跳转完整学习页
+   URL 参数：?c=C7（沙盒无 hash 路由，用 query 代替；不改数据结构）            */
+const CID = new URLSearchParams(location.search).get('c') || 'C1';
+// 注意： 不能在顶层求值：initRole() 要到 DOMContentLoaded 才同步会话身份
+const WID = () => MOCKAPI.S.wid;
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('student','');
+  initNav();
+  window.__rerender = render;
+  render();
+});
+
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const c = MOCK.courseOf(CID);
+  const page = document.getElementById('page');
+  if(!c){ page.innerHTML = '<div class="empty"><div class="big"><svg class="ic"><use href="#i-think"/></svg></div><b>找不到这门课</b><a class="btn sm" href="student-courses.html">返回课程库</a></div>'; return; }
+
+  // ---- 锁页（V2 第1层：详情页直接锁，不下发任何视频入口）----
+  if(MOCK.courseLocked(CID, WID())){
+    page.innerHTML = `
+      <a class="btn ghost sm" href="student-courses.html"><svg class='ic'><use href='#i-arrow-l'/></svg> 返回课程库</a>
+      <div class="card" style="margin-top:14px;text-align:center;padding:40px 20px">
+        <div style="font-size:40px;line-height:1"><svg class='ic'><use href='#i-lock'/></svg></div>
+        <h1 style="font-size:20px;margin:12px 0 6px">${UI.esc(c.title)}</h1>
+        <p class="sub" style="margin:0 0 4px">${UI.esc(MOCK.lockReason(CID, WID()))}</p>
+        <p class="sub">通过上一关后自动开放。</p>
+        <a class="btn sm" href="student-journey.html" style="margin-top:14px">去看我的闯关</a>
+      </div>`;
+    return;
+  }
+
+  const lr = MOCKAPI.learnOf(WID(), CID);
+  const vchs  = c.chapters.filter(x=>x.type==='video');
+  const quizChs = c.chapters.filter(x=>x.type==='quiz');
+  const syncChs = c.chapters.filter(x=>x.gate);
+  const done = lr.done||[];
+  const doneVideos = vchs.filter(v=>done.includes(v.id)).length;
+  const pct = vchs.length? Math.round(doneVideos/vchs.length*100) : 0;
+  const syncDone = syncChs.filter(x=>gateOK(x.id)).length;
+  const allDone = (vchs.length===doneVideos)
+              && (syncChs.length===0 || syncChs.length===syncDone)
+              && (quizChs.length===0 || quizChs.every(q=>done.includes(q.id)));
+  const firstIncomplete = vchs.find(v=>!done.includes(v.id)) || vchs[0];
+  const docs = c.docs||[];
+  const lno = MOCK.levelOfCourseIn(CID);
+
+  // 关卡徽章：读 courseGateOf 的 levelNo（开关关闭时它是 0，所以另走 levelOfCourseIn）
+  const gateBadge = lno ? `<span class="tag lock">第 ${lno} 关</span>` : '';
+
+  page.innerHTML = `
+    <a class="btn ghost sm" href="student-courses.html"><svg class='ic'><use href='#i-arrow-l'/></svg> 返回课程库</a>
+
+    <div class="card" style="margin-top:14px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px">
+        <div style="min-width:0">
+          <h1 style="font-size:22px;margin:0 0 6px">${UI.esc(c.title)}</h1>
+          <div class="row" style="gap:6px">
+            <span class="tag ${c.status==='on'?'ok':'ghost'}">${c.status==='on'?'已上线':'已下线'}</span>
+            ${gateBadge}
+            <span class="tag ghost">${UI.esc(c.difficulty)}</span>
+          </div>
+        </div>
+        <div class="row" style="gap:10px;flex:none">
+          <span class="avatar" style="background:var(--soft)">${UI.esc((c.lecturer||'师').slice(0,1))}</span>
+          <div style="font-size:13px"><b>${UI.esc(c.lecturer||'讲师')}</b><div class="sub">${UI.esc(c.subject)}</div></div>
+        </div>
+      </div>
+      ${c.desc?`<p class="sub" style="margin:12px 0 0">${UI.esc(c.desc)}</p>`:''}
+      <div class="row" style="margin-top:12px;gap:10px">
+        <button class="btn ghost sm" onclick="mockToggleFav('${CID}')">${favOn()?'<svg class="ic"><use href="#i-star"/></svg> 已收藏':'<svg class="ic"><use href="#i-star-o"/></svg> 收藏'}</button>
+        <span class="sub" id="rateHere"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:15px;margin:0 0 10px">资料 / 文档链接</h2>
+      ${docs.length ? docs.map(d=>`<div class="rowitem"><span><svg class='ic'><use href='#i-file'/></svg></span>
+          <a href="${UI.esc(d.url)}" target="_blank" rel="noopener" style="flex:1">${UI.esc(d.name)}</a>
+          ${d.size?`<span class="sub">· ${UI.esc(d.size)}</span>`:''}</div>`).join('')
+        : '<p class="sub">暂无链接</p>'}
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:15px;margin:0 0 10px">课程视频 / 录屏回放</h2>
+      ${vchs.length ? vchs.map(v=>{
+        const isDone=done.includes(v.id);
+        return `<div class="rowitem ${isDone?'ok':''}" style="cursor:pointer" onclick="openPlayer('${CID}','${v.id}')">
+          <span style="font-size:17px"><svg class='ic'><use href='#i-play'/></svg></span>
+          <span style="flex:1;min-width:0">${UI.esc(v.title)}</span>
+          ${v.src?'':'<span class="tag warn">视频待上传</span>'}
+          ${isDone?'<span class="tag ok">已学</span>':''}
+        </div>`;
+      }).join('') : '<p class="sub">暂无视频</p>'}
+    </div>
+
+    ${quizChs.length?`<div class="card">
+      <h2 style="font-size:15px;margin:0 0 10px">随堂测验</h2>
+      ${quizChs.map(q=>`<div class="rowitem ${done.includes(q.id)?'ok':''}" style="cursor:pointer" onclick="openQuiz('${CID}','${q.id}')">
+        <span><svg class='ic'><use href='#i-pencil'/></svg></span><span style="flex:1">${UI.esc(q.title)}</span>
+        ${done.includes(q.id)?'<span class="tag ok">已完成</span>':'<span class="tag">测验</span>'}
+      </div>`).join('')}
+    </div>`:''}
+
+    ${syncChs.length?`<div class="card">
+      <h2 style="font-size:15px;margin:0 0 10px">带教同频节点</h2>
+      ${syncChs.map(x=>{
+        const g=(MOCK.DB.gates[MOCK.KEY3(WID(),CID,x.id)]||{});
+        const label=(g.mentee&&g.mentor)?'已同频解锁':(g.mentee?'待导师确认':'需同频');
+        return `<div class="rowitem ${g.mentee&&!g.mentor?'wait':(g.mentee&&g.mentor?'ok':'')}"
+          ${g.mentee&&!g.mentor?`style="cursor:pointer" onclick="openSync('${CID}','${x.id}')"`:''}>
+          <span><svg class='ic'><use href='#i-handshake'/></svg></span><span style="flex:1">${UI.esc(x.title)}</span>
+          <span class="tag ${g.mentee&&g.mentor?'ok':(g.mentee?'warn':'lock')}">${label}</span>
+        </div>`;
+      }).join('')}
+    </div>`:''}
+
+    <div class="card">
+      <button class="btn block lg" onclick="playFirst('${CID}')">
+        <svg class='ic'><use href='#i-play'/></svg> 播放${firstIncomplete?`：${UI.esc(firstIncomplete.title)}`:''}
+      </button>
+      <div class="rowitem ${allDone?'ok':''}" style="margin-top:10px;cursor:pointer" onclick="acToggle('${CID}')">
+        <span class="chk ${allDone?'on':''}">${allDone?'<svg class="ic"><use href="#i-check"/></svg>':''}</span>
+        <span>${allDone?'已学完':'学习进度 '+pct+'%'}</span>
+      </div>
+      <a class="btn ghost sm" style="margin-top:10px" href="student-learn.html?c=${CID}">完整学习页</a>
+    </div>`;
+
+  renderRate();
+}
+
+function favOn(){
+  const F=MOCK.DB.fav[WID()]; return !!(F&&F.courses&&F.courses[CID]);
+}
+function gateOK(chid){
+  const g=MOCK.DB.gates[MOCK.KEY3(WID(),CID,chid)];
+  return !!(g&&g.mentee&&g.mentor);
+}
+function renderRate(){
+  const box=document.getElementById('rateHere'); if(!box) return;
+  const my=((MOCK.DB.rating[CID]||{}).scores||{})[WID()]||0;
+  const n=Object.keys((MOCK.DB.rating[CID]||{}).scores||{}).length;
+  const avg=avgRating(CID);
+  box.innerHTML='<span class="sub" style="margin-left:8px">评分：</span>'
+    +[1,2,3,4,5].map(i=>`<span style="cursor:pointer;font-size:15px;color:${i<=my?'var(--warn)':'var(--muted)'}" title="评 ${i} 分" onclick="mockSetRate('${CID}',${i})"><svg class='ic'><use href='#i-star'/></svg></span>`).join('')
+    +`<span class="sub"> 均分 ${n?avg.toFixed(1):'—'}（${n}人）</span>`;
+}
+function playFirst(cid){
+  const c=MOCK.courseOf(cid); if(!c) return;
+  const vchs=c.chapters.filter(x=>x.type==='video');
+  const done=MOCKAPI.learnOf(WID(),cid).done||[];
+  const t=vchs.find(x=>!done.includes(x.id))||vchs[0];
+  if(t) openPlayer(cid,t.id); else toast('本课没有视频章节');
+}
+function acToggle(cid){
+  const c=MOCK.courseOf(cid); if(!c) return;
+  const done=MOCKAPI.learnOf(WID(),cid).done||[];
+  const t=c.chapters.find(ch=>{
+    if(ch.gate)   return !gateOK(ch.id);
+    if(ch.type==='quiz') return !done.includes(ch.id);
+    if(ch.type==='video')return !done.includes(ch.id);
+    return false;
+  }) || c.chapters[0];
+  if(!t) return;
+  if(t.gate) openSync(cid,t.id);
+  else if(t.type==='quiz') openQuiz(cid,t.id);
+  else openPlayer(cid,t.id);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>权限矩阵 · 教务管理员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-admin" data-role="admin" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap wide">
+
+  <div class="pg-head">
+    <span class="eyebrow">星禾云课堂</span>
+    <h1>权限矩阵（展示层）</h1>
+    <p class="sub">角色与权限一览。</p>
+  </div>
+
+  <div class="card">
+    <div class="tblwrap">
+      <table>
+        <thead><tr>
+          <th>角色</th><th>数据可见范围</th><th>课程</th><th>作业/成绩</th><th>权限管理</th><th>带教</th>
+        </tr></thead>
+        <tbody id="permRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <details class="fold">
+    <summary>规则以服务端拦截为准</summary>
+    <div class="fold-body">
+      学员只能看自己、导师只能看自己徒弟、管理员看全部（服务端已按角色过滤）。
+    </div>
+  </details>
+
+  <details class="fold warn">
+    <summary>系统当前启用的角色</summary>
+    <div class="fold-body">
+      目前启用三个角色：<b>学员 / 导师 / 教务管理员</b>。
+    </div>
+  </details>
+
+  <details class="fold warn">
+    <summary>现行考核规则</summary>
+    <div class="fold-body">
+      导师审自己徒弟（练 + 考），管理员<b>平行兜底</b>，谁先审谁生效。
+    </div>
+  </details>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* 权限矩阵（2026-10-05 收口）：只保留实际启用的 3 个角色，
+   未启用的历史角色行（超级管理员/培训师/讲师/助教/校区经理）不再展示。
+   批改权限口径与后端 canReview 一致：导师审自己徒弟、管理员平行兜底。 */
+const PERM_ROWS = [
+  ['教务管理员','本校区/全公司','课程+学员','作业+成绩','—','课程/学员'],
+  ['导师','自己徒弟','自己徒弟','自己徒弟（任务卡+考核批改）','—','自己徒弟'],
+  ['学员','自己','自己课程','自己作业','自己','—']
+];
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-perms.html');
+  initNav();
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+
+  document.getElementById('permRows').innerHTML = PERM_ROWS.map(r=>
+    `<tr>${r.map((c,i)=>{
+      if(i===4) return `<td>${c==='<svg class="ic"><use href="#i-check"/></svg>'?'<span class="tag ok"><svg class="ic"><use href="#i-check"/></svg></span>':UI.esc(c)}</td>`;
+      return `<td>${UI.esc(c)}</td>`;
+    }).join('')}</tr>`).join('');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>关卡详情 · 学员</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/sandbox.css">
+</head>
+<body class="role-student" data-role="student" data-nav-done="1">
+
+<div id="topbarSlot"></div>
+
+<main class="wrap">
+
+  <a href="student-journey.html" class="backlink"><svg class="ic"><use href="#i-arrow-l"/></svg> 返回我的闯关</a>
+
+  <div class="pg-head">
+    <span class="eyebrow" id="eyebrow">—</span>
+    <h1 id="lvTitle">—</h1>
+    <p class="sub" id="lvSub">—</p>
+  </div>
+
+  <!-- 未解锁：整页只显示锁页（三层闸门的第一层：前端不给入口） -->
+  <div id="lockBox"></div>
+
+  <!-- 本关进度 -->
+  <div class="card tight" id="progCard" hidden>
+    <div class="card-h" style="margin-bottom:var(--s4)">
+      <h2>本关进度</h2>
+      <span class="mx" id="progMx" style="font-size:14px;height:36px">—</span>
+    </div>
+    <div class="bar"><i id="progBar" style="width:0%"></i></div>
+    <div class="mxrow" style="margin-top:var(--s4)" id="progTags"></div>
+  </div>
+
+  <!-- 学 / 练 / 考 三个环节区块（按该关实际 stages 动态生成） -->
+  <div id="stageBox"></div>
+
+  <!-- 下一关预告 -->
+  <div class="card" id="nextCard" hidden>
+    <div class="card-h">
+      <h2>这一关通了之后</h2>
+    </div>
+    <div id="nextBox"></div>
+  </div>
+
+  <div class="jump nav">
+    <a href="student-journey.html">闯关</a>
+    <a href="student-courses.html">课程</a>
+    <a href="student-me.html">我的</a>
+  </div>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<!--
+  本页交互清单：
+  1. 未解锁关卡 -> 整页只渲染锁页（含"卡在前一关的第几个环节"原因），不渲染任何提交入口。
+  2. 「学」环节：系统自动判定（studyAutoPass），已完成显示完成时间；未完成给去课程播放器入口。
+  3. 「练」环节：每张任务卡一个 .tcard，五态由 taskCardClass/taskTagHTML 决定；
+     待审核/已打回不可自批（学员无批改权），已打回显示导师 reviewNote + 可重提。
+  4. 「考」环节：本关任务卡未全过 -> 锁着并说明原因（对齐后端"先过练才能考"的运营要求）。
+  5. 所有写操作走 MOCKAPI.mockSubmitTask（与后端签名一致）。
+-->
+
+<script src="../assets/app.js"></script>
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/mock-api.js"></script>
+<script src="../assets/mock-api-live.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+/* ?lv=L07 —— 缺省回落到"当前关"（真实数据下 S001 是 L04） */
+const LVQ = new URLSearchParams(location.search).get('lv');
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
+  // 关卡详情是上下文页（从闯关列表点进来）-> 不进同级导航
+  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('student','student-level.html',{noNav:true});
+  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+  render();
+});
+
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const wid = MOCKAPI.S.wid;
+  const lv  = (LVQ && MOCK.levelOf(LVQ)) || MOCK.currentLevelOf(wid);
+  if(!lv){ document.getElementById('lvTitle').textContent='关卡不存在'; return; }
+
+  const unlock = MOCK.levelUnlocked(wid, lv);
+
+  // 注意：【2026-10-04 修】必须先清空锁页容器：
+  //    一旦发生「未解锁 -> 已解锁」的重渲染（如导师刚批完上一关），
+  //    旧锁页会残留，与正文同时显示（锁页 + 3 个环节区块并存）。
+  document.getElementById('lockBox').innerHTML = '';
+  document.getElementById('stageBox').innerHTML = '';
+  document.getElementById('nextBox').innerHTML = '';
+
+  renderHead(wid, lv, unlock);
+
+  if(!unlock){
+    // 锁页态：进度卡与下一关预告一并收起（解锁->上锁的反向切换也不残留）
+    document.getElementById('progCard').hidden = true;
+    document.getElementById('nextCard').hidden = true;
+    renderLocked(wid, lv);
+    return;
+  }
+
+  document.getElementById('progCard').hidden = false;
+  document.getElementById('nextCard').hidden = false;
+  renderProgress(wid, lv);
+  renderStages(wid, lv);
+  renderNext(wid, lv);
+
+  // 注意： 所有 innerHTML 写完后统一注入图标（运行时插入的 [data-ic] 不注入就是空的）
+  if(typeof injectIcons==='function') injectIcons();
+}
+
+/* ---------- 页头 ---------- */
+function renderHead(wid, lv, unlock){
+  const nSt = MOCK.LV_STAGES.filter(s=>!!(lv.stages&&lv.stages[s]));
+  const cn  = s=>MOCK.LV_STAGE_CN[s];
+  document.getElementById('eyebrow').textContent =
+    `${lv.phase||''} · ${lv.week||''} · 第 ${lv.no} 关` + (unlock?'':' · 未解锁');
+  document.getElementById('lvTitle').textContent = lv.title;
+
+  // 环节构成按真实 stages 拼（别写死"学1练2考1"）
+  const parts = nSt.map(s=>{
+    if(s==='study'){
+      const ids=(lv.stages.study&&lv.stages.study.courseIds)||[];
+      const n=ids.reduce((a,cid)=>{const c=MOCK.courseOf(cid);return a+((c&&c.chapters)||[]).filter(ch=>ch.type==='video').length;},0);
+      return n ? `学 ${n} 个视频` : '学（暂无课程）';
+    }
+    if(s==='practice') return `练 ${MOCK.TASK_DEFS.filter(d=>d.levelId===lv.id).length} 张任务卡`;
+    return '考 1 次';
+  });
+  const doneOnes = nSt.filter(s=>stageOk(wid,lv,s)).length;
+  if(unlock){
+    document.getElementById('lvSub').innerHTML =
+      `这关有 ${nSt.length} 个环节：<b>${parts.join(' · ')}</b>` +
+      (doneOnes===nSt.length ? ' · <b>已全部完成</b>' : '');
+  }else{
+    document.getElementById('lvSub').innerHTML = '通过上一关后自动解锁。';
+  }
+}
+
+/* 单环节是否通过（与 levelDone 同源，不自创规则） */
+function stageOk(wid, lv, s){
+  if(s==='practice') return MOCK.practiceDone(wid, lv.id);
+  return MOCK.lvStageOk(wid, lv.id, s);
+}
+
+/* ---------- 未解锁 ---------- */
+function renderLocked(wid, lv){
+  const prev = MOCK.DB.levels.find(l=>l.no===lv.no-1);
+  const nSt  = prev ? MOCK.LV_STAGES.filter(s=>!!(prev.stages&&prev.stages[s])) : [];
+  const left = prev ? nSt.filter(s=>!stageOk(wid,prev,s)).map(s=>MOCK.LV_STAGE_CN[s]) : [];
+  document.getElementById('lockBox').innerHTML=`
+    <div class="card" style="border:3px dashed var(--edge)">
+      <div class="card-h">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="mx lock" style="min-width:34px">—</span>
+          <div><h2>这一关还没解锁</h2>
+            <p class="hint"><b>上一关全部通过，这一关自动解锁。</b></p></div>
+        </div>
+      </div>
+      ${prev?`<div class="note warn">
+        <b>你卡在：</b>第 ${prev.no} 关「${esc(prev.title)}」
+        ${left.length?`——还没过的环节是 <b>${esc(left.join(' / '))}</b>。`:'。'}
+      </div>
+      <div class="acts" style="margin-top:var(--s4)">
+        <a class="btn" href="student-level.html?lv=${esc(prev.id)}">回到第 ${prev.no} 关继续</a>
+        <a class="btn ghost" href="student-journey.html">看全部 12 关</a>
+      </div>`:`<div class="note">前面没有关卡，请联系教务确认关卡配置。</div>`}
+    </div>`;
+}
+
+/* ---------- 本关进度 ---------- */
+function renderProgress(wid, lv){
+  const prog = MOCK.levelProgress(wid, lv);
+  const pct  = prog.total ? Math.round(prog.done/prog.total*100) : 0;
+  const mxEl = document.getElementById('progMx');
+  mxEl.textContent = `${prog.done}/${prog.total}`;
+  mxEl.className = 'mx ' + (prog.done===prog.total ? 'ok' : 'doing cur');
+  document.getElementById('progBar').style.width = pct+'%';
+  document.getElementById('progTags').innerHTML =
+    MOCK.LV_STAGES.filter(s=>!!(lv.stages&&lv.stages[s]))
+      .map(s=>`<span class="tag ${stageOk(wid,lv,s)?'ok':'ghost'}">${MOCK.LV_STAGE_CN[s]} · ${stageOk(wid,lv,s)?'已完成':'未完成'}</span>`)
+      .join('');
+}
+
+/* ---------- 学 / 练 / 考 ---------- */
+function renderStages(wid, lv){
+  const box=document.getElementById('stageBox');
+  const html=[];
+  MOCK.LV_STAGES.forEach((s,idx)=>{
+    if(!(lv.stages&&lv.stages[s])) return;
+    if(s==='study')    html.push(studyBlock(wid,lv,idx+1));
+    if(s==='practice') html.push(practiceBlock(wid,lv,idx+1));
+    if(s==='exam')     html.push(examBlock(wid,lv,idx+1));
+  });
+  box.innerHTML = html.join('');
+}
+
+/* 环节 1：学（系统自动） */
+function studyBlock(wid, lv, no){
+  const ids=(lv.stages.study&&lv.stages.study.courseIds)||[];
+  const ok = MOCK.lvStageOk(wid,lv.id,'study');
+  const auto = MOCK.studyAutoPass(lv,wid);
+  const jrec=(MOCK.DB.journey[wid]||{})[lv.id]||{};
+
+  if(!ids.length){
+    return `<div class="card">
+      <div class="card-h">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="mx ${ok?'ok':'todo'}" style="min-width:34px">${ok?'<svg class="ic"><use href="#i-check"/></svg>':no}</span>
+          <div><h2>学 · 暂无课程</h2>
+            <p class="hint">这一关没有课程，直接看「练」和「考」。</p></div>
+        </div>
+        <span class="tag ${ok?'ok':'ghost'}">${ok?'已通过':'未完成'}</span>
+      </div>
+    </div>`;
+  }
+
+  const rows=ids.map(cid=>{
+    const c=MOCK.courseOf(cid);
+    const vids=((c&&c.chapters)||[]).filter(ch=>ch.type==='video');
+    const rec=MOCK.DB.learn[MOCK.KEY(wid,cid)];
+    const done=(rec&&rec.done)||[];
+    const n=vids.filter(v=>done.includes(v.id)).length;
+    return `<div class="rowitem">
+      <span class="ico" data-ic="i-play"></span>
+      <span class="mid">
+        <b>${esc(c?c.title:cid)}</b>
+        <span class="d">${vids.length} 个视频 · 已看 ${n} / ${vids.length}${rec&&rec.speed&&rec.speed!==1?` · ${rec.speed}× 倍速`:''}</span>
+      </span>
+      <span class="acts">
+        <a class="btn sm ${n===vids.length?'ghost':''}" href="student-course.html?c=${esc(cid)}">${n===vids.length?'再看一遍':'去听课'}</a>
+      </span>
+    </div>`;
+  }).join('');
+
+  const at=(jrec.study&&jrec.study.at)||'';
+  return `<div class="card">
+    <div class="card-h">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="mx ${ok?'ok':'doing'}" style="min-width:34px">${ok?'<svg class="ic"><use href="#i-check"/></svg>':no}</span>
+        <div><h2>学 · 看完视频自动过</h2>
+          <p class="hint">多视频章节要<b>全部看完</b>才算过。</p></div>
+      </div>
+      <span class="tag ${ok?'ok':'ghost'}">${ok?'已完成':(auto?'判定中':'未完成')}</span>
+    </div>
+    ${rows}
+    ${ok&&at?`<div class="note" style="margin-top:var(--s3)">完成时间：<b>${esc(fmt(at))}</b></div>`:''}
+  </div>`;
+}
+
+/* 环节 2：练（人工批改） */
+function practiceBlock(wid, lv, no){
+  const defs = MOCK.TASK_DEFS.filter(d=>d.levelId===lv.id);
+  const rec  = (MOCK.DB.tasks[wid]||{})[lv.id]||{};
+  const ok   = MOCK.practiceDone(wid,lv.id);
+  const passed = defs.filter(d=>(rec[d.id]||{}).status==='passed').length;
+  const cards = defs.map(d=>taskCard(wid,lv,d,rec[d.id])).join('');
+  return `<div class="card">
+    <div class="card-h">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="mx ${ok?'ok':'doing'}" style="min-width:34px">${ok?'<svg class="ic"><use href="#i-check"/></svg>':no}</span>
+        <div><h2>练 · ${defs.length} 张任务卡</h2>
+          <p class="hint"><b>全部通过</b>才记「练」通过。</p></div>
+      </div>
+      <span class="tag ${passed===defs.length?'ok':'warn'}">${passed}/${defs.length} 通过</span>
+    </div>
+    ${cards || '<div class="note">本关暂无任务卡定义。</div>'}
+  </div>`;
+}
+
+/* 单张任务卡：五态（taskCardClass/taskTagHTML 是唯一口径） */
+function taskCard(wid, lv, def, r){
+  const cls = UI.taskCardClass(r);
+  const tag = UI.taskTagHTML(r);
+  const rejected = r&&r.status==='rejected';
+  const doable   = !r || rejected;
+  return `<div class="tcard ${cls}">
+    <div class="tcard-h">
+      ${tag}
+      <b>${esc(def.id)} ${esc(def.title)}</b>
+    </div>
+    <p class="req">${esc(def.req||'按任务卡要求提交成果。')}</p>
+    ${r&&r.note?`<div class="sub">
+      提交时间：${esc(fmt(r.at))} · 提交人：${esc(r.byName||'')}<br>
+      提交说明：${esc(r.note)}</div>`:''}
+    ${rejected&&r.reviewNote?`<div class="note danger" style="margin-top:var(--s3)"><b>被打回的原因：</b>${esc(r.reviewNote)}</div>`:''}
+    ${doable?`
+      <form data-card="${esc(def.id)}" style="margin-top:var(--s4)">
+        <div class="fld">
+          <label>${rejected?'重新提交说明':'完成说明'} <span class="req">*</span></label>
+          <input type="text" data-rule="note" placeholder="写清你做了什么、结果如何" value="">
+          <div class="err">请至少写 4 个字</div>
+          <div class="ok">可以提交</div>
+        </div>
+        <button class="btn" type="submit">${rejected?'重新提交':'提交任务卡'}</button>
+      </form>`:`
+      <div class="acts">
+        <span class="tag warn" style="align-self:center">等带教导师批改</span>
+      </div>`}
+  </div>`;
+}
+
+/* 环节 3：考（人工批改） */
+function examBlock(wid, lv, no){
+  const ok = MOCK.lvStageOk(wid,lv.id,'exam');
+  const rec = ((MOCK.DB.tasks[wid]||{})[lv.id]||{})[MOCK.EXAM_TASK];
+  // 注意：【2026-10-04 修正】原写法无条件要求「练」全过 -> L02/L03/L04 这些**只有学+考、
+  //    没有 practice 环节**的关卡，practiceDone() 会走 lvStageOk(...,'practice') 恒 false
+  //    -> 考核永远锁死，提交表单渲染不出来（实测 L04 forms=0）。
+  //    正确口径：只有当该关**确实存在 practice 环节**时，才要求先过练。
+  const hasPractice = !!(lv.stages && lv.stages.practice);
+  const taskAll = hasPractice ? MOCK.practiceDone(wid,lv.id) : true;
+  const rejected = rec&&rec.status==='rejected';
+  const canSubmit = taskAll && ok!==true && (!rec || rejected);
+
+  let body;
+  if(ok){
+    body=`<div class="note ok"><b>已通过。</b>${rec&&rec.reviewNote?('导师点评：'+esc(rec.reviewNote)):'考核已由带教导师确认。'}</div>`;
+  }else if(!taskAll){
+    body=`<div class="tcard lock">
+      <div class="tcard-h"><span class="tag lock">未开放</span><b>先通过本关任务卡，才能提交考核</b></div>
+    </div>`;
+  }else if(rec&&rec.status==='submitted'){
+    body=`<div class="tcard wait">
+      <div class="tcard-h">${UI.taskTagHTML(rec)}<b>考核已提交</b></div>
+      <p class="req">提交说明：${esc(rec.note||'—')}</p>
+      <div class="acts"><span class="tag warn" style="align-self:center">等带教导师批改</span></div>
+    </div>`;
+  }else{
+    body=`<div class="note" style="margin-bottom:var(--s4)">
+      <b>考核要求：</b>按本关产出做一次实操，提交结果数据（截图）。
+    </div>
+    <form data-card="${MOCK.EXAM_TASK}" style="margin-top:var(--s3)">
+      <div class="fld">
+        <label>考核提交说明 <span class="req">*</span></label>
+        <input type="text" data-rule="note" placeholder="写清你交了什么、数据如何" value="">
+        <div class="tip">填写截图附件 + 数据说明，至少 4 个字。</div>
+        <div class="err">请至少写 4 个字</div>
+        <div class="ok">可以提交</div>
+      </div>
+      <button class="btn" type="submit">提交考核</button>
+    </form>`;
+  }
+
+  return `<div class="card">
+    <div class="card-h">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="mx ${ok?'ok':(canSubmit?'doing':'todo')}" style="min-width:34px">${ok?'<svg class="ic"><use href="#i-check"/></svg>':no}</span>
+        <div><h2>考 · 关卡考核</h2>
+          <p class="hint">带教导师批改。</p></div>
+      </div>
+      <span class="tag ${ok?'ok':(rec&&rec.status==='submitted'?'warn pulse':'ghost')}">${
+        ok?'已完成':(rec&&rec.status==='submitted'?'待审核':(rejected?'已打回':'未开始'))}</span>
+    </div>
+    ${body}
+  </div>`;
+}
+
+/* ---------- 下一关预告 ---------- */
+function renderNext(wid, lv){
+  const nx = MOCK.DB.levels.find(l=>l.no===lv.no+1);
+  const card=document.getElementById('nextCard');
+  if(!nx){ card.hidden=true; return; }
+  card.hidden=false;
+  const nSt=MOCK.LV_STAGES.filter(s=>!!(nx.stages&&nx.stages[s])).map(s=>MOCK.LV_STAGE_CN[s]);
+  const tasks=MOCK.TASK_DEFS.filter(d=>d.levelId===nx.id);
+  document.getElementById('nextBox').innerHTML=`
+    <div class="rowitem">
+      <span class="ico" data-ic="i-lock"></span>
+      <span class="mid"><b>第 ${nx.no} 关 · ${esc(nx.title)}</b>
+        <span class="d">环节：${esc(nSt.join(' + '))}${tasks.length?` · 任务卡 ${tasks.map(t=>t.id).join('/')}`:''}</span></span>
+      <span class="mx lock">—</span>
+    </div>`;
+}
+
+/* ---------- 输入实时反馈 ----------
+   注意：【2026-10-04 补】只有 submit 时校验的话，用户改完最后一个字仍看到红框，
+   直到再点一次提交才转绿 —— 反馈滞后。这里补 input 实时切换 good/bad。
+   规则与提交时完全一致（>=4 字），不新造口径。 */
+document.addEventListener('input', e=>{
+  const inp = e.target.closest && e.target.closest('input[data-rule="note"]');
+  if(!inp) return;
+  const fld = inp.closest('.fld'); if(!fld) return;
+  const v = (inp.value||'').trim();
+  if(v.length >= 4){ fld.classList.remove('bad'); fld.classList.add('good'); }
+  else if(v.length === 0){ fld.classList.remove('bad','good'); }   // 清空 -> 回到中性态
+  else { fld.classList.remove('good'); fld.classList.add('bad'); }
+});
+
+/* ---------- 提交（唯一写链路，走 MOCKAPI） ---------- */
+document.addEventListener('submit', e=>{
+  const form=e.target.closest && e.target.closest('form[data-card]');
+  if(!form) return;
+  e.preventDefault();
+  const wid = MOCKAPI.S.wid;
+  const lv  = (LVQ && MOCK.levelOf(LVQ)) || MOCK.currentLevelOf(wid);
+  const cardId = form.dataset.card;
+  const inp = form.querySelector('input[data-rule="note"]');
+  const val = (inp && inp.value || '').trim();
+
+  // 前端校验（对标基线表单规则：至少 4 个字）
+  const fld = form.querySelector('.fld');
+  if(val.length < 4){
+    if(fld){ fld.classList.remove('good'); fld.classList.add('bad'); }
+    if(typeof toast==='function') toast('请先修正标红的那一项','err');
+    if(inp) inp.focus();
+    return;
+  }
+  if(fld){ fld.classList.remove('bad'); fld.classList.add('good'); }
+
+  // 注意： mockSubmitTask 的错误分支返回 `toast(...)` 即 undefined（基线遗留），
+  //    所以不能读返回值判断成败 —— 提交后统一按"重渲染"处理。
+  MOCKAPI.mockSubmitTask(wid, lv.id, cardId, val);
+  render();
+});
+
+function fmt(s){
+  if(!s) return '';
+  const d=new Date(s);
+  if(isNaN(d)) return String(s).slice(0,16).replace('T',' ');
+  const p=n=>String(n).padStart(2,'0');
+  return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+</script>
+</body>
+</html>
