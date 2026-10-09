@@ -61,29 +61,46 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-plans.html');
   initNav();
   if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+  window.__rerender = render;   // 注册给 liveRerender：真实数据到达后重绘
+  render();
+});
 
-  const rows = MOCK.DB.plans.map(p=>`<tr>
+/* 【P0-3 2026-10-09】拆出顶层 render()：原先内联渲染无重绘钩子，
+   真实数据到达后 liveRerender() 无法重绘 -> 计划名停在种子值（旧计划名）。 */
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  const plans = MOCK.DB.plans || [];
+  /* 兼容真实后端结构：胜任力字段后端用 `comps`（种子旧版用 `competencies`）；
+     weeks 后端为字符串数组（种子旧版为 {w,phase,levels,focus,gates} 对象）。
+     只做展示层字段容错，不改业务规则、不改数据。 */
+  const compsOf = p => (p.comps || p.competencies || []);
+  const weekLabel = w => (typeof w === 'string') ? w : (w.levels || w.phase || '—');
+
+  document.getElementById('planRows').innerHTML = plans.map(p=>`<tr>
     <td><b>${UI.esc(p.name)}</b></td>
     <td>${UI.esc((MOCK.mentorOf(p.owner)||{}).name||'—')}</td>
-    <td>${p.competencies.map(c=>UI.esc(c)).join('、')}</td>
-    <td>${p.weeks.map(w=>UI.esc(w.levels||w.phase)).join(' / ')}</td>
+    <td>${compsOf(p).map(c=>UI.esc(c)).join('、')||'—'}</td>
+    <td>${(p.weeks||[]).map(w=>UI.esc(weekLabel(w))).join(' / ')||'—'}</td>
   </tr>`).join('');
-  document.getElementById('planRows').innerHTML = rows;
 
-  // 阶段路线明细：把 weeks 展开成块，原网站把weeks 平铺在一格里，这里只是换排布（业务数据不变）
-  document.getElementById('planDetail').innerHTML = MOCK.DB.plans.map(p=>`
+  // 阶段路线明细：对象型 weeks 展开为块；字符串型 weeks 退化为单行（真实后端口径）
+  document.getElementById('planDetail').innerHTML = plans.map(p=>`
     <div class="pgroup">
       <div class="gh"><b>${UI.esc(p.name)}</b><span class="d">负责导师 ${UI.esc((MOCK.mentorOf(p.owner)||{}).name||'—')}</span></div>
-      ${p.weeks.map(w=>`
-        <div class="rowitem">
+      ${(p.weeks||[]).map(w=>{
+        if(typeof w === 'string'){
+          return `<div class="rowitem"><div style="flex:1;min-width:220px"><b>${UI.esc(w)}</b></div></div>`;
+        }
+        return `<div class="rowitem">
           <div style="flex:1;min-width:220px">
-            <b>第 ${UI.esc(String(w.w))} 周 · ${UI.esc(w.phase)}</b>
+            <b>第 ${UI.esc(String(w.w))} 周 · ${UI.esc(w.phase||'')}</b>
             <div class="sub">关卡 ${UI.esc(w.levels||'—')} · 重点：${UI.esc(w.focus||'—')}</div>
           </div>
           <div class="sub">闯关节点：${(w.gates&&w.gates.length)?w.gates.map(UI.esc).join('、'):'—'}</div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>`).join('');
-});
+}
 </script>
 </body>
 </html>

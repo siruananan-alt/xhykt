@@ -48,13 +48,21 @@
 <script src="../assets/mock-api-live.js"></script>
 <script src="../assets/ui.js"></script>
 <script>
-/* 学员管理：基线 viewAdminStudents —— 7 列，只读 */
+/* 学员管理：基线 viewAdminStudents —— 7 列，只读
+   【P0-3 2026-10-09】改为注册 window.__rerender 重绘钩子：
+   原先在 DOMContentLoaded 内联渲染，真实数据异步到达后 liveRerender() 找不到 render/__rerender
+   -> 页面停在 mock 种子帧（校区显示「武汉校区」而非真实「郑州」）。现按全站约定拆出顶层 render()。 */
 document.addEventListener('DOMContentLoaded',()=>{
   if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换
   document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-students.html');
   initNav();
   if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+  window.__rerender = render;   // 注册给 liveRerender：真实数据到达后重绘本表
+  render();
+});
 
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
   const n = MOCK.DB.levels.length;
   document.getElementById('stuRows').innerHTML = MOCK.DB.trainees.map(t=>{
     const cur = MOCK.currentLevelOf(t.id);
@@ -70,7 +78,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       <td>${MOCK.DB.signoffs[t.id]?'<span class="tag ok">已出师</span>':'<span class="tag">培养中</span>'}</td>
     </tr>`;
   }).join('');
-});
+}
 </script>
 </body>
 </html>

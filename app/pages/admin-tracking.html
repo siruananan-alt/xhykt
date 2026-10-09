@@ -61,7 +61,14 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-tracking.html');
   initNav();
   if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+  window.__rerender = render;   // 注册给 liveRerender：真实数据到达后重绘本表
+  render();
+});
 
+/* 【P0-3 2026-10-09】拆出顶层 render()：原先内联渲染无重绘钩子，
+   真实数据到达后 liveRerender() 无法重绘 -> 校区列停在种子值（武汉校区）。 */
+function render(){
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
   const lvN = MOCK.DB.levels.length;
 
   // 带双确认的章节总数 = 全站 gate 章节数（基线 gcnt 口径）
@@ -103,7 +110,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       <td><button class="btn ghost sm" onclick="openTimeline('${UI.esc(t.id)}')">轨迹</button></td>
     </tr>`;
   }).join('');
-});
+}
 </script>
 </body>
 </html>
