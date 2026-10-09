@@ -59,28 +59,6 @@
       <div class="note danger" id="loginErr" hidden style="margin-top:var(--s3)"></div>
     </form>
 
-    <!-- 沙盒演示入口：仅在未开启真实后端时显示（见页末脚本 switchMode()） -->
-    <div class="demo-accounts" id="demoBox">
-      <div class="t">沙盒演示入口（未接真实后端时可用）</div>
-      <div class="row">
-        <span class="nm">朱子悦</span><span class="rl">S001 · 学员</span>
-        <button class="btn sm ghost" onclick="quick('student')">进入</button>
-      </div>
-      <div class="row">
-        <span class="nm">郑丽薪</span><span class="rl">M1 · 带教导师</span>
-        <button class="btn sm ghost" onclick="quick('mentor')">进入</button>
-      </div>
-      <div class="row">
-        <span class="nm">曾锃湘</span><span class="rl">M2 · 带教导师</span>
-        <button class="btn sm ghost" onclick="quick('mentor2')">进入</button>
-      </div>
-      <div class="row">
-        <span class="nm">范文淼</span><span class="rl">admin · 教务管理员</span>
-        <button class="btn sm ghost" onclick="quick('admin')">进入</button>
-      </div>
-      <div class="tip" style="margin-top:10px">这些按钮直接切视角看界面（内存演示数据），<b>不是真实登录</b>。</div>
-    </div>
-
     <a href="../index.html" style="display:inline-flex;align-items:center;gap:6px;margin-top:var(--s6);font-size:13px;font-weight:700">
       <svg class="ic"><use href="#i-arrow-l"/></svg> 回到首页看这套系统怎么用
     </a>
@@ -99,9 +77,11 @@
   2. **双模式**（由 live 开关决定，见页末 switchMode）：
      · **真实后端模式**（?live=1 / localStorage.etrainLive=1）：
        提交 -> `LIVE.login(工号,密码)` -> 真实校验 -> 存 token -> `LIVE.refresh()` 拉全量 -> 按 role 跳首页。
-       失败（密码错/网络）-> 表单下方红条显示后端原因，不跳转。**演示入口整块隐藏**。
-     · **沙盒模式**（默认，无 live 标记）：
-       保留原行为：演示入口按钮 + 表单直接跳转，供离线演示与验收脚本使用。
+       失败（密码错/网络）-> 表单下方红条显示后端原因，不跳转。
+     · **沙盒模式**（etrainLive='0' 或 ?sandbox=1）：
+       表单直接跳转（默认进学员首页），供离线演示与验收脚本使用。
+       【2026-10-09】沙盒演示入口区块（demoBox/quick 按钮）已按产品要求整块删除——
+       真实用户在任何 localStorage 状态下都不再看到演示账号。
   3. 角色 -> 首页：student->我的闯关 / mentor->工作台 / admin->数据看板。
      注意： role 一律**读后端返回**（真实模式）或**演示按钮指定**（沙盒模式），不猜。
   4. 【2026-10-04 决策】培训师角色已移除；M2 以真实身份（导师）演示。
@@ -117,14 +97,6 @@
 <script>
 /* 角色 -> 首页。注意： 与各页 data-role 一致（student/mentor/admin），trainer 已移除。 */
 const HOME={student:'../pages/student-journey.html',mentor:'../pages/mentor.html',admin:'../pages/admin-dashboard.html'};
-const WID_OF={student:'S001',mentor:'M1',mentor2:'M2',admin:'admin'};
-
-/* ---------- 沙盒模式：演示入口（切视角，非真实登录） ---------- */
-function quick(k){
-  sessionStorage.setItem('protoRole',k==='mentor2'?'mentor':k);
-  if(typeof MOCKAPI!=='undefined') MOCKAPI.setSession(WID_OF[k]);
-  location.href=HOME[k==='mentor2'?'mentor':k];
-}
 
 /* ---------- 真实模式：走 LIVE.login ---------- */
 function showErr(msg){
@@ -192,8 +164,6 @@ document.addEventListener('DOMContentLoaded',()=>{
      守卫对它提前 return（app.js guardPage 第294行），needlogin-body 类永远不会加上。
      但就算真加上了也拦不住 —— 闸门读的是 body 类名，而本页不经过 requireLogin。 */
   const live=!!(window.LIVE && window.LIVE.enabled);
-  const box=document.getElementById('demoBox');
-  if(box) box.hidden=live;                           // 真实模式隐藏演示入口
 
   /* ---------- 【2026-10-05】来自「切换账号」的工号预填 ----------
      流程：工作页点「切换账号」-> app.js switchAccount() 发现是 live 模式
