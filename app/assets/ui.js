@@ -69,6 +69,11 @@ function topbarHTML(role,page,opts){
      修法：由 topbarHTML 自己**延迟一拍**做初始化 —— 调用方同一 tick 内已完成 innerHTML 赋值，
      setTimeout(...,0) 落地时 DOM 一定就绪。这样 20 个调用页一处修复、无需各补 initRole()。 */
   setTimeout(initTopbar, 0);
+  /* 【2026-10-09 P0-1】沙盒模式必须一眼可辨：顶栏下缘挂一条细横幅。
+     判据复用 app.js 的 isSandboxPreview（URL 显式沙盒或开发环境残留偏好）。
+     占文档流、不遮挡、橙色=业务警示色（符合 PRD 配色约定）。 */
+  const sbBanner = (typeof isSandboxPreview==='function' && isSandboxPreview())
+    ? `<div class="sandbox-banner" role="status">沙盒演示数据</div>` : '';
   /* 【2026-10-05】品牌区改为返回首页的链接。
      href 由 app.js 的 homeUrl() 算（站点挂两层，首页不在 SITE_BASE 里，见 app.js §6b）。
      注意： 用 aria-label 而不是 title：品牌区两行排布下 title 会在鼠标停留时
@@ -91,7 +96,7 @@ function topbarHTML(role,page,opts){
       <div class="acct-menu" id="acctMenu" role="menu" aria-label="切换账号"></div>
     </div>
   </div>
-</header>`;
+</header>${sbBanner}`;
 }
 
 /* 顶栏挂载后的一次性收尾。

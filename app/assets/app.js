@@ -408,6 +408,9 @@ function showGuardNotice(){
    注意： 判据必须只依赖**两个显式信号**，不能依赖 window.LIVE 是否存在：
      1. URL 带?sandbox=1 或 ?live=0
      2. localStorage.etrainLive === '0'（mock-api-live.js 的长期偏好键）
+        【2026-10-09 P0-1】该信号只在**开发环境**（localhost/127.0.0.1/file:）仍算沙盒；
+        正式域名忽略残留（mock-api-live.js initLiveFlag 同口径并自愈清除）——
+        否则旧浏览器偏好会把正式用户静默切进演示数据（郑州/武汉校区不一致的根源）。
    这两者都与「页面有没有引mock-api-live.js」无关——
    而 design-spec.html 恰好不引它（它不调后端），只有这样才能一并判对。
    注意： 别改回读 window.LIVE：踩过两次（详见 requireLogin 上方注释）。*/
@@ -417,7 +420,11 @@ function isSandboxPreview(){
     if(qs.get('sandbox')==='1') return true;
     if(qs.get('live')==='0') return true;
   }catch(e){}
-  try{ if(localStorage.getItem('etrainLive')==='0') return true; }catch(e){}
+  try{
+    const h=location.hostname;
+    const dev=(h==='localhost'||h==='127.0.0.1'||location.protocol==='file:');
+    if(dev && localStorage.getItem('etrainLive')==='0') return true;
+  }catch(e){}
   return false;
 }
 window.isSandboxPreview = isSandboxPreview;

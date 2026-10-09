@@ -969,3 +969,20 @@ html[data-live-loading="1"] main{visibility:hidden}
   .rowitem.chrow{flex-wrap:wrap}
   .rowitem.chrow .acts{width:100%;justify-content:flex-end;flex-wrap:wrap}
 }
+
+/* ---------- §28 沙盒模式标识横幅（2026-10-09 · P0-1） ----------
+   显式进入沙盒（?sandbox=1 等）时全站可见。橙色=业务警示色（PRD 约定）。
+   占文档流细条，不遮挡、不改导航布局；390px 下文字居中自动收窄。 */
+.sandbox-banner{
+  background:var(--warn,#ffb020);
+  color:#000437;
+  border-bottom:2px solid #000437;
+  font-weight:800;
+  font-size:12px;
+  letter-spacing:.05em;
+  text-align:center;
+  padding:4px 12px;
+}
+.sandbox-banner[hidden]{display:none}
+/* header.topbar 是 flex 容器：横幅必须是 header 的**兄弟**块（ui.js 已如此输出），
+   否则会被 flex 压缩溢出（实测 390px 下 w=37px、right=419）。 */

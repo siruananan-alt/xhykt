@@ -66,18 +66,28 @@ const LIVE = {
 (function initLiveFlag(){
   const qs = new URLSearchParams(location.search);
   const q = qs.get('live'), sandbox = qs.get('sandbox');
-  /* URL 显式声明优先，其次是 localStorage 长期偏好，最后**回落真实**。 */
-  if(sandbox === '1'){ try{ localStorage.setItem('etrainLive','0'); }catch(e){} }
-  if(q === '0'){ try{ localStorage.setItem('etrainLive','0'); }catch(e){} }
+  /* 【2026-10-09 P0-1】正式域名上 localStorage 残留不得再决定模式：
+     - ?live=1 仍写偏好 '1'（显式确认真实，无副作用）。
+     - ?sandbox=1 / ?live=0 只在**本次页面**生效，不再写 localStorage '0'
+       （旧逻辑点一次沙盒=该浏览器此后打开正式域名一直静默沙盒，用户毫不知情）。
+     - localStorage '0' 残留：仅开发环境（localhost/file:）仍生效（8099 验收脚本依赖）；
+       正式域名忽略并顺手清掉（自愈），回落默认真实后端。 */
+  const host = location.hostname;
+  const devEnv = (host === 'localhost' || host === '127.0.0.1' || location.protocol === 'file:');
   if(q === '1'){ try{ localStorage.setItem('etrainLive','1'); }catch(e){} }
+  if((q === '0' || sandbox === '1') && devEnv){ try{ localStorage.setItem('etrainLive','0'); }catch(e){} }
   let local = null;
   try{ local = localStorage.getItem('etrainLive'); }catch(e){}
-  if(q === '1' || sandbox === '1'){                    // URL 显式 -> 直接定
+  if(local === '0' && !devEnv){
+    try{ localStorage.removeItem('etrainLive'); }catch(e){}   // 正式域名：清残留自愈
+    local = null;
+  }
+  if(q === '1' || q === '0' || sandbox === '1'){       // URL 显式 -> 直接定（【2026-10-09 P0-1】q='0' 原靠写偏好间接生效，现显式判定）
     LIVE.enabled = (q === '1');
   }else if(window.ETRAIN_LIVE === true || window.ETRAIN_LIVE === false){
     LIVE.enabled = window.ETRAIN_LIVE === true;        // 代码显式指定
   }else if(local === '1' || local === '0'){
-    LIVE.enabled = local === '1';                      // 长期偏好
+    LIVE.enabled = local === '1';                      // 长期偏好（仅开发环境可达此处为 '0'）
   }else{
     LIVE.enabled = true;                               // 注意： 默认：真实后端
   }
@@ -341,9 +351,12 @@ function wireLiveWrites(){
     }),
     mockCertify:     liveWrite('adminCertify',     (tid)=>({ tid })),
     mockSetGate:     liveWrite('adminSetSetting',  (on)=>({ key:'enforceGate', value: !!on })),
+    /* 【2026-10-09 P0-2】补传 mentorId/planId/title：表单里选了却从没提交过，
+       live 模式新增学员会被后端「学员必须指定导师」拦死（接线遗漏）。 */
     mockAddUser:     liveWrite('adminUserUpsert',  ()=>({
       wid: val('#uWid'), name: val('#uName'), dept: val('#uDept'),
-      role: val('#uRole'), password: val('#uPw')
+      role: val('#uRole'), password: val('#uPw'),
+      mentorId: val('#uMentor'), planId: val('#uPlan'), title: val('#uTitle')
     })),
     mockTransfer:    liveWrite('adminTransferTrainee', (wid)=>({ tid: wid, to: val('#trTo') })),
     mockDeleteUser:  liveWrite('adminUserDelete',  (wid)=>({ wid })),

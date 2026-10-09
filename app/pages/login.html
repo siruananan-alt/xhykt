@@ -9,6 +9,9 @@
 </head>
 <body class="role-student" data-role="student">
 
+<!-- 【2026-10-09 P0-1】沙盒模式标识：显式进入沙盒时必须一眼可辨（页末脚本控制显隐） -->
+<div class="sandbox-banner" id="sandboxBanner" hidden role="status">沙盒演示数据</div>
+
 <main class="auth">
 
   <!-- 品牌侧：把业务结构讲清楚，让人知道自己在登什么 -->
@@ -164,6 +167,10 @@ document.addEventListener('DOMContentLoaded',()=>{
      守卫对它提前 return（app.js guardPage 第294行），needlogin-body 类永远不会加上。
      但就算真加上了也拦不住 —— 闸门读的是 body 类名，而本页不经过 requireLogin。 */
   const live=!!(window.LIVE && window.LIVE.enabled);
+
+  /* 【2026-10-09 P0-1】沙盒标识：仅显式沙盒时显示横幅 */
+  const sb=document.getElementById('sandboxBanner');
+  if(sb) sb.hidden=live;
 
   /* ---------- 【2026-10-05】来自「切换账号」的工号预填 ----------
      流程：工作页点「切换账号」-> app.js switchAccount() 发现是 live 模式
