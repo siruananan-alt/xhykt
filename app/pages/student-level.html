@@ -335,10 +335,13 @@ function shotRequiredUI(taskId){
   const m = (MOCK.DB.settings && MOCK.DB.settings.taskShots) || {};
   return m[taskId] === true;
 }
-/* 截图上传控件：最多 3 张、JPG/PNG/WebP、每张 ≤5MB、可选预览与移除 */
+/* 截图上传控件：最多 3 张、JPG/PNG/WebP、每张 ≤5MB、可选预览与移除
+   🔴 2026-10-10 修复：必传时标签文案由「（可选，最多 3 张）」改为「（必传，最多 3 张）」。
+      原实现同时渲染 `*`（必填星号）和「可选」，学员会以为可以不传，
+      提交后才被服务端拒绝（"该任务卡要求上传至少 1 张截图"），体验断裂。 */
 function shotPickerHTML(cardId, required){
   return `<div class="fld shotpick" data-shotpick="${esc(cardId)}"${required?' data-required="1"':''}>
-    <label>作业截图${required?' <span class="req">*</span>':''}（可选，最多 3 张）</label>
+    <label>作业截图${required?' <span class="req">*</span>':''}（${required?'必传':'可选'}，最多 3 张）</label>
     <div class="shotpick-row">
       <input type="file" accept="image/jpeg,image/png,image/webp" data-shotinput multiple style="display:none">
       <button class="btn ghost sm" type="button" onclick="pickShots(this)">+ 选择图片</button>
