@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   render();
 });
 
-function render(){
+function renderBase(){
   if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
   const wid = MOCKAPI.S.wid;
   const lv  = (LVQ && MOCK.levelOf(LVQ)) || MOCK.currentLevelOf(wid);
@@ -277,22 +277,42 @@ function practiceBlock(wid, lv, no){
   </div>`;
 }
 
-/* 单张任务卡：五态（taskCardClass/taskTagHTML 是唯一口径） */
+/* 单张任务卡：五态（taskCardClass/taskTagHTML 是唯一口径）
+   【2026-10-09 第三轮·模块 B1/B2/B5】加截图提交 + 必传标记 + 历史版本。
+   已被打回时展示「上一版提交说明 + 打回原因」，重新提交生成新版本（不覆盖历史）。 */
 function taskCard(wid, lv, def, r){
-  const cls = UI.taskCardClass(r);
-  const tag = UI.taskTagHTML(r);
-  const rejected = r&&r.status==='rejected';
-  const doable   = !r || rejected;
+  const rec = UI.normalizeTaskRecFE(r);
+  const cls = UI.taskCardClass(rec);
+  const tag = UI.taskTagHTML(rec);
+  const rejected = rec&&rec.status==='rejected';
+  const doable   = !rec || rejected;
+  const required = shotRequiredUI(def.id);
+  const cur = rec ? UI.currentVersion(rec) : null;
+
+  // 历史版本（打回后重提时，展示上几版做了什么，供学员对照）
+  let hist = '';
+  if(rec && rec.versions && rec.versions.length > 1){
+    hist = rec.versions.slice(0, -1).map(v=>`<div class="shotver">
+      <h4>第 ${v.v} 版${v.reviewNote?' · 打回原因：'+esc(v.reviewNote):''}</h4>
+      <div class="meta">${esc(fmt(v.at))} · ${esc(v.byName||'')}${v.shots&&v.shots.length?(' · '+v.shots.length+' 张截图'):''}</div>
+      <div class="sub" style="margin-top:4px">${esc(v.note||'—')}</div>
+    </div>`).join('');
+  }
+
   return `<div class="tcard ${cls}">
     <div class="tcard-h">
       ${tag}
       <b>${esc(def.id)} ${esc(def.title)}</b>
+      ${required?'<span class="tag shotreq">需附截图</span>':''}
     </div>
     <p class="req">${esc(def.req||'按任务卡要求提交成果。')}</p>
-    ${r&&r.note?`<div class="sub">
-      提交时间：${esc(fmt(r.at))} · 提交人：${esc(r.byName||'')}<br>
-      提交说明：${esc(r.note)}</div>`:''}
-    ${rejected&&r.reviewNote?`<div class="note danger" style="margin-top:var(--s3)"><b>被打回的原因：</b>${esc(r.reviewNote)}</div>`:''}
+    ${cur&&cur.note?`<div class="sub">
+      提交时间：${esc(fmt(cur.at))} · 提交人：${esc(cur.byName||'')}<br>
+      提交说明：${esc(cur.note)}</div>`:''}
+    ${cur&&cur.shots&&cur.shots.length?`<div class="sub">本次提交截图（${cur.shots.length} 张）：</div>
+      <div class="shotgrid" data-shotkeys="${esc(JSON.stringify(cur.shots.map(s=>s.key)))}"></div>`:''}
+    ${rejected&&cur&&cur.reviewNote?`<div class="note danger" style="margin-top:var(--s3)"><b>被打回的原因：</b>${esc(cur.reviewNote)}</div>`:''}
+    ${hist?`<details class="fold" style="margin-top:var(--s3)"><summary>查看历史版本（${rec.versions.length-1} 次）</summary><div class="fold-body">${hist}</div></details>`:''}
     ${doable?`
       <form data-card="${esc(def.id)}" style="margin-top:var(--s4)">
         <div class="fld">
@@ -301,6 +321,7 @@ function taskCard(wid, lv, def, r){
           <div class="err">请至少写 4 个字</div>
           <div class="ok">可以提交</div>
         </div>
+        ${shotPickerHTML(def.id, required)}
         <button class="btn" type="submit">${rejected?'重新提交':'提交任务卡'}</button>
       </form>`:`
       <div class="acts">
@@ -309,22 +330,40 @@ function taskCard(wid, lv, def, r){
   </div>`;
 }
 
+/* 该任务卡是否要求必传截图（settings.taskShots，管理员配置；后端强校验） */
+function shotRequiredUI(taskId){
+  const m = (MOCK.DB.settings && MOCK.DB.settings.taskShots) || {};
+  return m[taskId] === true;
+}
+/* 截图上传控件：最多 3 张、JPG/PNG/WebP、每张 ≤5MB、可选预览与移除 */
+function shotPickerHTML(cardId, required){
+  return `<div class="fld shotpick" data-shotpick="${esc(cardId)}"${required?' data-required="1"':''}>
+    <label>作业截图${required?' <span class="req">*</span>':''}（可选，最多 3 张）</label>
+    <div class="shotpick-row">
+      <input type="file" accept="image/jpeg,image/png,image/webp" data-shotinput multiple style="display:none">
+      <button class="btn ghost sm" type="button" onclick="pickShots(this)">+ 选择图片</button>
+      <span class="hint">JPG / PNG / WebP，每张不超过 5MB</span>
+    </div>
+    <div class="shotgrid" data-shotpreview></div>
+  </div>`;
+}
+
 /* 环节 3：考（人工批改） */
 function examBlock(wid, lv, no){
   const ok = MOCK.lvStageOk(wid,lv.id,'exam');
-  const rec = ((MOCK.DB.tasks[wid]||{})[lv.id]||{})[MOCK.EXAM_TASK];
-  // 注意：【2026-10-04 修正】原写法无条件要求「练」全过 -> L02/L03/L04 这些**只有学+考、
-  //    没有 practice 环节**的关卡，practiceDone() 会走 lvStageOk(...,'practice') 恒 false
-  //    -> 考核永远锁死，提交表单渲染不出来（实测 L04 forms=0）。
-  //    正确口径：只有当该关**确实存在 practice 环节**时，才要求先过练。
+  const raw = ((MOCK.DB.tasks[wid]||{})[lv.id]||{})[MOCK.EXAM_TASK];
+  const rec = UI.normalizeTaskRecFE(raw);
+  const cur = rec ? UI.currentVersion(rec) : null;
   const hasPractice = !!(lv.stages && lv.stages.practice);
   const taskAll = hasPractice ? MOCK.practiceDone(wid,lv.id) : true;
   const rejected = rec&&rec.status==='rejected';
+  const required = shotRequiredUI(MOCK.EXAM_TASK);
   const canSubmit = taskAll && ok!==true && (!rec || rejected);
 
   let body;
   if(ok){
-    body=`<div class="note ok"><b>已通过。</b>${rec&&rec.reviewNote?('导师点评：'+esc(rec.reviewNote)):'考核已由带教导师确认。'}</div>`;
+    body=`<div class="note ok"><b>已通过。</b>${cur&&cur.reviewNote?('导师点评：'+esc(cur.reviewNote)):'考核已由带教导师确认。'}</div>`
+      + (cur&&cur.shots&&cur.shots.length?UI.shotsHTML(cur.shots, __shotCache, {}):'');
   }else if(!taskAll){
     body=`<div class="tcard lock">
       <div class="tcard-h"><span class="tag lock">未开放</span><b>先通过本关任务卡，才能提交考核</b></div>
@@ -332,7 +371,8 @@ function examBlock(wid, lv, no){
   }else if(rec&&rec.status==='submitted'){
     body=`<div class="tcard wait">
       <div class="tcard-h">${UI.taskTagHTML(rec)}<b>考核已提交</b></div>
-      <p class="req">提交说明：${esc(rec.note||'—')}</p>
+      <p class="req">提交说明：${esc(cur&&cur.note||'—')}</p>
+      ${cur&&cur.shots&&cur.shots.length?`<div class="shotgrid" data-shotkeys="${esc(JSON.stringify(cur.shots.map(s=>s.key)))}"></div>`:''}
       <div class="acts"><span class="tag warn" style="align-self:center">等带教导师批改</span></div>
     </div>`;
   }else{
@@ -347,6 +387,7 @@ function examBlock(wid, lv, no){
         <div class="err">请至少写 4 个字</div>
         <div class="ok">可以提交</div>
       </div>
+      ${shotPickerHTML(MOCK.EXAM_TASK, required)}
       <button class="btn" type="submit">提交考核</button>
     </form>`;
   }
@@ -396,8 +437,55 @@ document.addEventListener('input', e=>{
   else { fld.classList.remove('good'); fld.classList.add('bad'); }
 });
 
-/* ---------- 提交（唯一写链路，走 MOCKAPI） ---------- */
-document.addEventListener('submit', e=>{
+/* ---------- 【模块 B1】截图选择 / 预览 / 移除（表单内本地暂存，提交时才上传） ----------
+   暂存表：每张 = {file, url(本地 objectURL)}。上限 3 张，超限/类型/大小即时拦截。 */
+const SHOT_MAX = 3, SHOT_MAX_BYTES = 5*1024*1024;
+const SHOT_TYPES = ['image/jpeg','image/jpg','image/png','image/webp'];
+const __shotPending = {};   // cardId -> [{file,url}]
+window.__shotPending = __shotPending;   // 供验收脚本观察/断言（只读用途）
+
+function pickShots(btn){
+  const box = btn.closest('[data-shotpick]'); if(!box) return;
+  const inp = box.querySelector('input[type="file"]'); if(inp) inp.click();
+}
+document.addEventListener('change', e=>{
+  const inp = e.target.closest && e.target.closest('.shotpick input[type="file"]');
+  if(!inp) return;
+  const box = inp.closest('[data-shotpick]');
+  const cardId = box.dataset.shotpick;
+  const list = __shotPending[cardId] = __shotPending[cardId] || [];
+  Array.prototype.forEach.call(inp.files||[], f=>{
+    if(list.length >= SHOT_MAX) return toast('截图最多 '+SHOT_MAX+' 张','err');
+    const ty = String(f.type||'').toLowerCase();
+    if(SHOT_TYPES.indexOf(ty) < 0) return toast('仅支持 JPG / PNG / WebP：'+f.name,'err');
+    if(!(f.size > 0)) return toast('文件是空的：'+f.name,'err');
+    if(f.size > SHOT_MAX_BYTES) return toast('超过 5MB：'+f.name,'err');
+    list.push({ file:f, url: URL.createObjectURL(f) });
+  });
+  inp.value = '';
+  renderShotPreview(box, cardId);
+});
+function renderShotPreview(box, cardId){
+  const list = __shotPending[cardId] || [];
+  const grid = box.querySelector('[data-shotpreview]');
+  if(!grid) return;
+  grid.innerHTML = list.map((s,i)=>`<span class="shotthumb">
+      <img src="${esc(s.url)}" alt="预览 ${i+1}">
+      <button class="btn ghost sm" type="button" title="移除" style="position:absolute;margin:-70px 0 0 70px"
+        onclick="removeShot('${esc(cardId)}',${i})">×</button>
+    </span>`).join('');
+}
+function removeShot(cardId, i){
+  const list = __shotPending[cardId] || [];
+  if(list[i] && list[i].url) URL.revokeObjectURL(list[i].url);
+  list.splice(i,1);
+  const box = document.querySelector('[data-shotpick="'+cardId+'"]');
+  if(box) renderShotPreview(box, cardId);
+}
+
+/* ---------- 提交（唯一写链路，走 MOCKAPI） ----------
+   【模块 B1/B3】提交前先把本地暂存截图逐张上传到私有 COS（上传失败即中止，不产生"提交成功但图片丢失"）。 */
+document.addEventListener('submit', async e=>{
   const form=e.target.closest && e.target.closest('form[data-card]');
   if(!form) return;
   e.preventDefault();
@@ -407,7 +495,6 @@ document.addEventListener('submit', e=>{
   const inp = form.querySelector('input[data-rule="note"]');
   const val = (inp && inp.value || '').trim();
 
-  // 前端校验（对标基线表单规则：至少 4 个字）
   const fld = form.querySelector('.fld');
   if(val.length < 4){
     if(fld){ fld.classList.remove('good'); fld.classList.add('bad'); }
@@ -417,11 +504,52 @@ document.addEventListener('submit', e=>{
   }
   if(fld){ fld.classList.remove('bad'); fld.classList.add('good'); }
 
-  // 注意： mockSubmitTask 的错误分支返回 `toast(...)` 即 undefined（基线遗留），
-  //    所以不能读返回值判断成败 —— 提交后统一按"重渲染"处理。
-  MOCKAPI.mockSubmitTask(wid, lv.id, cardId, val);
-  render();
+  // 必传截图校验（前端预检；后端仍有权威校验）
+  const box = form.querySelector('[data-shotpick="'+cardId+'"]');
+  const pending = (__shotPending[cardId] || []).slice();
+  if(box && box.dataset.required === '1' && pending.length < 1){
+    if(typeof toast==='function') toast('该任务卡要求上传至少 1 张截图','err');
+    return;
+  }
+
+  const btn = form.querySelector('button[type="submit"]');
+  const oldTxt = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = pending.length ? '上传截图中…' : '提交中…'; }
+  try{
+    // 逐张上传（live 模式真传私有 COS；沙盒模式返回描述符占位）
+    const shots = [];
+    for(const p of pending){
+      const desc = await window.liveUploadShot(lv.id, cardId, p.file);
+      shots.push(desc);
+    }
+    await Promise.resolve(MOCKAPI.mockSubmitTask(wid, lv.id, cardId, val, shots));
+    (__shotPending[cardId]||[]).forEach(s=>{ if(s.url) URL.revokeObjectURL(s.url); });
+    delete __shotPending[cardId];
+    render();
+  }catch(err){
+    if(typeof toast==='function') toast('提交失败：'+(err&&err.message?err.message:err),'err');
+    if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
+  }
 });
+
+/* ---------- 截图缩略图延迟签名（渲染后按 data-shotkeys 取短时 URL） ----------
+   为什么要延迟：签名是异步的，而 render() 是同步的；先在 HTML 里占位，
+   渲染完再批量取签名 URL 填进去，避免阻塞首屏。 */
+async function hydrateShots(){
+  const holders = document.querySelectorAll('[data-shotkeys]');
+  if(!holders.length) return;
+  const allKeys = [];
+  holders.forEach(h=>{ try{ JSON.parse(h.dataset.shotkeys||'[]').forEach(k=>allKeys.push(k)); }catch(e){} });
+  if(!allKeys.length) return;
+  await UI.signShots(allKeys);
+  holders.forEach(h=>{
+    let keys=[]; try{ keys = JSON.parse(h.dataset.shotkeys||'[]'); }catch(e){}
+    h.outerHTML = UI.shotsHTML(keys.map(k=>({key:k})), __shotCache, {});
+  });
+}
+/* 包一层：每次重绘后异步补截图缩略图。原渲染逻辑改名 renderBase，
+   新 render 只做「调 renderBase + 延迟补图」，不改变任何原有渲染行为。 */
+function render(){ renderBase.apply(this, arguments); setTimeout(hydrateShots, 0); }
 
 function fmt(s){
   if(!s) return '';

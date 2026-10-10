@@ -16,14 +16,17 @@
   <div class="pg-head">
     <span class="eyebrow">星禾云课堂</span>
     <h1>学员管理</h1>
-    <p class="sub">全部在训学员的档案总览。</p>
+    <p class="sub">编辑学员资料、调整带教老师、重置密码与换工号。</p>
   </div>
 
   <div class="card">
-    <div class="tblwrap">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="sub">共 <b id="stuCount">0</b> 名在训学员。</div>
+    </div>
+    <div class="tblwrap" style="margin-top:12px">
       <table>
         <thead><tr>
-          <th>工号</th><th>姓名</th><th>校区</th><th>导师</th><th>带教计划</th><th>当前关卡</th><th>状态</th>
+          <th>工号</th><th>姓名</th><th>校区</th><th>导师</th><th>带教计划</th><th>当前关卡</th><th>状态</th><th>操作</th>
         </tr></thead>
         <tbody id="stuRows"></tbody>
       </table>
@@ -31,9 +34,10 @@
   </div>
 
   <details class="fold">
-    <summary>本页只读</summary>
+    <summary>改工号会迁移哪些记录？</summary>
     <div class="fold-body">
-      改导师走「用户管理 <svg class="ic"><use href="#i-arrow-r"/></svg> 转移」；改关卡进度走「闯关总览 <svg class="ic"><use href="#i-arrow-r"/></svg> 代录」。
+      换工号会把该学员在用户档案、学员档案、学习进度、同频确认、任务卡提交与审核、闯关记录、转正登记等
+      全部历史记录一并迁移到新工号；迁移前自动快照，可在数据恢复中回滚。
     </div>
   </details>
 
@@ -48,34 +52,43 @@
 <script src="../assets/mock-api-live.js"></script>
 <script src="../assets/ui.js"></script>
 <script>
-/* 学员管理：基线 viewAdminStudents —— 7 列，只读
-   【P0-3 2026-10-09】改为注册 window.__rerender 重绘钩子：
-   原先在 DOMContentLoaded 内联渲染，真实数据异步到达后 liveRerender() 找不到 render/__rerender
-   -> 页面停在 mock 种子帧（校区显示「武汉校区」而非真实「郑州」）。现按全站约定拆出顶层 render()。 */
+/* 学员管理：基线 viewAdminStudents（只读 7 列）
+   【2026-10-09 第三轮·模块 A】改为可管理：
+     A1 编辑资料 / A3 改带教老师 / A4 重置密码 / A5 换工号。
+   注册 window.__rerender 重绘钩子（沿用 P0-3 约定），真实数据异步到达后重绘。 */
 document.addEventListener('DOMContentLoaded',()=>{
-  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return;
   document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-students.html');
   initNav();
   if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
-  window.__rerender = render;   // 注册给 liveRerender：真实数据到达后重绘本表
+  window.__rerender = render;
   render();
 });
 
 function render(){
-  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  if(typeof needsLoginGate==='function'&&needsLoginGate())return;
   const n = MOCK.DB.levels.length;
-  document.getElementById('stuRows').innerHTML = MOCK.DB.trainees.map(t=>{
+  const list = MOCK.DB.trainees || [];
+  document.getElementById('stuCount').textContent = list.length;
+  document.getElementById('stuRows').innerHTML = list.map(t=>{
     const cur = MOCK.currentLevelOf(t.id);
     const curTxt = cur.no > n ? '已通关' : ('第 '+cur.no+' 关 · '+cur.title);
     const planName = (MOCK.planOf(t.planId)||{}).name || '—';
+    const wid = UI.esc(t.id);
     return `<tr>
-      <td><b>${UI.esc(t.id)}</b></td>
+      <td><b>${wid}</b></td>
       <td>${UI.esc(t.name)}</td>
-      <td>${UI.esc(t.dept)}</td>
+      <td>${UI.esc(t.dept||'—')}</td>
       <td>${UI.esc((MOCK.mentorOf(t.mentorId)||{}).name||'—')}</td>
       <td>${UI.esc(planName)}</td>
       <td>${UI.esc(curTxt)}</td>
       <td>${MOCK.DB.signoffs[t.id]?'<span class="tag ok">已出师</span>':'<span class="tag">培养中</span>'}</td>
+      <td>
+        <button class="btn ghost sm" onclick="openEditStudent('${wid}')">编辑</button>
+        <button class="btn ghost sm" onclick="openChangeMentor('${wid}')">改导师</button>
+        <button class="btn ghost sm" onclick="openResetPwReal('${wid}')">重置密码</button>
+        <button class="btn ghost sm" onclick="openMigrateWid('${wid}')">换工号</button>
+      </td>
     </tr>`;
   }).join('');
 }

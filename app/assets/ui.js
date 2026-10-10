@@ -264,6 +264,63 @@ function taskTagHTML(rec){
   return '<span class="tag ghost">未提交</span>';
 }
 
+/* ---------- 【2026-10-09 第三轮·模块 B】截图展示与版本渲染（学员/导师/管理员共用） ----------
+   数据源：normalizeTaskRec 后的 rec { status, latest, reviewedVersion, versions:[{v,note,at,by,byName,shots:[]}] }。
+   旧记录兼容：若 rec 是旧单对象（无 versions），调用 normalizeTaskRec 前端兜底归一。 */
+
+/* 前端兜底归一（与后端同口径，防止某页面拿到未归一数据） */
+function normalizeTaskRecFE(rec){
+  if(!rec) return rec;
+  if(Array.isArray(rec.versions)) return rec;
+  return { status: rec.status, latest: 1, reviewedVersion: rec.reviewedVersion,
+           versions: [{ v:1, note:rec.note||'', at:rec.at, by:rec.by, byName:rec.byName||'',
+                        shots: rec.shots || [], reviewNote: rec.reviewNote }] };
+}
+/* 当前应展示的版本号（默认最新） */
+function currentVersion(rec, showV){
+  const r = normalizeTaskRecFE(rec); if(!r) return null;
+  const v = Number(showV || r.latest || 1);
+  return (r.versions||[]).find(x=>x.v===v) || (r.versions||[])[(r.versions||[]).length-1] || null;
+}
+
+/* 只读截图缩略区：urls 为 {key: signedUrl}，缺失时显示占位。
+   onopen 用于点击放大（沿用 openShotViewer）。 */
+function shotsHTML(shots, urls, opts){
+  opts = opts || {};
+  const list = Array.isArray(shots) ? shots : [];
+  if(!list.length) return opts.empty ? `<div class="note">${opts.empty}</div>` : '';
+  return `<div class="shotgrid">${list.map((s,i)=>{
+    const url = (urls && urls[s.key]) || '';
+    const name = esc(s.name || ('截图'+(i+1)));
+    return url
+      ? `<a class="shotthumb" href="javascript:;" onclick="openShotViewer('${esc(s.key)}')" title="${name}"><img src="${esc(url)}" alt="${name}" loading="lazy"></a>`
+      : `<span class="shotthumb miss" title="${name}">图片待加载</span>`;
+  }).join('')}</div>`;
+}
+
+/* 截图放大查看（单图） */
+let __shotCache = {};
+window.__shotCache = __shotCache;
+function openShotViewer(key){
+  const url = __shotCache[key] || '';
+  openModal(modal('查看截图',
+    url ? `<div style="text-align:center"><img src="${esc(url)}" alt="截图" style="max-width:100%;border-radius:12px;border:2px solid var(--line)"></div>`
+        : `<div class="note warn">图片地址已过期，请关闭后重新打开。</div>`,
+    '<button class="btn ghost" onclick="closeModal()">关闭</button>'));
+}
+/* 批量取签名 URL（按身份可见范围，后端短时 URL）。返回写入 __shotCache。 */
+async function signShots(keys){
+  const uniq = (keys||[]).filter((k,i,a)=>k && a.indexOf(k)===i);
+  if(!uniq.length) return {};
+  let urls = {};
+  try{
+    const r = await MOCKAPI.mockShotSign(uniq);
+    urls = (r && r.urls) || {};
+  }catch(e){ console.warn('[shots] 签名失败：'+e.message); }
+  Object.keys(urls).forEach(k=>{ __shotCache[k] = urls[k]; });
+  return urls;
+}
+
 /* ---------- 表格 ---------- */
 // 基线 8 张表统一套 .tblwrap 横向滚动（手机端溢出已归零，见 check-mobile.js）
 function tbl(headers,rows,cls){
@@ -322,7 +379,8 @@ function pendingList(wid){
     Object.keys(byLv).forEach(lvId=>{
       const one=byLv[lvId]||{};
       Object.keys(one).forEach(taskId=>{
-        const r=one[taskId]; if(!r||r.status!=='submitted') return;
+        const r=normalizeTaskRecFE(one[taskId]); if(!r||r.status!=='submitted') return;
+        const curV=currentVersion(r);
         const isExam=taskId===MOCK.EXAM_TASK;
         const def=MOCK.TASK_DEFS.find(d=>d.id===taskId);
         const lv=MOCK.levelOf(lvId);
@@ -330,9 +388,11 @@ function pendingList(wid){
           tid:w, lvId, taskId, isExam,
           traineeName:t.name,
           label: isExam ? ('第 '+lvId.slice(1)+' 关考核') : ((def&&def.title)||taskId),
-          note: r.note||'', at: r.at||'',
+          note: (curV&&curV.note)||'', at: (curV&&curV.at)||'',
+          shots: (curV&&curV.shots)||[],
           lvTitle: (lv&&lv.title)||'',
-          by: r.byName||w
+          by: (curV&&curV.byName)||w,
+          version: (curV&&curV.v)||1
         });
       });
     });
@@ -531,24 +591,35 @@ function openJourney(tid){
   return true;
 }
 // 2. 批改提交 openAdminReview（L1820）—— admin 兜底，显示 req 与 attempts
+/* 【2026-10-09 第三轮·模块 B4/B5】在原有审核弹层内展示提交截图与历史版本。
+   要求：不遮挡原任务描述与审核操作；保留原通过/打回流程；不新增独立审核系统。 */
 function openAdminReview(tid){
   const t=MOCK.traineeOf(tid); if(!t) return toast('找不到该学员','err');
   const pend=[];
   Object.keys(MOCK.DB.tasks[tid]||{}).forEach(lvId=>{
     const byT=MOCK.DB.tasks[tid][lvId];
     Object.keys(byT).forEach(tid2=>{
-      const r=byT[tid2];
+      const r=normalizeTaskRecFE(byT[tid2]);
       if(r&&r.status==='submitted') pend.push({lvId,taskId:tid2,...r});
     });
   });
   const items=pend.length?pend.map(p=>{
     const def=MOCK.TASK_DEFS.find(d=>d.id===p.taskId);
-    const stage=p.taskId===MOCK.EXAM_TASK?'exam':'practice';
-    const attempts=(p.reviewedAt?2:1);
+    const attempts=(p.versions&&p.versions.length)||1;
+    const curV=currentVersion(p);
+    const keys=(curV&&curV.shots||[]).map(s=>s.key);
     return `<div class="tcard wait">
-      <div class="tcard-h"><span class="tag warn pulse">${MOCK.TASK_ST_CN.submitted}</span><b>${p.taskId===MOCK.EXAM_TASK?p.lvId+' 关考核':esc((def&&def.title)||p.taskId)}</b></div>
-      <p class="req">${esc(p.note||'（无说明）')}</p>
-      <p class="sub">提交于 ${esc(p.at||'')} · 第 ${attempts} 次${p.reviewNote?` · 上次打回：${esc(p.reviewNote)}`:''}</p>
+      <div class="tcard-h"><span class="tag warn pulse">${MOCK.TASK_ST_CN.submitted}</span><b>${p.taskId===MOCK.EXAM_TASK?p.lvId+' 关考核':esc((def&&def.title)||p.taskId)}</b>
+        <span class="tag ghost">第 ${attempts} 版</span></div>
+      <p class="req">${esc(curV&&curV.note||p.note||'（无说明）')}</p>
+      <p class="sub">提交于 ${esc(curV&&curV.at||p.at||'')}${p.reviewNote?` · 上次打回：${esc(p.reviewNote)}`:''}</p>
+      ${keys.length?`<div class="shotgrid" data-shotkeys="${esc(JSON.stringify(keys))}"></div>`:`<div class="note">本次提交未附截图。</div>`}
+      ${attempts>1?`<details class="fold" style="margin-top:var(--s3)"><summary>查看历史版本（${attempts-1} 版）</summary><div class="fold-body">${
+        p.versions.slice(0,-1).map(v=>`<div class="shotver"><h4>第 ${v.v} 版${v.reviewNote?' · 打回：'+esc(v.reviewNote):''}</h4>
+          <div class="meta">${esc(v.at||'')} · ${esc(v.byName||'')}</div>
+          <div class="sub" style="margin-top:4px">${esc(v.note||'—')}</div>
+          ${v.shots&&v.shots.length?`<div class="shotgrid" data-shotkeys="${esc(JSON.stringify(v.shots.map(s=>s.key)))}"></div>`:''}
+        </div>`).join('')}</div></details>`:''}
       <div class="acts">
         <button class="btn sm" onclick="mockReview('${tid}','${p.lvId}','${p.taskId}',1)">通过</button>
         <button class="btn sm ghost danger" onclick="askRejectReason('${tid}','${p.lvId}','${p.taskId}')">打回</button>
@@ -558,7 +629,22 @@ function openAdminReview(tid){
     `<div class="note warn"><b>${esc(t.name)}（${t.id}）</b> · 待批改 ${pend.length} 条 · 你是管理员（兜底权限，可审练+考）
      <br>管理员弹层比其他两处<b>多显示</b> req（学员提交说明）与 attempts（第几次提交）。</div>${items}`,
     '<button class="btn ghost" onclick="closeModal()">关闭</button>'));
+  setTimeout(hydrateShotsModal, 0);
   return true;
+}
+/* 弹层内截图延迟签名（与页面层 hydrateShots 同逻辑，作用于 #modal 内） */
+async function hydrateShotsModal(){
+  const root = document.getElementById('modal'); if(!root) return;
+  const holders = root.querySelectorAll('[data-shotkeys]');
+  if(!holders.length) return;
+  const allKeys=[];
+  holders.forEach(h=>{ try{ JSON.parse(h.dataset.shotkeys||'[]').forEach(k=>allKeys.push(k)); }catch(e){} });
+  if(!allKeys.length) return;
+  await signShots(allKeys);
+  holders.forEach(h=>{
+    let keys=[]; try{ keys=JSON.parse(h.dataset.shotkeys||'[]'); }catch(e){}
+    h.outerHTML = shotsHTML(keys.map(k=>({key:k})), __shotCache, {});
+  });
 }
 // 3. 开启强制解锁？ toggleGate（L1860）—— 基线默认关、开启需确认
 function openGateConfirm(){
@@ -644,28 +730,177 @@ function openResetPw(wid){
     '<button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="closeModal();toast(\'已重置\');">确认重置</button>'));
 }
 // 7. 转移徒弟 openTransfer（L1667）
-/* 注意：【2026-10-04 · 阶段四决策 3.=B】平台 bug 未解 -> **UI 标注「暂不可用」并禁用确认按钮**。
-   事实核对（本轮已复核）：
-     · 后端 `adminTransferTrainee` 在 $LATEST 的 handle() 分发**是正确的**（源码有该分支）；
-     · `buildTag` 探针证实执行实例跑的是最新构建；
-     · 但**执行实例仍返「未知动作」** -> 判定为**平台侧问题**（分发未生效）。
-   决策：真实调用已接（live 层 mockTransfer -> adminTransferTrainee），但**不给用户可点的按钮**，
-        避免点了必然报错。待平台修复后，去掉 disabled 即可（只改这一处）。
-   红线：绝不删除该功能代码 —— 后端修好后可立即恢复。 */
+/* 【2026-10-09 第三轮·模块 A3】恢复可用。
+   历史：2026-10-04 因「云函数执行实例返回未知动作」判为平台侧问题而禁用。
+   本轮核对：后端 adminTransferTrainee 已注册进 handle() 白名单且函数体角色校验齐全；
+   同时「编辑资料 / 改导师」都复用同一 action adminUserUpsert（更稳），
+   故此入口改为内联选择新导师后走同一接口，不再依赖那个历史可疑的专用 action。 */
 function openTransfer(wid){
   const t=MOCK.traineeOf(wid); if(!t) return;
   const others=MOCK.DB.mentors.filter(m=>m.id!==t.mentorId);
   if(!others.length) return toast('系统里没有其他导师可转移，请先建导师','warn');
-  openModal(modal('转移徒弟（暂不可用）',
-    `<div class="note warn"><b>${esc(t.name)}（${wid}）</b> 当前导师：${esc((MOCK.mentorOf(t.mentorId)||{}).name||t.mentorId)}</div>
-     ${fld('转到 *',`<select id="trTo" disabled><option value="">请选择</option>
+  openModal(modal('转移徒弟',
+    `<div class="note"><b>${esc(t.name)}（${wid}）</b> 当前导师：<b>${esc((MOCK.mentorOf(t.mentorId)||{}).name||t.mentorId)}</b></div>
+     ${fld('转到 *',`<select id="trTo"><option value="">请选择</option>
        ${others.map(m=>`<option value="${m.id}">${m.name}（${m.id}）</option>`).join('')}</select>`,
-       '转移后：越权判定立刻改用新导师；历史学习/同频/出师记录保留')}
-     <div class="note danger"><b>暂不可用</b>：后端 <code>adminTransferTrainee</code> 的云函数执行实例返回「未知动作」，
-       属<b>平台侧问题</b>（代码分发正确、构建已是最新）。<b>在平台修复前，此功能保持禁用</b>，
-       请暂时用「用户管理 <svg class='ic'><use href='#i-arrow-r'/></svg> 删除后重建」或联系管理员线下调整。功能代码已保留，平台修复后即可启用。</div>`,
-    '<button class="btn ghost" onclick="closeModal()">关闭</button><button class="btn" disabled title="平台修复后启用">确认转移</button>'));
+       '转移后：新导师可审核其后续任务；原导师不能再操作该学员当前任务；历史学习/同频/出师记录完整保留')}
+     <div class="note warn">不会重置学习进度；复用「编辑资料」相同的后端接口。</div>`,
+    `<button class="btn ghost" onclick="closeModal()">取消</button>
+     <button class="btn" onclick="doChangeMentor('${esc(wid)}')">确认转移</button>`));
 }
+/* ---------- 【2026-10-09 第三轮·模块 A】管理员学员管理 ----------
+   A1 编辑学员资料 / A3 修改带教老师 / A4 重置密码 / A5 工号迁移入口。
+   设计原则：复用现有 mock/live 接线（mockAddUser → adminUserUpsert 同一 action），
+   只在 UI 层补齐字段与入口，不新增账号状态体系、不改业务规则。 */
+
+/* 14 个固定校区（与后端 CAMPUS_WHITELIST 逐字一致，改一处必须同步另一处）。 */
+const CAMPUS_LIST = ["武汉","合肥","郑州","龙校","成都","重庆","西安","大连","南京","杭州","广州","南昌","福州","昆明"];
+
+/* A1+A3：编辑学员资料弹层。wid 不可在此处改（改工号走 A5 迁移专用入口，风险等级不同）。 */
+function openEditStudent(wid){
+  const u = MOCK.userOf(wid); if(!u) return toast('学员不存在：'+wid,'err');
+  const t = MOCK.traineeOf(wid) || {};
+  const curDept = u.dept || t.dept || '';
+  const curMentor = u.mentorId || t.mentorId || '';
+  const curPlan = u.planId || t.planId || '';
+  // 历史校区不在名单内：照实回显并标红提示，绝不自动替换（A2 红线）
+  const legacy = curDept && CAMPUS_LIST.indexOf(curDept) < 0;
+  const options = (legacy ? `<option value="${esc(curDept)}" selected>${esc(curDept)}（历史值·需人工确认）</option>` : '')
+    + CAMPUS_LIST.map(c=>`<option value="${c}"${c===curDept?' selected':''}>${c}</option>`).join('');
+  const mentorOpts = `<option value="">请选择</option>` + MOCK.DB.mentors.map(m=>
+    `<option value="${m.id}"${m.id===curMentor?' selected':''}>${esc(m.name)}（${m.id}）</option>`).join('');
+  const planOpts = `<option value="">不绑定</option>` + MOCK.DB.plans.map(p=>
+    `<option value="${p.id}"${p.id===curPlan?' selected':''}>${esc(p.name)}</option>`).join('');
+  openModal(modal('编辑学员资料',
+    `<div class="note">工号 <b>${esc(wid)}</b> 不可在此修改；如需换工号请用「换工号」入口（会迁移全部历史记录）。</div>
+     ${fld('姓名 *',`<input id="esName" value="${esc(u.name||'')}">`)}
+     ${fld('校区 *',`<select id="esDept">${options}</select>`,
+       legacy ? '<span class="err">该学员当前校区不在支持名单内，请从下拉中重新选择（不会自动替换）</span>'
+              : '仅支持 14 个固定校区')}
+     ${fld('带教老师 *',`<select id="esMentor">${mentorOpts}</select>`,'仅可指定导师角色；改后新导师接管后续审核')}
+     ${fld('带教计划',`<select id="esPlan">${planOpts}</select>`)}
+     <div class="note warn">保存后学员端、导师端、管理端读取同一份最新资料；学习进度与历史记录不受影响。</div>`,
+    `<button class="btn ghost" onclick="closeModal()">取消</button>
+     <button class="btn" onclick="doEditStudent('${esc(wid)}')">保存</button>`));
+}
+async function doEditStudent(wid){
+  const name = (document.getElementById('esName').value||'').trim();
+  const dept = document.getElementById('esDept').value;
+  const mentorId = document.getElementById('esMentor').value;
+  const planId = document.getElementById('esPlan').value;
+  if(name.length < 2) return toast('姓名至少 2 个字','err');
+  if(!dept) return toast('请选择校区','err');
+  if(!mentorId) return toast('学员必须挂导师','err');
+  if(typeof isMentorId === 'function' && !isMentorId(mentorId)) return toast('目标不是导师角色，不能作为带教老师','err');
+  try{
+    await mockEditStudent(wid, { name, dept, mentorId, planId });
+    toast('已保存 '+name+' 的资料','ok');
+    closeModal(); rerenderAfterWrite();
+  }catch(e){ toast('保存失败：'+(e&&e.message?e.message:e),'err'); }
+}
+/* 判断某工号是否为导师角色（前端预检，后端仍有权威校验） */
+function isMentorId(wid){
+  const u = MOCK.userOf(wid);
+  return !!(u && u.role === 'mentor');
+}
+
+/* A3 独立入口：只改带教老师（详情页/列表快捷操作都可用） */
+function openChangeMentor(wid){
+  const u = MOCK.userOf(wid); if(!u) return;
+  const t = MOCK.traineeOf(wid) || {};
+  const cur = u.mentorId || t.mentorId || '';
+  const others = MOCK.DB.mentors.filter(m=>m.id!==cur);
+  if(!others.length) return toast('没有其他导师可指派，请先创建导师','warn');
+  openModal(modal('修改带教老师',
+    `<div class="note"><b>${esc(u.name||wid)}（${wid}）</b> 当前导师：<b>${esc((MOCK.mentorOf(cur)||{}).name||cur||'—')}</b></div>
+     ${fld('新带教老师 *',`<select id="cmTo"><option value="">请选择</option>
+       ${others.map(m=>`<option value="${m.id}">${esc(m.name)}（${m.id}）</option>`).join('')}</select>`,
+       '改后：新导师可审核其后续任务；原导师不能再操作该学员当前任务；历史审核记录完整保留')}
+     <div class="note warn">不会重置学习进度；此操作复用与「编辑资料」相同的后端接口。</div>`,
+    `<button class="btn ghost" onclick="closeModal()">取消</button>
+     <button class="btn" onclick="doChangeMentor('${esc(wid)}')">确认修改</button>`));
+}
+async function doChangeMentor(wid){
+  const to = document.getElementById('cmTo').value;
+  if(!to) return toast('请选择新带教老师','err');
+  const u = MOCK.userOf(wid) || {}, t = MOCK.traineeOf(wid) || {};
+  try{
+    await mockEditStudent(wid, { name: u.name, dept: u.dept || t.dept, mentorId: to, planId: u.planId || t.planId });
+    toast('已改到 '+(MOCK.mentorOf(to)||{}).name,'ok');
+    closeModal(); rerenderAfterWrite();
+  }catch(e){ toast('修改失败：'+(e&&e.message?e.message:e),'err'); }
+}
+
+/* A4：重置密码（接真实 action，不再只弹 toast） */
+function openResetPwReal(wid){
+  openModal(modal('重置密码',
+    `<div class="note warn"><b>${esc(wid)}</b> 的密码将被重置。新密码至少 6 位，服务端以 <code>scrypt</code> 哈希存储，不保存明文、不写入日志。</div>
+     ${fld('新密码 *',`<input id="rpPw" type="password" data-rule="pwd" placeholder="至少 6 位">`,'重置后该账号可用新密码登录；学习记录不受影响')}`,
+    `<button class="btn ghost" onclick="closeModal()">取消</button>
+     <button class="btn" onclick="doResetPwReal('${esc(wid)}')">确认重置</button>`));
+}
+async function doResetPwReal(wid){
+  const pw = document.getElementById('rpPw').value || '';
+  if(pw.length < 6) return toast('密码至少 6 位','err');
+  try{
+    await mockResetPw(wid, pw);
+    toast('已重置 '+wid+' 的密码','ok');
+    closeModal();
+  }catch(e){ toast('重置失败：'+(e&&e.message?e.message:e),'err'); }
+}
+
+/* A5：换工号（工号迁移）—— 两段式：先 dry-run 预览，确认后才 apply。
+   红线：迁移会改动 users/learn/gates/tasks/journey/trainees 等多张表；
+   必须让管理员看到「将影响哪些表、多少条记录」再确认。 */
+async function openMigrateWid(wid){
+  const u = MOCK.userOf(wid); if(!u) return;
+  if(u.role !== 'student') return toast('本轮仅支持迁移学员工号','err');
+  openModal(modal('换工号（迁移）',
+    `<div class="note danger"><b>高风险操作</b>：换工号会把该学员在 <code>users / trainees / learn / gates / tasks / journey</code>
+       等表中的全部历史记录从旧工号迁移到新工号。迁移前会自动生成快照，可在数据恢复中回滚。</div>
+     <div class="note">当前：<b>${esc(u.name||'')}（${wid}）</b>　校区：${esc(u.dept||'—')}</div>
+     ${fld('新工号 *',`<input id="mwNew" data-rule="wid" placeholder="如 S0100" autocomplete="off">`,
+       '字母开头、字母数字组合；若已被占用会被拒绝，不会覆盖')}
+     <div id="mwPreview"></div>`,
+    `<button class="btn ghost" onclick="closeModal()">取消</button>
+     <button class="btn" onclick="doMigratePreview('${esc(wid)}')">预览影响</button>
+     <button class="btn danger" id="mwApplyBtn" disabled onclick="doMigrateApply('${esc(wid)}')">确认迁移</button>`));
+}
+async function doMigratePreview(wid){
+  const nw = (document.getElementById('mwNew').value||'').trim();
+  if(!/^[A-Za-z][A-Za-z0-9]{0,11}$/.test(nw)) return toast('新工号格式不合法（字母开头，字母数字组合）','err');
+  if(nw === wid) return toast('新旧工号相同，无需迁移','err');
+  const box = document.getElementById('mwPreview');
+  box.innerHTML = '<div class="note">正在预览…</div>';
+  try{
+    const r = await mockMigrateWid(wid, nw, false);
+    if(r && r.error){ box.innerHTML = `<div class="note err">${esc(r.error)}</div>`; return; }
+    const tables = (r && r.changedTables) || [];
+    const counts = (r && r.counts) || {};
+    // counts 兼容两种结构：后端 {table:{renamed:n}}、沙盒 {table:n}
+    const nOf = tn => {
+      const c = counts[tn];
+      if(c == null) return 0;
+      if(typeof c === 'number') return c;
+      return c.renamed || 0;
+    };
+    const rows = tables.map(tn=>`<li>${esc(tn)}：命中 ${nOf(tn)} 条</li>`).join('');
+    box.innerHTML = `<div class="note ok">预览完成（未写入任何数据）：将影响 <b>${tables.length}</b> 张表</div>
+      ${rows?`<ul class="sub" style="margin:6px 0 0 18px">${rows}</ul>`:''}
+      <div class="note warn">确认无误后点「确认迁移」。迁移期间请不要重复提交。</div>`;
+    const btn = document.getElementById('mwApplyBtn'); if(btn) btn.disabled = false;
+  }catch(e){ box.innerHTML = `<div class="note err">预览失败：${esc(e&&e.message?e.message:e)}</div>`; }
+}
+async function doMigrateApply(wid){
+  const nw = (document.getElementById('mwNew').value||'').trim();
+  try{
+    const r = await mockMigrateWid(wid, nw, true);
+    if(r && r.error) return toast(r.error,'err');
+    toast('已迁移 '+wid+' → '+nw,'ok');
+    closeModal(); rerenderAfterWrite();
+  }catch(e){ toast('迁移失败：'+(e&&e.message?e.message:e),'err'); }
+}
+
 // 8. 删除课程（逐字输入完整课名）L1531-1552
 function openDeleteCourse(cid){
   const c=MOCK.courseOf(cid); if(!c) return;
@@ -759,5 +994,12 @@ window.UI={topbarHTML,initTopbar,refreshTodoDot,mxCell,mxLegend,stagebar,rdBadge
   openReadiness,openAddUser,onRoleChange,openResetPw,openTransfer,openDeleteCourse,openTimeline,
   openSignoff,openPlayer,openSync,openQuiz,gradeQuiz,
   pendingList,bulkListHTML,bulkSkipHTML,openBulkPass,
-  exportCSV,exportLearningReport,exportCertCSV,esc,roleCN,NAV_ADMIN};
-Object.assign(window,{openPlayer,openSync,openQuiz,gradeQuiz,openBulkPass,doBulkPass,runBulkPass,readinessBadge,stagebar,rdBadgeGrid,readinessMeta});
+  exportCSV,exportLearningReport,exportCertCSV,esc,roleCN,NAV_ADMIN,
+  openEditStudent,doEditStudent,openChangeMentor,doChangeMentor,
+  openResetPwReal,doResetPwReal,openMigrateWid,doMigratePreview,doMigrateApply,
+  isMentorId,CAMPUS_LIST,
+  normalizeTaskRecFE,currentVersion,shotsHTML,signShots,openShotViewer};
+Object.assign(window,{openPlayer,openSync,openQuiz,gradeQuiz,openBulkPass,doBulkPass,runBulkPass,readinessBadge,stagebar,rdBadgeGrid,readinessMeta,
+  openEditStudent,doEditStudent,openChangeMentor,doChangeMentor,openResetPwReal,doResetPwReal,
+  openMigrateWid,doMigratePreview,doMigrateApply,isMentorId,CAMPUS_LIST,
+  normalizeTaskRecFE,currentVersion,shotsHTML,signShots,openShotViewer});

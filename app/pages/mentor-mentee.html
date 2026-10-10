@@ -131,6 +131,21 @@ function render(){
   renderHero(t, u, name, cur, days, mentor);
   renderLevels(t, u, name);
   if(typeof injectIcons==='function') injectIcons();
+  setTimeout(hydrateShotThumbs, 0);
+}
+
+/* 【模块 B4】渲染后异步补截图缩略图（签名是异步的，先占位后填充） */
+async function hydrateShotThumbs(){
+  const holders = document.querySelectorAll('[data-shotkeys]');
+  if(!holders.length) return;
+  const keys = [];
+  holders.forEach(h=>{ try{ JSON.parse(h.dataset.shotkeys||'[]').forEach(k=>keys.push(k)); }catch(e){} });
+  if(!keys.length) return;
+  await UI.signShots(keys);
+  holders.forEach(h=>{
+    let ks=[]; try{ ks=JSON.parse(h.dataset.shotkeys||'[]'); }catch(e){}
+    h.outerHTML = UI.shotsHTML(ks.map(k=>({key:k})), window.__shotCache || {}, {});
+  });
 }
 
 /* ---------- 学员速览 ---------- */
@@ -236,7 +251,23 @@ function stageDesc(lv){
   return parts.join(' · ') || '—';
 }
 
-function recOf(lvId, tid){ return ((MOCK.DB.tasks[WID]||{})[lvId]||{})[tid]; }
+/* 【模块 B5】归一化后返回：兼容旧单对象结构；同时提供 note/at/reviewNote 等扁平字段方便模板直读。 */
+function recOf(lvId, tid){
+  const raw = ((MOCK.DB.tasks[WID]||{})[lvId]||{})[tid];
+  const r = UI.normalizeTaskRecFE(raw);
+  if(!r) return raw;
+  const cur = UI.currentVersion(r) || {};
+  return Object.assign({}, r, {
+    note: cur.note || '', at: cur.at || '', byName: cur.byName || '',
+    shots: cur.shots || [], version: cur.v || 1,
+    reviewNote: cur.reviewNote || r.reviewNote || ''
+  });
+}
+/* 截图缩略区（导师查看学员提交的截图；data-shotkeys 由页面统一延迟签名） */
+function shotsBlock(r){
+  const keys = ((r && r.shots) || []).map(s=>s.key);
+  return keys.length ? `<div class="shotgrid" data-shotkeys="${esc(JSON.stringify(keys))}"></div>` : '';
+}
 
 function unlockedBody(lv){
   const blocks = [];
@@ -287,6 +318,7 @@ function unlockedBody(lv){
         ${st==='rejected'&&r.reviewNote?`<div class="rejnote">打回原因：${esc(r.reviewNote)}</div>`:''}
         ${st==='passed'&&r.reviewNote?`<div class="sub">批改意见：${esc(r.reviewNote)}</div>`:''}
         ${r&&r.note?`<p class="sub">提交说明：${esc(r.note)}</p>`:''}
+        ${shotsBlock(r)}
         <p class="sub">${r&&r.at?`${esc(fmt(r.at))} 提交`:''}${r&&r.reviewAt?` · ${esc(fmt(r.reviewAt))} ${esc(r.reviewedByName||'')} ${st==='passed'?'通过':'打回'}`:''}${(!r||!r.at)&&st!=='passed'?'<span class="hint">尚未提交</span>':''}</p>
         ${st==='submitted'?`<div class="acts"><button class="btn sm" data-rev="${esc(lv.id)}|${esc(d.id)}">批改</button>
           <button class="btn sm ghost danger" data-rev="${esc(lv.id)}|${esc(d.id)}|rej">打回</button></div>`:''}
@@ -309,6 +341,7 @@ function unlockedBody(lv){
       ${st==='rejected'&&r.reviewNote?`<div class="rejnote">打回原因：${esc(r.reviewNote)}</div>`:''}
       ${st==='passed'&&r.reviewNote?`<div class="sub">批改意见：${esc(r.reviewNote)}</div>`:''}
       ${r&&r.note?`<p class="sub">提交说明：${esc(r.note)}</p>`:''}
+      ${shotsBlock(r)}
       <p class="sub">${r&&r.at?`${esc(fmt(r.at))} 提交`:''}${r&&r.reviewAt?` · ${esc(fmt(r.reviewAt))} ${esc(r.reviewedByName||'')} ${st==='passed'?'通过':'打回'}`:''}</p>
       ${st==='submitted'?`<div class="acts"><button class="btn sm" data-rev="${esc(lv.id)}|${esc(MOCK.EXAM_TASK)}">批改</button>
         <button class="btn sm ghost danger" data-rev="${esc(lv.id)}|${esc(MOCK.EXAM_TASK)}|rej">打回</button></div>`:''}

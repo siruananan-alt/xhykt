@@ -86,7 +86,7 @@ function render(){
       <td>${fifth}</td>
       <td>${UI.esc(u.lastCheckin||'未打卡')}</td>
       <td>
-        <button class="btn ghost sm" onclick="openResetPw('${UI.esc(u.wid)}')">重置密码</button>
+        <button class="btn ghost sm" onclick="openResetPwReal('${UI.esc(u.wid)}')">重置密码</button>
         ${u.wid==='admin'?'':`<button class="btn ghost sm" onclick="askDelUser('${UI.esc(u.wid)}','${UI.esc(u.name||'')}','${UI.esc(u.role||'')}')">删除</button>`}
         ${u.role==='student'?`<button class="btn ghost sm" onclick="openTransfer('${UI.esc(u.wid)}')">转移</button>`:''}
       </td>

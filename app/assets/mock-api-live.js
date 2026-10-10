@@ -316,6 +316,36 @@ const liveSetChapterPdf = liveWrite('adminChapterPdf', (cid, name, url) => ({ ci
 /* 删章节：后端会连带删 COS 视频对象、但保留学员学习记录。 */
 const liveDelChapter = liveWrite('adminChapterDelete', (cid, chid) => ({ cid, chid }));
 
+/* 【2026-10-09 第三轮·模块 B3】作业截图上传（真实链路）：单张 ≤5MB，直接 PUT 到私有对象。
+   注意：函数名加 Real 后缀 —— 因为本文件的函数声明会提升到全局并**覆盖** mock-api.js 的同名沙盒实现。
+     若直接叫 liveUploadShot，沙盒模式（LIVE.enabled=false）也会拿到这个 live 版本，
+     一调用就抛「当前是沙盒模式」→ 沙盒无法演示。故只在 wireLiveWrites 里显式挂 window。 */
+async function liveUploadShotReal(levelId, taskId, file){
+  if(!LIVE.enabled) throw new Error('当前是沙盒模式，无法真正上传（沙盒只演示界面）');
+  if(!file) throw new Error('没有选文件');
+  const ALLOW = ['image/jpeg','image/jpg','image/png','image/webp'];
+  const ty = String(file.type || '').toLowerCase();
+  if(ALLOW.indexOf(ty) < 0) throw new Error('仅支持 JPG / PNG / WebP');
+  if(!(file.size > 0)) throw new Error('文件是空的');
+  if(file.size > 5*1024*1024) throw new Error('截图超过 5MB 上限：' + file.name);
+  const init = await liveApi('uploadInitShot', { levelId, taskId, type: ty, size: file.size, name: file.name });
+  if(init && init.error) throw new Error(init.error);
+  const put = await fetch(init.url, {
+    method: 'PUT',
+    headers: init.token ? { 'x-cos-security-token': init.token } : {},
+    body: file
+  });
+  if(!put.ok) throw new Error('截图上传失败 HTTP ' + put.status);
+  /* 【上线阻断修复】PUT 完成后必须调 uploadCompleteShot：服务端 HEAD 对象核对
+     真实存在性 / 真实大小 / 真实类型，通过后才返回服务端确认过的描述符；
+     提交任务时后端只认「已确认」的截图，前端声明的 size/type 不再参与判断。 */
+  const fin = await liveApi('uploadCompleteShot', { levelId, taskId, keys: [init.key] });
+  if(fin && fin.error) throw new Error(fin.error);
+  const got = fin && Array.isArray(fin.shots) && fin.shots[0];
+  if(!got) throw new Error('截图完成确认失败，请重新上传');
+  return { key: got.key, type: got.type, size: got.size, name: got.name };
+}
+
 /* 把当前 window.MOCKAPI 的写函数替换为真实实现（仅当 LIVE.enabled） */
 function wireLiveWrites(){
   if(!LIVE.enabled) return false;
@@ -327,9 +357,11 @@ function wireLiveWrites(){
       tid, levelId, taskId, pass: pass === true,
       note: (typeof window.__rejNote === 'string' && window.__rejNote) || ''
     })),
-    // submitTask(tid, levelId, taskId, note) —— tid 由 token 决定，后端忽略
-    mockSubmitTask: liveWrite('submitTask', (tid, levelId, taskId, note)=>({
-      levelId, taskId, note: String(note || '')
+    // submitTask(tid, levelId, taskId, note, shots) —— tid 由 token 决定，后端忽略
+    // 【模块 B1/B5】shots 为「已上传完成的截图描述符」数组，后端强校验归属/类型/大小/张数
+    mockSubmitTask: liveWrite('submitTask', (tid, levelId, taskId, note, shots)=>({
+      levelId, taskId, note: String(note || ''),
+      shots: Array.isArray(shots) ? shots.map(s=>({ key:s.key, type:s.type, size:s.size, name:s.name })) : []
     })),
     mockSetJourney:  liveWrite('adminSetJourney',  (tid, levelId, stage, ok)=>({ tid, levelId, stage, ok })),
     // adminSetReadiness(tid, key, met)：met 1/0/null(清除)。
@@ -377,7 +409,33 @@ function wireLiveWrites(){
       return { cid, chid, done: true, type: type || 'complete', label: label || '',
                speed: extra.speed, resumeAt: extra.resumeAt, dragSkip: extra.dragSkip };
     }),
-    mockSubmitSync:  liveWrite('gateMentee', (cid, chid)=>({ cid, chid, note: val('#syncNote') }))
+    mockSubmitSync:  liveWrite('gateMentee', (cid, chid)=>({ cid, chid, note: val('#syncNote') })),
+    /* ---------- 【2026-10-09 第三轮·模块 A】 ---------- */
+    // 编辑学员资料（姓名/校区/带教老师/计划）—— 复用 adminUserUpsert，不新增 action
+    mockEditStudent: liveWrite('adminUserUpsert', (wid, f)=>{
+      f = f || {};
+      return { wid, name: f.name, dept: f.dept, role: 'student',
+               mentorId: f.mentorId, planId: f.planId };
+    }),
+    // 重置密码：后端 adminResetPw（仅管理员；服务端 scrypt 哈希，不存明文）
+    mockResetPw: liveWrite('adminResetPw', (wid, pw)=>({ wid, password: pw })),
+    // 换工号（迁移）：后端 adminMigrateWid（dry-run 默认；apply 需 confirm，由 liveApi 决定）
+    mockMigrateWid: async function(oldWid, newWid, apply){
+      const body = { oldWid, newWid, apply: apply === true };
+      if(apply === true) body.confirm = true;      // 用户已在 UI 点过「确认迁移」
+      const out = await liveApi('adminMigrateWid', body);
+      // dry-run 不写库，不必刷新；apply 成功才刷新 + 重绘
+      if(apply === true && out && !out.error){
+        try{ await liveRefresh(); }catch(e){}
+        try{ liveRerender(); }catch(e){}
+      }
+      return out;
+    },
+    /* ---------- 【2026-10-09 第三轮·模块 B】 ---------- */
+    // 管理员开关「必传截图」
+    mockSetTaskShot: liveWrite('adminSetTaskShot', (taskId, required)=>({ taskId, required: required === true })),
+    // 截图读取签名（按身份可见范围，短时 URL）
+    mockShotSign: async function(keys){ return await liveApi('shotSign', { keys: Array.isArray(keys)?keys:[] }); }
   };
 
   // 装机：MOCKAPI 与 window 双份（mock-api.js 两处都导出了）。
@@ -427,6 +485,7 @@ function wireLiveWrites(){
   window.mockSetReadinessThreshold = window.MOCKAPI.mockSetReadinessThreshold;
 
   console.log('[live] 已接线真实后端：' + LIVE.apiUrl + '（写路径 ' + wired + ' 个 + 批量通过）');
+  window.liveUploadShot = liveUploadShotReal;   // 仅真实模式覆盖；沙盒模式保留 mock-api.js 的沙盒实现
   return true;
 }
 

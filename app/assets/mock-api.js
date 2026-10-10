@@ -52,8 +52,15 @@ function mockReview(tid, levelId, taskId, pass){
   const err=canReview(S.wid,tid,taskId);
   if(err!==true) return toast(err,'err');
   const T=(MOCK.DB.tasks[tid]=MOCK.DB.tasks[tid]||{}), L=(T[levelId]=T[levelId]||{});
-  const rec=L[taskId];
+  let rec=L[taskId];
   if(!rec||rec.status!=='submitted') return toast('该任务还没有提交记录，无法审核','err');
+  /* 【模块 B5】归一化旧结构：审核记录与「当前提交版本」绑定。 */
+  if(!Array.isArray(rec.versions)){
+    rec={ status:rec.status, latest:1, reviewedVersion:rec.reviewedVersion,
+          versions:[{ v:1, note:rec.note, at:rec.at, by:rec.by, byName:rec.byName, shots:rec.shots||[] }] };
+    L[taskId]=rec;
+  }
+  rec.reviewedVersion = rec.latest || 1;   // 绑定「审核的是哪一版」
 
   const me=MOCK.userOf(S.wid);
   if(!pass){
@@ -318,6 +325,108 @@ function mockDeleteUser(wid){
   toast('已删除 '+wid); rerenderAfterWrite();
 }
 
+/* ---------- 【2026-10-09 第三轮·模块 A】沙盒版：编辑资料 / 重置密码 / 换工号 ----------
+   沙盒只演示界面与本地数据流；live 模式下由 mock-api-live.js 换成真实 action。 */
+function mockEditStudent(wid, fields){
+  fields = fields || {};
+  const u = MOCK.userOf(wid); if(!u) throw new Error('学员不存在：'+wid);
+  const t = MOCK.traineeOf(wid);
+  // 校区白名单（与后端 CAMPUS_WHITELIST 同源口径）：非空且不在名单 → 拒绝，不自动替换
+  const CL = (window.UI && UI.CAMPUS_LIST) || ["武汉","合肥","郑州","龙校","成都","重庆","西安","大连","南京","杭州","广州","南昌","福州","昆明"];
+  if(fields.dept !== undefined && fields.dept !== '' && CL.indexOf(fields.dept) < 0)
+    throw new Error('校区「'+fields.dept+'」不在支持名单内，请从下拉中重新选择');
+  if(fields.mentorId){
+    const m = MOCK.userOf(fields.mentorId);
+    if(!m || m.role !== 'mentor') throw new Error('目标不是导师角色，不能作为带教老师');
+  }
+  if(fields.name !== undefined)   u.name = fields.name;
+  if(fields.dept)                 u.dept = fields.dept;
+  if(fields.mentorId !== undefined) u.mentorId = fields.mentorId;
+  if(fields.planId !== undefined) u.planId = fields.planId;
+  if(t){
+    if(fields.name !== undefined)   t.name = fields.name;
+    if(fields.dept)                 t.dept = fields.dept;
+    if(fields.mentorId !== undefined) t.mentorId = fields.mentorId;
+    if(fields.planId !== undefined) t.planId = fields.planId;
+  }
+  return { ok:true, wid };
+}
+function mockResetPw(wid, pw){
+  const u = MOCK.userOf(wid); if(!u) throw new Error('账号不存在：'+wid);
+  if(!pw || pw.length < 6) throw new Error('密码至少 6 位');
+  u.pwResetAt = new Date().toISOString();   // 沙盒不存明文，只记时间（与后端口径一致：不保存明文）
+  return { ok:true, wid };
+}
+/* 换工号：沙盒版做一次「完整键重命名」，模拟后端多表迁移（含 wid|xxx 复合键）。 */
+function mockMigrateWid(oldWid, newWid, apply){
+  const u = MOCK.userOf(oldWid);
+  if(!u) { if(MOCK.userOf(newWid)) return { ok:true, already:true }; throw new Error('工号不存在：'+oldWid); }
+  if(u.role !== 'student') throw new Error('本轮仅支持迁移学员工号');
+  if(MOCK.userOf(newWid)) throw new Error('新工号已被占用：'+newWid);
+  const ren = k => (k === oldWid) ? newWid : (k.indexOf(oldWid+'|') === 0 ? newWid + k.slice(oldWid.length) : k);
+  const plan = {};
+  ['learn','gates','journey','readiness','tasks','coaching','competency','signoffs','fav','qa','rating'].forEach(tn=>{
+    const src = MOCK.DB[tn]; if(!src || typeof src !== 'object') return;
+    const hit = Object.keys(src).filter(k=>k===oldWid || k.indexOf(oldWid+'|')===0).length;
+    if(hit) plan[tn] = hit;
+  });
+  const tHit = (MOCK.DB.trainees||[]).filter(t=>t.id===oldWid).length;
+  if(tHit) plan.trainees = tHit;
+  plan.users = 1;
+  if(!apply) return { ok:true, dryRun:true, changedTables:Object.keys(plan), counts:plan };
+  // apply：逐表重命名
+  ['learn','gates','journey','readiness','tasks','coaching','competency','signoffs','fav','qa','rating'].forEach(tn=>{
+    const src = MOCK.DB[tn]; if(!src) return;
+    const out = {};
+    Object.keys(src).forEach(k=>{ out[ren(k)] = src[k]; });
+    MOCK.DB[tn] = out;
+  });
+  (MOCK.DB.trainees||[]).forEach(t=>{ if(t.id===oldWid) t.id = newWid; });
+  MOCK.DB.users[newWid] = u; delete MOCK.DB.users[oldWid];
+  u.wid = newWid;
+  return { ok:true, migrated:true, newWid };
+}
+
+/* ---------- 【2026-10-09 第三轮·模块 B】作业截图（沙盒版）----------
+   沙盒不真正上传：mockUploadInitShot 返回一个本地 blob URL 占位，模拟「已上传完成的描述符」。 */
+function mockSetTaskShot(taskId, required){
+  if(!MOCK.DB.settings) MOCK.DB.settings = {};
+  if(!MOCK.DB.settings.taskShots) MOCK.DB.settings.taskShots = {};
+  if(required) MOCK.DB.settings.taskShots[taskId] = true;
+  else delete MOCK.DB.settings.taskShots[taskId];
+  return { ok:true, taskShots: MOCK.DB.settings.taskShots };
+}
+function shotRequiredOf(taskId){
+  const m = (MOCK.DB.settings && MOCK.DB.settings.taskShots) || {};
+  return m[taskId] === true;
+}
+/* 沙盒：不给真 URL，只登记一个 pending 描述符；真正「完成」由 UI 在选文件后直接给 size/type。 */
+function mockUploadInitShot(levelId, taskId, type, size, name){
+  const CL_TYPES = ['image/jpeg','image/jpg','image/png','image/webp'];
+  if(CL_TYPES.indexOf(String(type||'').toLowerCase()) < 0) throw new Error('截图格式不支持（仅 JPG / PNG / WebP）');
+  if(!(size > 0) || size > 5*1024*1024) throw new Error('截图超过 5MB 上限');
+  const wid = S.wid;
+  const key = 'shots/' + wid + '/' + levelId + '/' + taskId + '/' + Math.random().toString(16).slice(2,10) + '.jpg';
+  return { ok:true, key, url:'', sandbox:true };
+}
+function mockShotSign(keys){
+  // 沙盒：本地 blob 由调用方自己持有，这里返回空 map（UI 会回退到本地预览）
+  return { ok:true, urls:{}, ttl:600 };
+}
+/* 沙盒版截图上传：不真的 PUT，只走一遍校验并返回描述符（live 模式由 mock-api-live.js 覆盖）。 */
+async function liveUploadShot(levelId, taskId, file){
+  if(!file) throw new Error('没有选文件');
+  const ALLOW = ['image/jpeg','image/jpg','image/png','image/webp'];
+  const ty = String(file.type || '').toLowerCase();
+  if(ALLOW.indexOf(ty) < 0) throw new Error('仅支持 JPG / PNG / WebP');
+  if(!(file.size > 0)) throw new Error('文件是空的');
+  if(file.size > 5*1024*1024) throw new Error('截图超过 5MB 上限：' + file.name);
+  const wid = S.wid;
+  const key = 'shots/' + wid + '/' + levelId + '/' + taskId + '/' + Math.random().toString(16).slice(2,10) + '.jpg';
+  try{ file.__sandboxUrl = URL.createObjectURL(file); }catch(e){}
+  return { key, type: ty, size: file.size, name: file.name };
+}
+
 /* ---------- 课程管理 ---------- */
 function mockCourseStatus(cid, on){
   const c=MOCK.courseOf(cid); if(!c) return;
@@ -356,11 +465,12 @@ function mockSignoff(wid){
 }
 
 /* ---------- 学员提交 ---------- */
-function mockSubmitTask(tid, levelId, taskId, note){
+/* 【2026-10-09 第三轮·模块 B1/B5】支持截图 + 版本化：
+   shots: [{key,type,size,name}]（最多 3 张，后端已强校验；沙盒重复一次同样的校验）。
+   版本：每次提交 push 一个 version，latest 指向它；重新提交不覆盖历史。 */
+function mockSubmitTask(tid, levelId, taskId, note, shots){
   const lv=MOCK.levelOf(levelId);
   if(!lv) return toast('关卡不存在','err');
-  // 后端 L1432levelUnlockedFor：**纯逻辑，不看 enforceGate 开关**
-  // [红] 基线缺陷：与 actionLearn 的 courseUnlockedFor（受开关保护）不一致
   if(!MOCK.levelUnlocked(tid,lv)) return toast(`第 ${levelId} 关未解锁，无法提交`,'err');
   if(!note||!note.trim()) return toast('请填写完成说明','err');
   if(taskId===MOCK.EXAM_TASK){
@@ -373,15 +483,34 @@ function mockSubmitTask(tid, levelId, taskId, note){
   if(MOCK.DB.journey[tid]&&MOCK.DB.journey[tid][levelId]&&MOCK.DB.journey[tid][levelId][taskId==='EXAM'?'exam':'practice']&&
      MOCK.DB.journey[tid][levelId][taskId==='EXAM'?'exam':'practice'].ok)
     return toast('该环节已通过，不能重复提交','err');
-  const T=(MOCK.DB.tasks[tid]=MOCK.DB.tasks[tid]||{}), L=(T[levelId]=T[levelId]||{});
-  if(L[taskId]&&L[taskId].status==='passed') return toast('该任务卡已通过，不能重复提交','err');
+  // 截图校验（与后端 shotRequiredOf / MAX_SHOTS / 类型 / 大小同口径）
+  const list = Array.isArray(shots) ? shots : [];
+  if(list.length > 3) return toast('截图最多 3 张','err');
+  for(const s of list){
+    const ty = String((s&&s.type)||'').toLowerCase();
+    if(['image/jpeg','image/jpg','image/png','image/webp'].indexOf(ty) < 0) return toast('截图格式不支持（仅 JPG / PNG / WebP）','err');
+    if(!(Number(s&&s.size)>0) || Number(s.size) > 5*1024*1024) return toast('截图超过 5MB 上限','err');
+  }
+  if(shotRequiredOf(taskId) && list.length < 1) return toast('该任务卡要求上传至少 1 张截图','err');
 
-  const prev=L[taskId];
-  L[taskId]={ status:'submitted', note:note.slice(0,500), at:new Date().toISOString(),
-              by:tid, byName:MOCK.userOf(tid).name,
-              // rejected 允许覆盖重提（后端 L1448 只拦 passed）
-              reviewNote:prev&&prev.status==='rejected'?undefined:undefined };
-  toast('已提交，等带教导师批改');
+  const T=(MOCK.DB.tasks[tid]=MOCK.DB.tasks[tid]||{}), L=(T[levelId]=T[levelId]||{});
+  let rec = L[taskId];
+  // 归一化旧结构（单对象 → versions[1]）
+  if(rec && !Array.isArray(rec.versions)){
+    rec = { status: rec.status, versions: [{ v:1, note:rec.note, at:rec.at, by:rec.by, byName:rec.byName,
+             shots:rec.shots||[], reviewNote:rec.reviewNote, reviewedBy:rec.reviewedBy, reviewedAt:rec.reviewedAt }],
+            latest:1, reviewedVersion:rec.reviewedVersion };
+  }
+  if(rec && rec.status==='passed') return toast('该任务卡已通过，不能重复提交','err');
+  if(!rec) rec = { status:'submitted', versions:[], latest:0 };
+  const nextV = (rec.latest || 0) + 1;
+  rec.versions.push({ v:nextV, note:note.slice(0,500), at:new Date().toISOString(),
+                      by:tid, byName:(MOCK.userOf(tid)||{}).name || tid, shots:list.slice(0,3) });
+  rec.latest = nextV;
+  rec.status = 'submitted';
+  delete rec.reviewNote; delete rec.reviewedBy; delete rec.reviewedAt; delete rec.reviewedVersion;
+  L[taskId] = rec;
+  toast(list.length ? ('已提交（'+list.length+' 张截图），等带教导师批改') : '已提交，等带教导师批改');
   rerenderAfterWrite();
 }
 
@@ -473,9 +602,12 @@ window.MOCKAPI={S,setSession,visibleTrainees,canReview,mockReview,askRejectReaso
   mockSetReadinessThreshold,
   mockAddUser,mockTransfer,mockDeleteUser,mockCourseStatus,mockDeleteCourse,mockSignoff,
   mockSubmitTask,mockCheckin,learnOf,mockToggleFav,mockSetRate,avgRating,mockPostQA,
-  mockMarkDone,mockSubmitSync,rerenderAfterWrite};
+  mockMarkDone,mockSubmitSync,rerenderAfterWrite,
+  mockEditStudent,mockResetPw,mockMigrateWid,mockSetTaskShot,mockUploadInitShot,mockShotSign};
 Object.assign(window,{setSession,canReview,mockReview,askRejectReason,mockBulkPass,mockSetJourney,
   mockSetReadiness,mockSaveReadiness,mockCertify,mockRevokeCertify,mockSetGate,mockAddUser,
   mockSetReadinessThreshold,
   mockTransfer,mockDeleteUser,mockCourseStatus,mockDeleteCourse,mockSignoff,mockSubmitTask,
-  mockCheckin,learnOf,mockToggleFav,mockSetRate,avgRating,mockPostQA,mockMarkDone,mockSubmitSync});
+  mockCheckin,learnOf,mockToggleFav,mockSetRate,avgRating,mockPostQA,mockMarkDone,mockSubmitSync,
+  mockEditStudent,mockResetPw,mockMigrateWid,mockSetTaskShot,mockUploadInitShot,mockShotSign});
+window.liveUploadShot = liveUploadShot;

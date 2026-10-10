@@ -47,6 +47,18 @@
     <div id="empty"></div>
   </div>
 
+  <!-- 【2026-10-09 第三轮·模块 B2】任务卡截图要求（管理员独立开关，默认关闭） -->
+  <div class="card">
+    <div class="card-h">
+      <h2>任务卡截图要求</h2>
+      <span class="tag ghost">默认关闭</span>
+    </div>
+    <div class="note" style="margin-bottom:var(--s4)">
+      开启后，学员提交该任务卡时<b>至少附 1 张截图</b>才能提交（服务端强制校验，不依赖前端）。
+    </div>
+    <div id="shotReqs"></div>
+  </div>
+
   <!-- 资源说明（2026-10-05 收口：只保留管理员实际要用的操作信息，
        开发细节（存储实现/凭证/学习记录表）不再展示） -->
   <div class="card">
@@ -179,7 +191,37 @@ function render(){
   renderCourses();
   renderNoCourseNote();
   renderGateState();
+  renderShotReqs();
   if(typeof injectIcons==='function') injectIcons();
+}
+
+/* 【模块 B2】任务卡「必传截图」开关：13 张任务卡（TASK_DEFS），逐张独立开关。
+   持久化来源：settings.taskShots[taskId]===true（后端 adminSetTaskShot 写入）。 */
+function renderShotReqs(){
+  const box = document.getElementById('shotReqs');
+  if(!box) return;
+  const map = (MOCK.DB.settings && MOCK.DB.settings.taskShots) || {};
+  const rows = MOCK.TASK_DEFS.map(d=>{
+    const lv = MOCK.levelOf(d.levelId);
+    const on = map[d.id] === true;
+    return `<tr>
+      <td><b>${esc(d.id)}</b></td>
+      <td>${esc(d.title)}</td>
+      <td>${lv?('第 '+lv.no+' 关'):esc(d.levelId)}</td>
+      <td>${on?'<span class="tag shotreq">需附截图</span>':'<span class="tag ghost">可不传</span>'}</td>
+      <td><button class="btn ghost sm" onclick="toggleShotReq('${esc(d.id)}',${on?0:1})">${on?'关闭':'开启'}</button></td>
+    </tr>`;
+  }).join('');
+  box.innerHTML = `<div class="tblwrap"><table>
+    <thead><tr><th>任务卡</th><th>名称</th><th>关卡</th><th>当前要求</th><th>操作</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+async function toggleShotReq(taskId, on){
+  try{
+    await MOCKAPI.mockSetTaskShot(taskId, on === 1 || on === true);
+    toast(on?(taskId+' 已设为需附截图'):(taskId+' 已取消必传截图'),'ok');
+    render();
+  }catch(e){ toast('设置失败：'+(e&&e.message?e.message:e),'err'); }
 }
 
 function renderKpis(){

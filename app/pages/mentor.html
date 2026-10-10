@@ -142,6 +142,20 @@ function recOf(wid, lvId, tid){
   return ((MOCK.DB.tasks[wid]||{})[lvId]||{})[tid];
 }
 
+/* 【模块 B5】归一化任务记录：兼容旧单对象 → versions；并把当前版本扁平化，供模板直读。 */
+function recFlat(r){
+  const n = UI.normalizeTaskRecFE(r); if(!n) return r;
+  const cur = UI.currentVersion(n) || {};
+  return Object.assign({}, n, {
+    note: cur.note||'', at: cur.at||'', byName: cur.byName||'',
+    shots: cur.shots||[], version: cur.v||1, reviewNote: cur.reviewNote||n.reviewNote||''
+  });
+}
+function shotsBlockM(r){
+  const keys = ((r&&r.shots)||[]).map(s=>s.key);
+  return keys.length ? `<div class="shotgrid" data-shotkeys="${esc(JSON.stringify(keys))}"></div>` : '';
+}
+
 /* 我的待批队列：自己徒弟的 submitted（任务卡 + 考核）
    与 MOCK.todoCounts 同口径（导师 = 自己徒弟的练 + 考），只是这里要明细不要计数 */
 function myQueue(){
@@ -152,7 +166,7 @@ function myQueue(){
     Object.keys(byLv).forEach(lvId=>{
       const lv = MOCK.levelOf(lvId); if(!lv) return;
       Object.keys(byLv[lvId]||{}).forEach(tid=>{
-        const r = byLv[lvId][tid];
+        const r = recFlat(byLv[lvId][tid]);
         if(!r || r.status!=='submitted') return;
         out.push({ wid, lv, tid, rec:r, isExam: tid===MOCK.EXAM_TASK });
       });
@@ -172,7 +186,7 @@ function myReviewed(){
     Object.keys(byLv).forEach(lvId=>{
       const lv = MOCK.levelOf(lvId); if(!lv) return;
       Object.keys(byLv[lvId]||{}).forEach(tid=>{
-        const r = byLv[lvId][tid];
+        const r = recFlat(byLv[lvId][tid]);
         if(!r || !r.reviewAt) return;
         out.push({ wid, lv, tid, rec:r, isExam: tid===MOCK.EXAM_TASK });
       });
@@ -202,6 +216,21 @@ function render(){
   renderMentees(mentees);
 
   if(typeof injectIcons==='function') injectIcons();
+  setTimeout(hydrateShotThumbsM, 0);
+}
+
+/* 【模块 B4】渲染后异步补截图缩略图 */
+async function hydrateShotThumbsM(){
+  const holders = document.querySelectorAll('[data-shotkeys]');
+  if(!holders.length) return;
+  const keys = [];
+  holders.forEach(h=>{ try{ JSON.parse(h.dataset.shotkeys||'[]').forEach(k=>keys.push(k)); }catch(e){} });
+  if(!keys.length) return;
+  await UI.signShots(keys);
+  holders.forEach(h=>{
+    let ks=[]; try{ ks=JSON.parse(h.dataset.shotkeys||'[]'); }catch(e){}
+    h.outerHTML = UI.shotsHTML(ks.map(k=>({key:k})), window.__shotCache||{}, {});
+  });
 }
 
 function renderKpis(todo, mentees, done){
@@ -255,6 +284,7 @@ function renderQueue(queue){
       <span class="mid">
         <b>${esc(title)}</b>
         <span class="d">${esc(desc)}${it.rec.note?`<br>提交说明：${esc(it.rec.note)}`:''}</span>
+        ${shotsBlockM(it.rec)}
         <span class="mxrow" style="margin-top:8px">
           ${waitTag}
           <span class="tag ghost">${it.isExam?'考核「考」环节':'任务卡「练」环节'}</span>

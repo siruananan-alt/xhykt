@@ -986,3 +986,29 @@ html[data-live-loading="1"] main{visibility:hidden}
 .sandbox-banner[hidden]{display:none}
 /* header.topbar 是 flex 容器：横幅必须是 header 的**兄弟**块（ui.js 已如此输出），
    否则会被 flex 压缩溢出（实测 390px 下 w=37px、right=419）。 */
+
+/* ==========================================================================
+   §29 作业截图（2026-10-09 · 第三轮模块 B）
+   - .shotgrid/.shotthumb：截图缩略区（学员提交预览 / 导师审核查看 / 管理员查看共用）
+   - .shotpick：提交弹层里的上传控件（选择文件 + 预览 + 移除）
+   风格：沿用硬边扁平 —— 2px 描边、圆角 8、零渐变；颜色只编码业务状态。
+   ========================================================================== */
+.shotgrid{display:flex;gap:var(--s3);flex-wrap:wrap;margin-top:var(--s3)}
+.shotthumb{
+  display:flex;align-items:center;justify-content:center;
+  width:92px;height:92px;border:2px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--soft);overflow:hidden;text-decoration:none;color:var(--faint);
+  font-size:12px;flex:0 0 auto;
+}
+.shotthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.shotthumb.miss{border-style:dashed;color:var(--faint)}
+a.shotthumb:hover{border-color:var(--link)}
+.shotpick{display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s2)}
+.shotpick-row{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
+.shotpick .hint{color:var(--muted);font-size:12px}
+.shotver{border:2px solid var(--line);border-radius:var(--radius-sm);padding:var(--s3);margin-top:var(--s3)}
+.shotver + .shotver{margin-top:var(--s2)}
+.shotver.cur{border-color:var(--link);background:var(--soft2)}
+.shotver h4{margin:0 0 6px;font-size:13px;color:var(--ink)}
+.shotver .meta{font-size:12px;color:var(--muted)}
+.tag.shotreq{background:var(--warn-bg);color:var(--warn-ink);border-color:var(--warn)}
