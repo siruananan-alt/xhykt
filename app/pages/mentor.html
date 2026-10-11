@@ -142,13 +142,17 @@ function recOf(wid, lvId, tid){
   return ((MOCK.DB.tasks[wid]||{})[lvId]||{})[tid];
 }
 
-/* 【模块 B5】归一化任务记录：兼容旧单对象 → versions；并把当前版本扁平化，供模板直读。 */
+/* 【模块 B5】归一化任务记录：兼容旧单对象 → versions；并把当前版本扁平化，供模板直读。
+   【2026-10-11】显式承接 reviewedAt：新结构的审核字段在**记录顶层**（versions[] 里只有
+   v/note/at/by/byName/shots），旧结构经 normalizeTaskRecFE 归一后会丢顶层字段，
+   故这里 n.reviewedAt || cur.reviewedAt 兜底，保证扁平对象一定带上审核时间。 */
 function recFlat(r){
   const n = UI.normalizeTaskRecFE(r); if(!n) return r;
   const cur = UI.currentVersion(n) || {};
   return Object.assign({}, n, {
     note: cur.note||'', at: cur.at||'', byName: cur.byName||'',
-    shots: cur.shots||[], version: cur.v||1, reviewNote: cur.reviewNote||n.reviewNote||''
+    shots: cur.shots||[], version: cur.v||1, reviewNote: cur.reviewNote||n.reviewNote||'',
+    reviewedAt: n.reviewedAt||cur.reviewedAt||''
   });
 }
 function shotsBlockM(r){
@@ -177,7 +181,11 @@ function myQueue(){
   return out;
 }
 
-/* 我最近批过的：自己徒弟 tasks 里 status 为 passed/rejected 且带 reviewAt 的 */
+/* 我最近批过的：自己徒弟 tasks 里 status 为 passed/rejected 且带 reviewedAt 的
+   【2026-10-11 修复】原读 reviewAt，但后端 reviewTask 与沙盒 mock 写入的都是 reviewedAt
+   （顶层字段：reviewedAt / reviewedBy / reviewedByName / reviewNote），字段名差一个 "ed"
+   → 过滤器永远取不到值 → 「我最近批过的」恒为 0 条。生产数据实证：4 条已批记录含
+   reviewedAt、0 条含 reviewAt。此处与 mentor-mentee.html 统一改读 reviewedAt。 */
 function myReviewed(){
   const wids = myMentees().map(t=>t.id);
   const out = [];
@@ -187,12 +195,12 @@ function myReviewed(){
       const lv = MOCK.levelOf(lvId); if(!lv) return;
       Object.keys(byLv[lvId]||{}).forEach(tid=>{
         const r = recFlat(byLv[lvId][tid]);
-        if(!r || !r.reviewAt) return;
+        if(!r || !r.reviewedAt) return;
         out.push({ wid, lv, tid, rec:r, isExam: tid===MOCK.EXAM_TASK });
       });
     });
   });
-  out.sort((a,b)=> new Date(b.rec.reviewAt||0) - new Date(a.rec.reviewAt||0));
+  out.sort((a,b)=> new Date(b.rec.reviewedAt||0) - new Date(a.rec.reviewedAt||0));
   return out;
 }
 
@@ -314,7 +322,7 @@ function renderDone(done){
     <div class="rowitem ${ok?'ok':'rej'}">
       <span class="ico" data-ic="${ok?'i-check':'i-close'}"></span>
       <span class="mid"><b>${esc(u.name||it.wid)}（${esc(it.wid)}）· ${esc(label)}</b>
-        <span class="d">${esc(fmt(it.rec.reviewAt))} ${ok?'通过':'打回'}${it.rec.reviewNote?' · '+esc(it.rec.reviewNote):''}</span></span>
+        <span class="d">${esc(fmt(it.rec.reviewedAt))} ${ok?'通过':'打回'}${it.rec.reviewNote?' · '+esc(it.rec.reviewNote):''}</span></span>
     </div>`;
   }).join('');
 }
