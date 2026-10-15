@@ -100,7 +100,25 @@ function confirmBox(title,body,onOk,okLabel){
   openModal(`<div class="m-h"><h2>${title}</h2><span class="x" onclick="closeModal()">×</span></div>
     <div class="m-b">${body}</div>
     <div class="m-f"><button class="btn ghost" onclick="closeModal()">取消</button>
-    <button class="btn" onclick="closeModal();${onOk}">${okLabel||'确认'}</button></div>`);
+    <button class="btn" id="cbOk">${okLabel||'确认'}</button></div>`);
+  /* 【2026-10-15 修】原实现把 onOk 字符串直接拼进 onclick="..." 属性：
+     onclick="closeModal();${onOk}"。当 onOk 含双引号（调用方用 JSON.stringify 拼
+     wid/cid，如 doDelUser("TESTGATE")、doDelChapter("C1","ch1")）时，HTML 属性在
+     第二个 " 处提前截断 → 点击报 SyntaxError、按钮毫无反应、弹窗都不关
+     （实况 2026-10-15：admin 端「删除账号」点「确认删除」删不掉）。
+     改为 DOM 事件绑定 + new Function 在全局作用域执行字符串（与内联 onclick
+     等价语义），调用方签名与用法完全不变，全站 3 页 4 个调用点一并修复。 */
+  const ok=document.getElementById('cbOk');
+  if(ok) ok.onclick=function(){
+    closeModal();
+    try{
+      if(typeof onOk==='function'){ onOk(); return; }
+      (new Function(onOk))();
+    }catch(e){
+      console.error('[confirmBox] 回调执行失败：',e);
+      toast('操作失败：'+(e&&e.message?e.message:e),'err');
+    }
+  };
 }
 
 /* ---------- 4. 表单校验（三态：默认 / 校验失败 / 校验通过） ---------- */
