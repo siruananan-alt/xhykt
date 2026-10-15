@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>设计规范速查 · 企业内部学习站</title>
+<link rel="stylesheet" href="../assets/theme.css?v=1015b">
+<link rel="stylesheet" href="../assets/sandbox.css?v=1015b">
+</head>
+<body class="role-admin" data-role="admin" data-nav-done="1">
+
+<header class="topbar">
+  <div class="tb-in">
+      <div class="brand">
+    <span class="logo">学</span>
+    <span class="bn">企业内部学习站<span class="bn2">设计规范速查</span></span>
+  </div>
+    <nav class="nav2" aria-label="分类导航"><a href="../index.html">产品首页</a><i aria-hidden="true"></i><a href="design-spec.html#spec">色板</a><i aria-hidden="true"></i><a href="design-spec.html#comp">组件</a><i aria-hidden="true"></i><a href="design-spec.html#nolist">不做什么</a></nav>
+      <span class="role-chip">
+    <span class="avatar" data-who-av>范</span>
+    <span class="who-txt"><span data-who-name>范文淼</span><span data-who-role>教务管理员</span></span>
+  </span>
+  </div>
+</header>
+
+<main class="wrap wide">
+
+  <section class="hero">
+    <h1>设计规范速查<br>色彩语义 · 组件 · 交互状态</h1>
+    <p class="lead">
+      这一页是<strong>给评审看的规范手册</strong>，不是产品页面。整套方案的令牌与组件都实现在
+      <code>assets/theme.css?v=1015b</code>，这里只把「为什么这么设计」摊开讲。
+      产品首页请回 <a href="../index.html">企业内部学习站</a>。
+    </p>
+    <div class="meta">
+      <span class="tag ok">颜色只编码业务状态</span>
+      <span class="tag link">填充=行动 · 描边=状态</span>
+      <span class="tag warn">按角色分四档字号</span>
+      <span class="tag ghost">零柔和阴影 / 零渐变</span>
+    </div>
+  </section>
+
+  <!-- ============ 设计令牌速查 ============ -->
+  <section class="pgroup" id="spec">
+    <div class="gh"><span class="n">规范</span><h2>色彩语义：颜色只编码业务状态</h2>
+      <span class="d">这是整套方案的第一原则 —— 全站没有一个颜色是纯装饰</span></div>
+    <div class="sw">
+      <div class="s"><div class="chip" style="background:#58cc02"></div><div class="lb">
+        <b>主色 / 已通过</b><code>--ok #58cc02</code><small>实心绿=唯一主行动；浅绿底+<svg class="ic"><use href="#i-check"/></svg>=已通关</small></div></div>
+      <div class="s"><div class="chip" style="background:#d7ffb8"></div><div class="lb">
+        <b>进度块底</b><code>--ok-bg #d7ffb8</code><small>Storybook Green，KPI/已达成块</small></div></div>
+      <div class="s"><div class="chip" style="background:#1cb0f6"></div><div class="lb">
+        <b>可点 / 链接</b><code>--link #1cb0f6</code><small>输入聚焦光晕、跳转链接</small></div></div>
+      <div class="s"><div class="chip" style="background:#e8890c"></div><div class="lb">
+        <b>待人处理</b><code>--warn #e8890c</code><small>待审核、待批改、卡 N 天</small></div></div>
+      <div class="s"><div class="chip" style="background:#e5484d"></div><div class="lb">
+        <b>打回 / 危险</b><code>--danger #e5484d</code><small>打回原因、删课、停用</small></div></div>
+      <div class="s"><div class="chip" style="background:#f2f2f2;border:2px dashed #afafaf"></div><div class="lb">
+        <b>未解锁</b><code>--lock #afafaf</code><small>虚线框=不可达，不是"浅色主题"</small></div></div>
+      <div class="s"><div class="chip" style="background:#000437"></div><div class="lb">
+        <b>描边 / 深墨</b><code>--ink #000437</code><small>所有硬边投影、吐司底、当前关卡描边</small></div></div>
+      <div class="s"><div class="chip" style="background:#4b4b4b"></div><div class="lb">
+        <b>正文 Charcoal</b><code>--text #4b4b4b</code><small>不用纯黑，降低对比刺激</small></div></div>
+    </div>
+    <div class="note" style="margin-top:var(--s4)">
+      <b>绿既是主色又是「通过」态，为什么不乱？</b>
+      三重编码解法 —— <strong>填充深浅</strong>（实心绿 vs 浅绿底）+
+      <strong>有无符号</strong>（无符号=行动，<svg class="ic"><use href="#i-check"/></svg>=状态）+
+      <strong>尺寸</strong>（52/56px 按钮 vs 26–32px 状态格）。
+      色弱用户去掉颜色仍能分辨，且「待审核」用橙不用绿（它是"等别人"不是"我往前走"）。
+    </div>
+  </section>
+
+  <!-- ============ 组件陈列 ============ -->
+  <section class="pgroup" id="comp">
+    <div class="gh"><span class="n">组件</span><h2>贴纸感组件：实心 + 2px 描边 + 硬边投影</h2>
+      <span class="d">按下时投影归零并下移 4px —— 物理反馈，不靠柔和阴影</span></div>
+
+    <div class="grid g2">
+      <div class="demo">
+        <span class="lb">按钮 · 四种语义（实心=主行动，描边=次级）</span>
+        <div class="row">
+          <button class="btn lg" data-toast="主行动：继续第 3 关">继续第 3 关</button>
+          <button class="btn" data-toast="次级行动已触发">提交任务卡</button>
+          <button class="btn ghost" data-toast="描边按钮：已触发">查看课程</button>
+          <button class="btn warn" data-toast="待审核操作">批量通过</button>
+          <button class="btn danger" data-toast="危险操作：打回">打回</button>
+          <button class="btn" disabled>未解锁</button>
+        </div>
+        <div class="row" style="margin-top:var(--s4)">
+          <button class="btn sm">小号 34px</button>
+          <button class="btn sm ghost">小号描边</button>
+          <span class="badge">3</span>
+          <span class="badge ok">12</span>
+          <span class="badge danger">2</span>
+        </div>
+      </div>
+
+      <div class="demo">
+        <span class="lb">状态标签 · 颜色=业务状态</span>
+        <div class="row">
+          <span class="tag ok">已通过</span>
+          <span class="tag warn pulse">待审核</span>
+          <span class="tag danger">已打回</span>
+          <span class="tag link">可补交</span>
+          <span class="tag lock">未解锁</span>
+          <span class="tag ghost">未提交</span>
+        </div>
+        <span class="lb" style="margin-top:var(--s5)">状态格 .mx 四态（形状+色+符号三重编码）</span>
+        <div class="row">
+          <span class="mx ok"><svg class="ic"><use href="#i-check"/></svg></span><span class="mx doing">2·1</span>
+          <span class="mx todo">·</span><span class="mx lock">—</span>
+          <span class="mx doing cur">3·0</span>
+        </div>
+        <div class="mxlegend" style="margin-top:var(--s3)">
+          <span><span class="mx ok"><svg class="ic"><use href="#i-check"/></svg></span>全部环节通过</span>
+          <span><span class="mx doing">n·m</span>已过 n / 共 m 环节</span>
+          <span><span class="mx todo">·</span>已解锁未开始</span>
+          <span><span class="mx lock">—</span>未解锁</span>
+        </div>
+      </div>
+
+      <div class="demo">
+        <span class="lb">KPI · 数字=进度（浅绿底，不用阴影）</span>
+        <div class="kpis">
+          <div class="kpi"><b>6/12</b><span>已通关卡数</span></div>
+          <div class="kpi plain"><b>18</b><span>闯关积分</span></div>
+          <div class="kpi hot"><b>3</b><span>待批改</span></div>
+        </div>
+      </div>
+
+      <div class="demo">
+        <span class="lb">任务卡 · 五态一目可分（人工批改场景）</span>
+        <div class="tcard done">
+          <div class="tcard-h"><span class="tag ok">已通过</span><b>T-N1 账号命名规范自查</b></div>
+          <p class="req">提交 3 个新账号的名称截图，确认符合「城市+业务线+序号」格式。</p>
+          <p class="sub">郑丽薪 · 10-02 15:24 通过</p>
+        </div>
+        <div class="tcard wait pulse">
+          <div class="tcard-h"><span class="tag warn">待审核</span><b>T-N2 首条视频发布记录</b></div>
+          <p class="req">发布 1 条对标拆解视频，附播放链接与 24 小时数据截图。</p>
+          <p class="sub">朱子悦 · 今天 09:41 提交 · 等郑丽薪批改</p>
+        </div>
+        <div class="tcard rej">
+          <div class="tcard-h"><span class="tag danger">已打回</span><b>T-N3 选题库首轮整理</b></div>
+          <div class="rejnote">打回原因：选题只写了标题，没有说明为什么这条会爆。补充「钩子在哪一句」再交。</div>
+        </div>
+        <div class="tcard lock">
+          <div class="tcard-h"><span class="tag lock">未解锁</span><b>T-G1 百万爆款剪辑工作流拆解</b></div>
+          <p class="req">需先通过第 7 关「百万爆款之剪辑工作流」的考核。</p>
+        </div>
+      </div>
+
+      <div class="demo">
+        <span class="lb">阶段进度条 · 3 阶段 × 5 周时间骨架</span>
+        <div class="stagebar">
+          <div class="stg done"><div class="nm">新手期</div><div class="wk">第 1 周 · L01–L06</div><div class="pg">6<small>/6 关</small></div></div>
+          <div class="stg cur"><div class="nm">成长期</div><div class="wk">第 2–3 周 · L07–L09</div><div class="pg">1<small>/3 关</small></div></div>
+          <div class="stg"><div class="nm">成熟期</div><div class="wk">第 4–5 周 · L10–L12</div><div class="pg">0<small>/3 关</small></div></div>
+        </div>
+        <span class="lb" style="margin-top:var(--s4)">表单校验三态</span>
+        <form id="demoForm" data-form="demoForm" data-ok="toast('表单校验通过：这就是提交流程')">
+          <div class="fld">
+            <label>工号 <span class="req">*</span></label>
+            <input type="text" data-rule="wid" placeholder="如 M1 / S001 / admin" value="M1">
+            <div class="tip">字母开头，字母+数字</div>
+            <div class="err">工号格式：字母开头，字母+数字（如 M1 / S001 / admin）</div>
+            <div class="ok">格式正确</div>
+          </div>
+          <div class="fld">
+            <label>月引流人数 <span class="req">*</span></label>
+            <input type="number" data-rule="traffic" placeholder="0–99999" value="12000">
+            <div class="tip">达标线 ≥ 800 人</div>
+            <div class="err">月引流人数需在 0–99999 之间</div>
+            <div class="ok">已达标</div>
+          </div>
+          <button class="btn" type="submit">提交</button>
+        </form>
+      </div>
+
+      <div class="demo">
+        <span class="lb">提示条 · 四种语气</span>
+        <div class="note ok"><b>已通过：</b>第 2 关「剪辑基础课」全部环节通过，第 3 关已解锁。</div>
+        <div class="note warn" style="margin-top:var(--s2)"><b>待人处理：</b>你有 1 张任务卡等郑丽薪批改，通常 1 个工作日内完成。</div>
+        <div class="note danger" style="margin-top:var(--s2)"><b>已打回：</b>T-N3 选题库需要补充「钩子在哪一句」。</div>
+        <div class="note" style="margin-top:var(--s2)"><b>说明：</b>「学」环节看完视频自动过，「练/考」必须人工批改，这是刻意的设计。</div>
+        <span class="lb" style="margin-top:var(--s5)">章节行 .rowitem</span>
+        <div class="rowitem">
+          <span class="ico">1</span>
+          <span class="mid"><b>第 1 关 · 新人启动课堂</b><span class="d">学 1 · 练 0 · 考 1 · 10-01 完成</span></span>
+          <span class="mx ok"><svg class="ic"><use href="#i-check"/></svg></span>
+        </div>
+        <div class="rowitem wait">
+          <span class="ico">3</span>
+          <span class="mid"><b>第 3 关 · 飞书高效实战</b><span class="d">考核已提交 · 等郑丽薪批改</span></span>
+          <span class="mx doing cur">1·2</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 字号分档 ============ -->
+  <section class="pgroup">
+    <div class="gh"><span class="n">分档</span><h2>按角色分四档字号，不做全局统一</h2>
+      <span class="d">学员手机 / 导师电脑 / 培训师密集 / 管理员矩阵，任务密度完全不同</span></div>
+    <div class="tblwrap">
+      <table class="spec">
+        <thead><tr><th>角色</th><th>主要设备</th><th>正文</th><th>按钮高</th><th>KPI 数字</th><th>设计理由</th></tr></thead>
+        <tbody>
+          <tr><td><b>学员</b></td><td>手机竖屏单手</td><td class="num">16px</td><td class="num">56px</td><td class="num">30px</td><td>通勤路上单手点，触控目标必须 ≥44px，容错低</td></tr>
+          <tr><td><b>带教导师</b></td><td>电脑</td><td class="num">14.5px</td><td class="num">48px</td><td class="num">28px</td><td>一屏要扫完一个徒弟的 12 关 + 任务卡</td></tr>
+          <tr><td><b>培训师</b></td><td>电脑</td><td class="num">14.5px</td><td class="num">40px（行高）</td><td class="num">28px</td><td>只看考核，一屏 15+ 条，高密度换吞吐</td></tr>
+          <tr><td><b>教务管理员</b></td><td>电脑 / 大屏</td><td class="num">14.5px</td><td class="num">28px（矩阵格）</td><td class="num">28px</td><td>矩阵表 12 列 × N 行，数字优先</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note" style="margin-top:var(--s4)">
+      <b>阴影去留表：</b>功能性阴影<strong>保留并加强</strong>（当前关卡 3px 描边、进度条、播放键、按钮硬边投影），
+      装饰性阴影<strong>全部删除</strong>（卡片柔和投影、毛玻璃、渐变）。理由：柔和投影不携带任何业务信息，只会糊化状态边界。
+    </div>
+  </section>
+
+  <!-- ============ 不做什么 ============ -->
+  <section class="pgroup" id="nolist">
+    <div class="gh"><span class="n">边界</span><h2>本方案明确不做的事</h2></div>
+    <div class="grid g3">
+      <div class="card tight">
+        <h3>不引玩偶插画</h3>
+        <p class="hint" style="margin-top:6px">生产是单文件 HTML、零外部资源。引插画等于给上线加网络故障点，收益不抵风险。插画位用占位符预留即可。</p>
+      </div>
+      <div class="card tight">
+        <h3>不引 Google Fonts CDN</h3>
+        <p class="hint" style="margin-top:6px">内网/弱网环境加载失败会掉回系统字体，字号层级视觉全崩。字体栈写成 <code>Nunito</code> 优先、系统字体兜底，装了 Nunito 自动生效。</p>
+      </div>
+      <div class="card tight">
+        <h3>不做暗色模式</h3>
+        <p class="hint" style="margin-top:6px">状态色是这套方案的核心信息，暗色下绿/橙的对比度要重算一遍才能保证「色弱三重编码」成立。本轮先做亮色。</p>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+  <p class="hint" style="color:var(--muted);font-size:12.5px">
+    本页只做陈列，不参与生产。完整文件职责、占位符规范、每页交互清单与 20 条待确认项见
+    <a href="../README.md" download>README.md</a>；产品页面请回 <a href="../index.html">产品首页</a>。
+  </p>
+
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+<script src="../assets/app.js?v=1015b"></script>
+</body>
+</html>

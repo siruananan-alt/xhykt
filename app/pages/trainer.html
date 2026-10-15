@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>考核队列 · 培训师</title>
+<link rel="stylesheet" href="../assets/theme.css?v=1015b">
+<link rel="stylesheet" href="../assets/sandbox.css?v=1015b">
+</head>
+<body class="role-trainer" data-role="trainer" data-nav-done="1">
+
+<!-- 【2026-10-04 用户决策】培训师角色已移除：线上无 trainer 账号，考核=导师审徒弟+管理员平行兜底。
+     本文件保留作决策痕迹，不再挂任何导航/登录/角色菜单入口。
+     原「批量通过」功能已迁至管理端（闯关总览 + 看板两入口）。 -->
+<div class="note danger" style="margin:12px auto;max-width:1280px;padding:12px 16px">
+  <svg class="ic"><use href="#i-alert"/></svg> <b>本页已停用</b>（2026-10-04 决策移除培训师角色）。入口已从导航与登录页摘除，仅保留文件留痕。
+  考核现由<b>导师审自己徒弟</b>，<b>管理员平行兜底</b>；「批量通过」已迁至管理端闯关总览与看板。
+</div>
+
+<header class="topbar">
+  <div class="tb-in">
+      <div class="brand">
+    <span class="logo">学</span>
+    <span class="bn">企业内部学习站<span class="bn2">带教工作台</span></span>
+  </div>
+    <nav class="nav2" aria-label="分类导航"><a href="trainer.html">待我考核</a></nav>
+      <span class="role-chip">
+    <span class="avatar" data-who-av>曾</span>
+    <span class="who-txt"><span data-who-name>曾锃湘</span><span data-who-role>培训师</span></span>
+  </span>
+  </div>
+</header>
+
+<main class="wrap wide">
+
+  <div class="pg-head">
+    <span class="eyebrow">带教导师 M2 · 权限：全部学员的「考」</span>
+    <h1>待我考核</h1>
+    <p class="sub">只批关卡考核，不批任务卡。</p>
+  </div>
+
+  <div class="kpis" style="margin-bottom:var(--s5)">
+    <div class="kpi hot"><b>4</b><span>待我考核</span></div>
+    <div class="kpi plain"><b>12</b><span>本周已批</span></div>
+    <div class="kpi plain"><b>2</b><span>已等 2 天以上</span></div>
+    <div class="kpi plain"><b>1.4 天</b><span>平均批改时长</span></div>
+  </div>
+
+  <!-- 筛选：培训师需要"按关卡/按等了多少天"筛，因为跨学员 -->
+  <div class="card tight">
+    <div style="display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <label style="margin-bottom:4px">搜索学员 / 关卡</label>
+        <input type="text" id="q" placeholder="输入姓名、工号或关卡名…">
+      </div>
+      <div style="flex:none;width:170px">
+        <label style="margin-bottom:4px">按关卡筛</label>
+        <select>
+          <option>全部关卡</option>
+          <option>第 1 关 · 新人启动课堂</option>
+          <option>第 3 关 · 飞书高效实战</option>
+          <option>第 5 关 · 账号冷启动</option>
+          <option>第 7 关 · 百万爆款剪辑工作流</option>
+        </select>
+      </div>
+      <div style="flex:none;width:150px">
+        <label style="margin-bottom:4px">按等待时长</label>
+        <select>
+          <option>全部</option>
+          <option>已等 1 天内</option>
+          <option>已等 2 天以上</option>
+          <option>已等 3 天以上</option>
+        </select>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:10px" id="filterHint">当前显示 <b id="filterCount">4</b> 条提交</p>
+  </div>
+
+  <!-- 密度说明条 -->
+  <div class="note" style="margin-bottom:var(--s4)">
+    <b>为什么这页比导师页窄？</b>
+    培训师看的是<b>全部学员</b>的考核（导师只看自己徒弟），要处理的是"快"不是"细"：
+    所以行高压到 40px、正文 13px、说明文字 11.5px。同一个视觉语言，密度按角色分档。
+  </div>
+
+  <!-- 高密度队列：每条一行 -->
+  <div class="card">
+    <div class="card-h">
+      <h2>考核队列</h2>
+      <span class="tag warn pulse">4 条待批</span>
+    </div>
+
+    <!-- 1：等最久 -->
+    <div class="rowitem wait" data-kw="朱子悦 s001 第7关 百万爆款剪辑工作流">
+      <span class="ico" data-ic="i-clock"></span>
+      <span class="mid">
+        <b>朱子悦（S001）· 第 7 关考核</b>
+        <span class="d">模板剪辑 60 秒口播 · 播放 4,210 / 完播 31% / 加微 86 / 剪辑耗时 1.4h</span>
+      </span>
+      <span class="mxrow">
+        <span class="tag danger">等 1 天</span>
+        <span class="tag ghost">导师已过</span>
+      </span>
+      <span class="acts">
+        <button class="btn sm" data-modal="md1">批改</button>
+      </span>
+    </div>
+
+    <div class="rowitem wait" data-kw="李彦 s002 第5关 账号冷启动">
+      <span class="ico" data-ic="i-clock"></span>
+      <span class="mid">
+        <b>李彦（S002）· 第 5 关考核</b>
+        <span class="d">7 天养号记录 + 首条视频 3,100 播放 / 完播 22% / 加微 41</span>
+      </span>
+      <span class="mxrow">
+        <span class="tag danger">等 2 天</span>
+        <span class="tag ghost">3 张卡已过</span>
+      </span>
+      <span class="acts">
+        <button class="btn sm" data-modal="md1">批改</button>
+      </span>
+    </div>
+
+    <div class="rowitem wait" data-kw="王芳 s003 第3关 飞书高效实战">
+      <span class="ico" data-ic="i-clock"></span>
+      <span class="mid">
+        <b>王芳（S003）· 第 3 关考核</b>
+        <span class="d">飞书审批流实操演示 · 3 条视频 · 提交后被导师要求重录</span>
+      </span>
+      <span class="mxrow">
+        <span class="tag danger">等 3 天</span>
+        <span class="tag ghost">第 2 次提交</span>
+      </span>
+      <span class="acts">
+        <button class="btn sm" data-modal="md1">批改</button>
+      </span>
+    </div>
+
+    <div class="rowitem wait" data-kw="刘子涵 s004 第1关 新人启动课堂">
+      <span class="ico" data-ic="i-clock"></span>
+      <span class="mid">
+        <b>刘子涵（S004）· 第 1 关考核</b>
+        <span class="d">口述：业务怎么跑 / 转正标准是什么 / 带教是谁</span>
+      </span>
+      <span class="mxrow">
+        <span class="tag warn">等 4 小时</span>
+        <span class="tag ghost">新学员</span>
+      </span>
+      <span class="acts">
+        <button class="btn sm" data-modal="md1">批改</button>
+      </span>
+    </div>
+
+    <div class="empty" style="display:none" id="emptyBox">
+      <div class="big"><svg class="ic"><use href="#i-party"/></svg></div>
+      <b>没有匹配的提交</b>
+      <p style="font-size:13px;margin-top:6px">换个关键词或筛选条件试试。</p>
+    </div>
+  </div>
+
+  <!-- 批量操作 -->
+  <div class="card">
+    <div class="card-h">
+      <h2>批量通过（第 1–2 关的口述类考核）</h2>
+      <span class="tag warn">谨慎使用</span>
+    </div>
+    <p class="hint" style="margin-bottom:var(--s4)">
+      只适用于<b>纯口述、答案唯一</b>的考核（第 1 关「业务怎么跑」这类）。
+      实操类（第 7 关模板剪辑、第 8 关加微数据）<b>不能批量</b>——那必须逐条看。
+    </p>
+
+    <label class="check">
+      <input type="checkbox" id="selAll">
+      <span><b>全选当前列表</b>（勾上后批量按钮才可用）</span>
+    </label>
+
+    <div id="selList" style="margin:var(--s3) 0">
+      <label class="check">
+        <input type="checkbox" class="sel" data-n="刘子涵（S004）· 第 1 关考核">
+        <span>刘子涵（S004）· 第 1 关考核 <span class="tag ghost">口述类 · 可批量</span></span>
+      </label>
+      <label class="check">
+        <input type="checkbox" class="sel" disabled>
+        <span style="opacity:.5">朱子悦（S001）· 第 7 关考核 <span class="tag danger">实操类 · 禁止批量</span></span>
+      </label>
+      <label class="check">
+        <input type="checkbox" class="sel" disabled>
+        <span style="opacity:.5">李彦（S002）· 第 5 关考核 <span class="tag danger">实操类 · 禁止批量</span></span>
+      </label>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn warn" id="batchBtn" disabled>批量通过（0）</button>
+      <button class="btn ghost" data-confirm="确认批量通过？" data-body="将对所选的纯口述类考核一键通过。通过后会立即解锁下一关，学员端马上能看到。<br><br><b>建议：</b>批量前抽查 1 条，确认答案口径没问题。" data-ok="toast('已批量通过 0 条 · 原型演示不写真实数据')" data-oklabel="确认批量通过">批量通过…</button>
+    </div>
+    <p class="hint" style="margin-top:10px" id="batchHint">
+      未选择时按钮为 <b>disabled</b>（opacity .45、无投影、不可点）。
+    </p>
+  </div>
+
+  <!-- 权限说明 -->
+  <div class="card">
+    <div class="card-h"><h2>权限矩阵</h2><span class="tag ghost">谁能看到什么</span></div>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>角色</th><th>批改任务卡（练）</th><th>批改考核（考）</th><th>覆盖范围</th><th>代录进度</th></tr></thead>
+        <tbody>
+          <tr><td><b>学员</b></td><td><span class="tag ghost">提交，不可批</span></td><td><span class="tag ghost">提交，不可批</span></td><td>自己</td><td><span class="tag lock">无</span></td></tr>
+          <tr><td><b>带教导师</b></td><td><span class="tag ok">可以</span></td><td><span class="tag ok">可以</span></td><td>自己徒弟</td><td><span class="tag ok">可以</span></td></tr>
+          <tr style="background:var(--warn-bg)">
+            <td><b>培训师 <span class="tag warn" style="vertical-align:middle">你在这</span></b></td>
+            <td><span class="tag lock">不可以</span></td><td><span class="tag ok">可以</span></td><td>全部学员</td><td><span class="tag ok">可以</span></td></tr>
+          <tr><td><b>教务管理员</b></td><td><span class="tag ok">可以（兜底）</span></td><td><span class="tag ok">可以（兜底）</span></td><td>全部学员</td><td><span class="tag ok">可以</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note warn" style="margin-top:var(--s4)">
+      <b>三条设计原则在权限上的体现：</b>
+      <svg class="ic"><use href="#i-num1"/></svg> 每角色页面只服务一个首要问题 <svg class="ic"><use href="#i-arrow-r"/></svg> 培训师没有"任务卡"页，因为那不是他的活；
+      <svg class="ic"><use href="#i-num2"/></svg> 状态色只编码业务状态 <svg class="ic"><use href="#i-arrow-r"/></svg> 你表格里"不可以"是灰锁、"可以"是绿，视觉扫一遍就懂；
+      <svg class="ic"><use href="#i-num3"/></svg> 待人处理用橙 <svg class="ic"><use href="#i-arrow-r"/></svg> 你的 KPI「待我考核 4」是橙底，因为它在等你动手。
+    </div>
+  </div>
+
+  <!-- 转正相关 -->
+  <div class="card">
+    <div class="card-h">
+      <h2>我的学员 · 转正进度</h2>
+      <a href="admin-readiness.html" style="font-size:13px;font-weight:700">完整达标线 <svg class="ic"><use href="#i-arrow-r"/></svg></a>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>学员</th><th>入职</th><th>当前关</th><th>学习达标</th><th>月引流 ≥800</th><th>剪辑 &lt;1.5h</th><th>4 个账号</th><th>可转正</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>朱子悦</b> <span class="tag ghost">S001</span></td><td>12 天</td>
+            <td>第 7 关</td>
+            <td><span class="tag warn">6/12</span></td>
+            <td><span class="tag warn">412</span></td>
+            <td><span class="tag warn">2.1h</span></td>
+            <td><span class="tag warn">2/4</span></td>
+            <td><span class="tag lock">否</span></td>
+          </tr>
+          <tr>
+            <td><b>李彦</b> <span class="tag ghost">S002</span></td><td>4 天</td>
+            <td>第 5 关</td>
+            <td><span class="tag warn">5/12</span></td>
+            <td><span class="tag warn">180</span></td>
+            <td><span class="tag warn">2.8h</span></td>
+            <td><span class="tag warn">0/4</span></td>
+            <td><span class="tag lock">否</span></td>
+          </tr>
+          <tr>
+            <td><b>王芳</b> <span class="tag ghost">S003</span></td><td>15 天</td>
+            <td>第 4 关</td>
+            <td><span class="tag warn">4/12</span></td>
+            <td><span class="tag warn">95</span></td>
+            <td><span class="tag warn">3.1h</span></td>
+            <td><span class="tag warn">0/4</span></td>
+            <td><span class="tag lock">否</span></td>
+          </tr>
+          <tr>
+            <td><b>刘子涵</b> <span class="tag ghost">S004</span></td><td>1 天</td>
+            <td>第 1 关</td>
+            <td><span class="tag warn">0/12</span></td>
+            <td><span class="tag warn">0</span></td>
+            <td><span class="tag warn">—</span></td>
+            <td><span class="tag warn">0/4</span></td>
+            <td><span class="tag lock">否</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="hint" style="margin-top:10px">
+      表面看「转正进度」这页和考核队列有重复，但视角不同：队列是<b>我要动手的</b>，这张表是<b>我该关注谁的</b>。
+      同一份数据、两种问题，所以放在两个页面。
+    </p>
+  </div>
+
+</main>
+
+<!-- 批改弹层 -->
+<template id="md1">
+  <div class="m-h"><h2>批改关卡考核</h2><span class="x" onclick="closeModal()">×</span></div>
+  <div class="m-b">
+    <div class="note warn" style="margin-bottom:var(--s4)">
+      <b>朱子悦（S001）· 第 7 关 · 已等 1 天</b><br>
+      带教导师郑丽薪（M1）已先行通过，本次是培训师终审。
+    </div>
+
+    <div class="dl">
+      <div class="it"><div class="k">视频</div><div class="v">1 条 · 58 秒</div></div>
+      <div class="it"><div class="k">24h 播放</div><div class="v">4,210</div></div>
+      <div class="it"><div class="k">完播率</div><div class="v">31%</div></div>
+      <div class="it"><div class="k">加微</div><div class="v">86 人</div></div>
+      <div class="it"><div class="k">剪辑耗时</div><div class="v">1.4 小时</div></div>
+      <div class="it"><div class="k">是否用模板</div><div class="v">是</div></div>
+    </div>
+
+    <figure class="ph ph-video" data-size="640×360" data-use="视频首帧 / 24h 数据截图（点开放大）" style="margin-top:var(--s4)">
+      <span class="ph-t"><b>提交物预览</b>640×360</span>
+    </figure>
+
+    <div class="fld" style="margin-top:var(--s5)">
+      <label>批改结论 <span class="req">*</span></label>
+      <select id="verdict"><option>通过（解锁第 8 关）</option><option>打回（必须写原因）</option></select>
+      <div class="tip">选"打回"时下方意见框会变成必填。</div>
+    </div>
+    <div class="fld">
+      <label>批改意见</label>
+      <textarea placeholder="例：模板参数清楚，剪辑耗时 1.4h 达标。加微 86 人离 800 还有距离，第 8 关重点练导流钩子。"></textarea>
+      <div class="tip">意见会原文显示在学员端，请写具体下一步动作。</div>
+    </div>
+
+    <div class="note ok"><b>通过会发生什么：</b>直接写入闯关记录第 7 关「考」= 通过，
+      <b>第 8 关「高导粉获客秘籍」立刻解锁</b>，学员端顶部会出现绿色「继续第 8 关」主按钮。</div>
+  </div>
+  <div class="m-f">
+    <button class="btn ghost" onclick="closeModal()">取消</button>
+    <button class="btn" onclick="toast('第 7 关考核已通过 · 第 8 关已解锁');closeModal()">确认通过</button>
+  </div>
+</template>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<!--
+  本页交互清单：
+  1. 搜索框 bindFilter：输入即过滤队列行（按 data-kw 关键词匹配），
+     计数实时更新到「当前显示 N 条」；无结果时显示 #emptyBox 空状态（插画位用 emoji 占位，
+     正式版可换 .ph-illus 占位符）。
+  2. 两个下拉（按关卡 / 按等待时长）：正式版触发重查 + 重渲染，本原型演示选中态样式。
+  3. 队列每行「批改」-> 打开批改弹层：
+     - 选"打回"-> 意见框转必填 + 提交时校验（空则标红阻断）。
+     - 通过 -> 吐司「已通过 · 第 8 关已解锁」+ 队列行移除 + KPI 数字 -1。
+     - 点遮罩 / Esc / × / 取消 都能关。
+  4. 批量区：
+     - 「全选当前列表」勾上 -> 自动勾选所有 .sel（实操类因 disabled 不会被勾上）。
+     - 勾选数量 >0 时「批量通过（N）」按钮从 disabled 变可用，N 实时更新。
+     - 点「批量通过…」先弹确认框（含风险说明 + 可选项），确认后才执行。
+  5. 行高 40px（body.role-trainer .rowitem 覆盖），正文 13px / 说明 11.5px —— 密度档生效。
+-->
+
+<script src="../assets/app.js?v=1015b"></script>
+<script>
+document.querySelectorAll('[data-ic]').forEach(e=>e.innerHTML=ic(e.dataset.ic));
+/* 搜索过滤 + 计数 + 空状态 */
+bindFilter('#q','.rowitem[data-kw]');
+(function(){
+  const list=document.querySelectorAll('.rowitem[data-kw]');
+  const box=document.getElementById('emptyBox');
+  const cnt=document.getElementById('filterCount');
+  const inp=document.getElementById('q');
+  function sync(){const n=[...list].filter(x=>x.style.display!=='none').length;cnt.textContent=n;box.style.display=n?'none':'block';}
+  inp.addEventListener('input',sync);sync();
+})();
+/* 批量选择：数量实时写进按钮文案，未选则 disabled */
+(function(){
+  const all=document.getElementById('selAll'),btn=document.getElementById('batchBtn'),hint=document.getElementById('batchHint');
+  function sync(){
+    const n=[...document.querySelectorAll('.sel:not([disabled]):checked')].length;
+    btn.textContent='批量通过（'+n+'）';btn.disabled=n===0;
+    hint.innerHTML=n===0?'未选择时按钮为 <b>disabled</b>（opacity .45、无投影、不可点）。'
+      :'已选 <b>'+n+'</b> 条纯口述类考核。实操类已自动排除。';
+  }
+  bindSelectAll('#selAll','.sel',sync);
+  document.querySelectorAll('.sel').forEach(c=>c.addEventListener('change',sync));sync();
+})();
+</script>
+</body>
+</html>
