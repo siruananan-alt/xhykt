@@ -332,7 +332,7 @@ function mockEditStudent(wid, fields){
   const u = MOCK.userOf(wid); if(!u) throw new Error('学员不存在：'+wid);
   const t = MOCK.traineeOf(wid);
   // 校区白名单（与后端 CAMPUS_WHITELIST 同源口径）：非空且不在名单 → 拒绝，不自动替换
-  const CL = (window.UI && UI.CAMPUS_LIST) || ["武汉","合肥","郑州","龙校","成都","重庆","西安","大连","南京","杭州","广州","南昌","福州","昆明"];
+  const CL = (window.UI && UI.CAMPUS_LIST) || ["武汉","合肥","郑州","龙校","成都","重庆","西安","大连","南京","杭州","广州","南昌","福州","昆明","长沙"];
   if(fields.dept !== undefined && fields.dept !== '' && CL.indexOf(fields.dept) < 0)
     throw new Error('校区「'+fields.dept+'」不在支持名单内，请从下拉中重新选择');
   if(fields.mentorId){

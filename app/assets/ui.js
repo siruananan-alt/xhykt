@@ -753,8 +753,8 @@ function openTransfer(wid){
    设计原则：复用现有 mock/live 接线（mockAddUser → adminUserUpsert 同一 action），
    只在 UI 层补齐字段与入口，不新增账号状态体系、不改业务规则。 */
 
-/* 14 个固定校区（与后端 CAMPUS_WHITELIST 逐字一致，改一处必须同步另一处）。 */
-const CAMPUS_LIST = ["武汉","合肥","郑州","龙校","成都","重庆","西安","大连","南京","杭州","广州","南昌","福州","昆明"];
+/* 15 个固定校区（与后端 CAMPUS_WHITELIST 逐字一致，改一处必须同步另一处）。 */
+const CAMPUS_LIST = ["武汉","合肥","郑州","龙校","成都","重庆","西安","大连","南京","杭州","广州","南昌","福州","昆明","长沙"];
 
 /* A1+A3：编辑学员资料弹层。wid 不可在此处改（改工号走 A5 迁移专用入口，风险等级不同）。 */
 function openEditStudent(wid){
@@ -776,7 +776,7 @@ function openEditStudent(wid){
      ${fld('姓名 *',`<input id="esName" value="${esc(u.name||'')}">`)}
      ${fld('校区 *',`<select id="esDept">${options}</select>`,
        legacy ? '<span class="err">该学员当前校区不在支持名单内，请从下拉中重新选择（不会自动替换）</span>'
-              : '仅支持 14 个固定校区')}
+              : '仅支持 15 个固定校区')}
      ${fld('带教老师 *',`<select id="esMentor">${mentorOpts}</select>`,'仅可指定导师角色；改后新导师接管后续审核')}
      ${fld('带教计划',`<select id="esPlan">${planOpts}</select>`)}
      <div class="note warn">保存后学员端、导师端、管理端读取同一份最新资料；学习进度与历史记录不受影响。</div>`,
@@ -833,7 +833,7 @@ function openAddPerson(role){
         '字母开头、字母+数字组合；已被占用会被拒绝，不会覆盖')}
      ${fld('姓名 *', `<input id="uName" placeholder="真实姓名">`)}
      ${fld('校区 *', `<select id="uDept">${CAMPUS_LIST.map(c=>`<option value="${c}"${c==='武汉'?' selected':''}>${c}</option>`).join('')}</select>`,
-        '仅支持 14 个固定校区')}
+        '仅支持 15 个固定校区')}
      ${mentorBox}
      ${planBox}
      ${titleBox}
