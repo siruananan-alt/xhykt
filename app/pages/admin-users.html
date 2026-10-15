@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>用户管理 · 教务管理员</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015f">
-<link rel="stylesheet" href="../assets/sandbox.css?v=1015f">
+<link rel="stylesheet" href="../assets/theme.css?v=1015g">
+<link rel="stylesheet" href="../assets/sandbox.css?v=1015g">
 </head>
 <body class="role-admin" data-role="admin" data-nav-done="1">
 
@@ -17,6 +17,12 @@
     <span class="eyebrow">星禾云课堂</span>
     <h1>用户管理</h1>
     <p class="sub">学员进「学员管理」，导师进「带教计划」。</p>
+  </div>
+
+  <div class="note warn" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <span><svg class="ic"><use href="#i-alert"/></svg>
+      <b>本页已并入「人员管理」</b>（2026-10-15）：新增、重置密码、删除账号、转移徒弟请统一到人员管理操作。本页保留仅作兼容，不再挂顶栏入口。</span>
+    <button class="btn sm" onclick="location.href='admin-students.html'">前往人员管理</button>
   </div>
 
   <div class="card">
@@ -42,11 +48,11 @@
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
 <div class="toasts" id="toasts"></div>
 
-<script src="../assets/app.js?v=1015f"></script>
-<script src="../assets/mock-data.js?v=1015f"></script>
-<script src="../assets/mock-api.js?v=1015f"></script>
-<script src="../assets/mock-api-live.js?v=1015f"></script>
-<script src="../assets/ui.js?v=1015f"></script>
+<script src="../assets/app.js?v=1015g"></script>
+<script src="../assets/mock-data.js?v=1015g"></script>
+<script src="../assets/mock-api.js?v=1015g"></script>
+<script src="../assets/mock-api-live.js?v=1015g"></script>
+<script src="../assets/ui.js?v=1015g"></script>
 <script>
 /* 用户管理：基线 viewAdminUsers —— 7 列
    操作列规则（逐条照抄基线）：
@@ -95,27 +101,9 @@ function render(){
 }
 
 /* ---- 删除账号：二次确认（2026-10-05 上线前加固）----
-   为什么加：原来删除按钮直接调 mockDeleteUser，误点即永久删号，无任何拦截。
-   语义说明照实写清，避免管理员误以为"只是删个登录账号"：
-   删的是**账号本身**；该工号的历史学习流水（learn/journey/tasks/readiness）
-   **会保留**（后端刻意不牵连历史），但没有账号就再也登录不进来查看了。 */
-function askDelUser(wid, name, role){
-  const who = (name?('「'+name+'」'):'');
-  const roleCn = role==='student'?'学员':(role==='mentor'?'导师':'用户');
-  confirmBox('删除账号',
-    '<p class="hint">确定删除'+roleCn+who+'（<b>'+UI.esc(wid)+'</b>）？连带影响：<br>'+
-    '<svg class="ic"><use href="#i-num1"/></svg> <b>账号将被永久删除</b>，该工号立即无法登录；<br>'+
-    '<svg class="ic"><use href="#i-num2"/></svg> 他的<b>学习记录会保留</b>（学/练/考进度、任务卡、达标线都不会被抹掉）；<br>'+
-    '<svg class="ic"><use href="#i-num3"/></svg> 误删可从服务端备份恢复，但建议先确认此人确实不再使用。</p>',
-    'doDelUser(' + JSON.stringify(wid) + ')', '确认删除');
-}
-async function doDelUser(wid){
-  try{
-    await mockDeleteUser(wid);
-    toast('已删除账号 '+wid);
-    render();
-  }catch(e){ toast('删除失败：'+(e&&e.message?e.message:e),'err'); }
-}
+   【2026-10-15 上移】askDelUser / doDelUser 已移到 assets/ui.js 共享层 ——
+   因本页账号能力并入「人员管理」，两处需同一份确认文案与语义（避免双份漂移）。
+   本页删除按钮仍调用共享版 askDelUser，行为与 2026-10-05 加固版逐字一致。 */
 </script>
 </body>
 </html>

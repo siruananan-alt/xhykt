@@ -351,6 +351,26 @@ function mockEditStudent(wid, fields){
   }
   return { ok:true, wid };
 }
+/* 【2026-10-15 · 账号管理并入人员管理】导师资料编辑（沙盒版）。
+   与 mockEditStudent 同源口径：校区白名单校验（非空且不在名单 → 拒绝，不自动替换）；
+   导师无 trainee 档案，只写 users[wid]（name/dept/title）并同步 mentors[] 的 name/title。 */
+function mockEditMentor(wid, fields){
+  fields = fields || {};
+  const u = MOCK.userOf(wid); if(!u) throw new Error('导师不存在：'+wid);
+  if(u.role !== 'mentor') throw new Error('该工号不是导师角色');
+  const CL = (window.UI && UI.CAMPUS_LIST) || ["武汉","合肥","郑州","龙校","成都","重庆","西安","大连","南京","杭州","广州","南昌","福州","昆明","长沙"];
+  if(fields.dept !== undefined && fields.dept !== '' && CL.indexOf(fields.dept) < 0)
+    throw new Error('校区「'+fields.dept+'」不在支持名单内，请从下拉中重新选择');
+  if(fields.name !== undefined) u.name = fields.name;
+  if(fields.dept)               u.dept = fields.dept;
+  if(fields.title !== undefined) u.title = fields.title;
+  const m = (MOCK.DB.mentors||[]).find(x=>x.id===wid);
+  if(m){
+    if(fields.name !== undefined) m.name = fields.name;
+    if(fields.title !== undefined) m.title = fields.title;
+  }
+  return { ok:true, wid };
+}
 function mockResetPw(wid, pw){
   const u = MOCK.userOf(wid); if(!u) throw new Error('账号不存在：'+wid);
   if(!pw || pw.length < 6) throw new Error('密码至少 6 位');
@@ -603,11 +623,11 @@ window.MOCKAPI={S,setSession,visibleTrainees,canReview,mockReview,askRejectReaso
   mockAddUser,mockTransfer,mockDeleteUser,mockCourseStatus,mockDeleteCourse,mockSignoff,
   mockSubmitTask,mockCheckin,learnOf,mockToggleFav,mockSetRate,avgRating,mockPostQA,
   mockMarkDone,mockSubmitSync,rerenderAfterWrite,
-  mockEditStudent,mockResetPw,mockMigrateWid,mockSetTaskShot,mockUploadInitShot,mockShotSign};
+  mockEditStudent,mockEditMentor,mockResetPw,mockMigrateWid,mockSetTaskShot,mockUploadInitShot,mockShotSign};
 Object.assign(window,{setSession,canReview,mockReview,askRejectReason,mockBulkPass,mockSetJourney,
   mockSetReadiness,mockSaveReadiness,mockCertify,mockRevokeCertify,mockSetGate,mockAddUser,
   mockSetReadinessThreshold,
   mockTransfer,mockDeleteUser,mockCourseStatus,mockDeleteCourse,mockSignoff,mockSubmitTask,
   mockCheckin,learnOf,mockToggleFav,mockSetRate,avgRating,mockPostQA,mockMarkDone,mockSubmitSync,
-  mockEditStudent,mockResetPw,mockMigrateWid,mockSetTaskShot,mockUploadInitShot,mockShotSign});
+  mockEditStudent,mockEditMentor,mockResetPw,mockMigrateWid,mockSetTaskShot,mockUploadInitShot,mockShotSign});
 window.liveUploadShot = liveUploadShot;

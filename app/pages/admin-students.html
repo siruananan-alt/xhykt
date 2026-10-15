@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>人员管理 · 教务管理员</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015f">
-<link rel="stylesheet" href="../assets/sandbox.css?v=1015f">
+<link rel="stylesheet" href="../assets/theme.css?v=1015g">
+<link rel="stylesheet" href="../assets/sandbox.css?v=1015g">
 </head>
 <body class="role-admin" data-role="admin" data-nav-done="1">
 
@@ -16,7 +16,13 @@
   <div class="pg-head">
     <span class="eyebrow">星禾云课堂</span>
     <h1>人员管理</h1>
-    <p class="sub">管理导师与学员：添加人员、编辑学员资料、调整带教老师、重置密码与换工号。</p>
+    <p class="sub">管理导师与学员账号：添加人员、编辑资料、调整带教老师、重置密码、换工号与删除账号。</p>
+  </div>
+
+  <div class="note" style="margin-bottom:14px">
+    <svg class="ic"><use href="#i-num1"/></svg>
+    <b>账号管理已并入本页</b>（2026-10-15）：原「用户管理」的新增、重置密码、删除账号、转移徒弟能力，
+    现已全部在本页的导师表 / 学员表中完成，顶栏不再单列「用户管理」入口。
   </div>
 
   <div class="card">
@@ -62,16 +68,19 @@
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
 <div class="toasts" id="toasts"></div>
 
-<script src="../assets/app.js?v=1015f"></script>
-<script src="../assets/mock-data.js?v=1015f"></script>
-<script src="../assets/mock-api.js?v=1015f"></script>
-<script src="../assets/mock-api-live.js?v=1015f"></script>
-<script src="../assets/ui.js?v=1015f"></script>
+<script src="../assets/app.js?v=1015g"></script>
+<script src="../assets/mock-data.js?v=1015g"></script>
+<script src="../assets/mock-api.js?v=1015g"></script>
+<script src="../assets/mock-api-live.js?v=1015g"></script>
+<script src="../assets/ui.js?v=1015g"></script>
 <script>
 /* 人员管理（原「学员管理」，2026-10-15 改版）：分「导师 / 学员」两区块。
    学员保留第三轮模块 A 全部能力（A1 编辑 / A3 改带教 / A4 重置密码 / A5 换工号）；
    新增：openAddPerson('mentor'|'student') 添加导师/学员（复用 mockAddUser → adminUserUpsert 同一接线）。
-   导师行提供「重置密码」（复用 openResetPwReal）。
+   【2026-10-15 · 账号管理并入】在原「用户管理」能力并入本页后：
+     · 导师行 = 编辑（openEditMentor，A6）/ 重置密码 / 删除账号（askDelUser）
+     · 学员行 = 编辑 / 改导师 / 重置密码 / 换工号 / 删除账号（askDelUser）
+     · askDelUser/doDelUser 已上移到 ui.js 共享层（原定义在 admin-users.html 内联脚本）。
    注册 window.__rerender 重绘钩子（沿用 P0-3 约定），真实数据异步到达后重绘。 */
 document.addEventListener('DOMContentLoaded',()=>{
   if(typeof needsLoginGate==='function'&&needsLoginGate())return;
@@ -101,7 +110,9 @@ function render(){
       <td>${UI.esc(m.title||u.title||'—')}</td>
       <td>${cnt} 人</td>
       <td>
+        <button class="btn ghost sm" onclick="openEditMentor('${wid}')">编辑</button>
         <button class="btn ghost sm" onclick="openResetPwReal('${wid}')">重置密码</button>
+        <button class="btn ghost sm" onclick="askDelUser('${wid}','${UI.esc(m.name||'')}','mentor')">删除</button>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="6" class="sub">暂无导师，点右上「＋ 添加导师」创建。</td></tr>';
@@ -127,6 +138,7 @@ function render(){
         <button class="btn ghost sm" onclick="openChangeMentor('${wid}')">改导师</button>
         <button class="btn ghost sm" onclick="openResetPwReal('${wid}')">重置密码</button>
         <button class="btn ghost sm" onclick="openMigrateWid('${wid}')">换工号</button>
+        <button class="btn ghost sm" onclick="askDelUser('${wid}','${UI.esc(t.name||'')}','student')">删除</button>
       </td>
     </tr>`;
   }).join('');

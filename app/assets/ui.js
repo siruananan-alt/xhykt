@@ -14,8 +14,12 @@
    ============================================================ */
 
 /* ---------- 顶栏 ---------- */
-// 管理端固定 9 项，顺序与基线完全一致（看板 L1456 / tracking L1474 / journey L1695 /
-// readiness L1897 / courses L1494 / students L1567 / plans L1578 / perms L1583 / users L1592）
+// 管理端固定 8 项，顺序与基线一致（看板 L1456 / tracking L1474 / journey L1695 /
+// readiness L1897 / courses L1494 / students L1567 / plans L1578 / perms L1583）
+/* 【2026-10-15 · 账号管理并入人员管理】原第 9 项「用户管理」(admin-users.html) 已下线：
+   其账号能力（列表、重置密码、删除账号、转移）全部并入「人员管理」(admin-students.html)。
+   admin-users.html 文件保留（避免旧 URL / 历史脚本 404），页面顶部有「已并入」提示条。
+   ⚠️ 断言「管理员导航 9 项」的历史脚本需同步为 8 项（见 _tools 内说明）。 */
 const NAV_ADMIN = [
   ['admin-dashboard.html','看板'],
   ['admin-tracking.html',  '学习跟踪'],
@@ -24,8 +28,7 @@ const NAV_ADMIN = [
   ['admin-courses.html',   '课程管理'],
   ['admin-students.html',  '人员管理'],
   ['admin-plans.html',     '带教计划'],
-  ['admin-perms.html',     '权限矩阵'],
-  ['admin-users.html',     '用户管理']
+  ['admin-perms.html',     '权限矩阵']
 ];
 const NAV_MENTOR = [
   ['mentor.html','工作台'],
@@ -802,6 +805,72 @@ async function doEditStudent(wid){
 function isMentorId(wid){
   const u = MOCK.userOf(wid);
   return !!(u && u.role === 'mentor');
+}
+
+/* 【2026-10-15 · 账号管理并入人员管理】A6：编辑导师资料。wid 不可改（改工号走迁移）。
+   可改：姓名 / 校区（CAMPUS_LIST 下拉，历史值回显标红）/ 职称。
+   ⚠️ 不含「角色」切换：导师改学员会牵动带教链，风险高，不在本轮范围。
+   🔴 生产实况：现有导师的 dept 多为历史口径（如「武汉校区」），不在 15 项白名单内。
+     按 A2 红线**绝不自动替换**——因此「未主动改校区」时**不提交 dept 字段**，
+     后端保持原值（acct.dept = d.dept || prev.dept）；只有管理员主动选了白名单值才提交。
+   后端：复用 adminUserUpsert（role='mentor'，title 由后端写入 users 与 mentors 两张表）。 */
+function openEditMentor(wid){
+  const u = MOCK.userOf(wid); if(!u) return toast('导师不存在：'+wid,'err');
+  if(u.role !== 'mentor') return toast('该工号不是导师角色','err');
+  const m = MOCK.mentorOf(wid) || {};
+  const curDept = u.dept || '';
+  const curTitle = u.title || m.title || '';
+  // 历史校区不在名单内：照实回显并标红提示，绝不自动替换（沿用 A2 红线）
+  const legacy = curDept && CAMPUS_LIST.indexOf(curDept) < 0;
+  const options = (legacy ? `<option value="${esc(curDept)}" selected>${esc(curDept)}（历史值·保持原样）</option>` : '')
+    + CAMPUS_LIST.map(c=>`<option value="${c}"${c===curDept?' selected':''}>${c}</option>`).join('');
+  openModal(modal('编辑导师资料',
+    `<div class="note">工号 <b>${esc(wid)}</b> 不可修改；导师角色不可在此切换。</div>
+     ${fld('姓名 *',`<input id="emName" value="${esc(u.name||m.name||'')}">`)}
+     ${fld('校区 *',`<select id="emDept">${options}</select>`,
+       legacy ? '<span class="err">当前校区不在支持名单内：保持原样即可（不会自动替换）；如需修正，请从下拉中重新选择</span>'
+              : '仅支持 15 个固定校区')}
+     ${fld('职称',`<input id="emTitle" value="${esc(curTitle)}" placeholder="如 带教导师">`,'选填，展示在导师名旁')}
+     <div class="note warn">保存后管理端、导师端读取同一份最新资料；其名下学员的带教关系不受影响。</div>`,
+    `<button class="btn ghost" onclick="closeModal()">取消</button>
+     <button class="btn" onclick="doEditMentor('${esc(wid)}')">保存</button>`));
+}
+async function doEditMentor(wid){
+  const name = (document.getElementById('emName').value||'').trim();
+  const deptRaw = document.getElementById('emDept').value;
+  const title = (document.getElementById('emTitle').value||'').trim();
+  if(name.length < 2) return toast('姓名至少 2 个字','err');
+  /* 只有选择了白名单内校区才提交 dept；历史值原样保留（不提交 → 后端沿用原值，
+     不自动替换、也不会被白名单校验拒绝）。 */
+  const dept = (deptRaw && CAMPUS_LIST.indexOf(deptRaw) >= 0) ? deptRaw : undefined;
+  try{
+    await mockEditMentor(wid, { name, dept, title });
+    toast('已保存 '+name+' 的资料','ok');
+    closeModal(); rerenderAfterWrite();
+  }catch(e){ toast('保存失败：'+(e&&e.message?e.message:e),'err'); }
+}
+
+/* 【2026-10-15 · 账号管理并入人员管理】删除账号：二次确认。
+   语义说明照实写清，避免管理员误以为"只是删个登录账号"：
+   删的是**账号本身**；该工号的历史学习流水（learn/journey/tasks/readiness）
+   **会保留**（后端刻意不牵连历史），但没有账号就再也登录不进来查看了。
+   原定义在 admin-users.html 内联脚本中，因该页能力并入人员管理，上移到共享层。 */
+function askDelUser(wid, name, role){
+  const who = (name?('「'+name+'」'):'');
+  const roleCn = role==='student'?'学员':(role==='mentor'?'导师':'用户');
+  confirmBox('删除账号',
+    '<p class="hint">确定删除'+roleCn+who+'（<b>'+esc(wid)+'</b>）？连带影响：<br>'+
+    '<svg class="ic"><use href="#i-num1"/></svg> <b>账号将被永久删除</b>，该工号立即无法登录；<br>'+
+    '<svg class="ic"><use href="#i-num2"/></svg> 他的<b>学习记录会保留</b>（学/练/考进度、任务卡、达标线都不会被抹掉）；<br>'+
+    '<svg class="ic"><use href="#i-num3"/></svg> 误删可从服务端备份恢复，但建议先确认此人确实不再使用。</p>',
+    'doDelUser(' + JSON.stringify(wid) + ')', '确认删除');
+}
+async function doDelUser(wid){
+  try{
+    await mockDeleteUser(wid);
+    toast('已删除账号 '+wid);
+    if(typeof render==='function') render();
+  }catch(e){ toast('删除失败：'+(e&&e.message?e.message:e),'err'); }
 }
 
 /* 【2026-10-15 人员管理】按角色预填的新增弹层：openAddPerson('student'|'mentor')。

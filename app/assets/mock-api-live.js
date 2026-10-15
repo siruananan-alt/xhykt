@@ -478,6 +478,13 @@ function wireLiveWrites(){
       return { wid, name: f.name, dept: f.dept, role: 'student',
                mentorId: f.mentorId, planId: f.planId };
     }),
+    /* 【2026-10-15 · 账号管理并入人员管理】编辑导师资料（姓名/校区/职称）。
+       复用 adminUserUpsert（role 固定 mentor）——后端会写 users.json 的 name/dept/title
+       并同步 mentors.json 的 name/title；编辑已有导师无需传 password。 */
+    mockEditMentor: liveWrite('adminUserUpsert', (wid, f)=>{
+      f = f || {};
+      return { wid, name: f.name, dept: f.dept, role: 'mentor', title: f.title };
+    }),
     // 重置密码：后端 adminResetPw（仅管理员；服务端 scrypt 哈希，不存明文）
     mockResetPw: liveWrite('adminResetPw', (wid, pw)=>({ wid, password: pw })),
     // 换工号（迁移）：后端 adminMigrateWid（dry-run 默认；apply 需 confirm，由 liveApi 决定）
