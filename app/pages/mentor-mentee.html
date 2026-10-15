@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
   document.getElementById('topbarSlot').innerHTML =
     UI.topbarHTML('mentor','mentor.html',{noNav:true});   // 上下文页：不进同级导航
-  WID = qs('wid') || (myMentees()[0]||{}).id || MOCKAPI.S.wid;
+  WID = qs('wid') || '';   // 回退值由 render() 每次重算（修 live 竞速：旧版一次算死会落到种子默认 admin）
   if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
   document.getElementById('mxLegend').innerHTML = UI.mxLegend();
   render();
@@ -83,18 +83,35 @@ function qs(k){
   return m ? decodeURIComponent(m[1]) : '';
 }
 function myMentees(){ return MOCK.DB.trainees.filter(t=>t.mentorId===MOCKAPI.S.wid); }
-/* 我的权限：这个学员是不是我带的（导师只能看/批自己徒弟） */
+/* 我的权限：这个学员是不是我带的（导师只能看/批自己徒弟）。
+   【2026-10-15 修】admin 是「平行审核人」（与后端 canReview 口径一致），放行查看全部徒弟详情；
+   旧版 admin 打开任何徒弟都会落「不是你带的学员」，连看都不能看。 */
 function canAccess(wid){
   const t = MOCK.traineeOf(wid);
-  return !!t && t.mentorId === MOCKAPI.S.wid;
+  if(!t) return false;
+  if(MOCKAPI.S && MOCKAPI.S.role==='admin') return true;
+  return t.mentorId === MOCKAPI.S.wid;
 }
 
 function render(){
   if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
+  /* 【2026-10-15 修】WID 竞速 + admin 降级：
+     ① 旧版在 DOMContentLoaded 一次算死 WID —— live 模式下页面脚本早于后端数据到达，
+        此时 S.wid 还是 mock 种子默认 'admin'，myMentees() 为空 → WID 落到 'admin' 且
+        数据到达后重绘也不重算 → 恒「没有 admin 这名学员」死页（实测线上踩到）。
+        现在：无显式 ?wid 时每次渲染都重算回退（liveRefresh 完成后的 liveRerender
+        会再次调 render()，此时 S.wid 已是真实登录者）。
+     ② admin 没有「徒弟」概念：无 ?wid 时渲染学员选择列表（可点进入详情），不再死页。 */
+  if(!qs('wid') && (!WID || !MOCK.traineeOf(WID))){
+    const mine = myMentees();
+    if(mine.length) WID = mine[0].id;
+  }
   const t = MOCK.traineeOf(WID);
   const u = MOCK.userOf(WID);
+  const isAdmin = MOCKAPI.S && MOCKAPI.S.role==='admin';
 
   if(!t){
+    if(isAdmin && !qs('wid')){ renderPickList(); return; }
     document.getElementById('eyebrow').textContent = WID;
     document.getElementById('pageTitle').textContent = '找不到这名学员';
     document.getElementById('pageSub').textContent = '学员可能已被移除';
@@ -132,6 +149,30 @@ function render(){
   renderLevels(t, u, name);
   if(typeof injectIcons==='function') injectIcons();
   setTimeout(hydrateShotThumbs, 0);
+}
+
+/* 【2026-10-15 新增】admin 无 ?wid 进入时的学员选择列表（替代「找不到这名学员」死页）。
+   admin 是平行审核人，可查看全部学员的闯关任务卡总览；点击行 → ?wid=xxx 进入详情。 */
+function renderPickList(){
+  document.title = '选择学员 · 徒弟详情';
+  document.getElementById('eyebrow').textContent = '徒弟详情';
+  document.getElementById('pageTitle').textContent = '选择要查看的学员';
+  document.getElementById('pageSub').textContent = '管理员可查看全部学员的闯关任务卡总览';
+  const list = (MOCK.DB.trainees||[]).slice();
+  document.getElementById('heroCard').innerHTML = list.length ? list.map(t=>{
+    const uu = MOCK.userOf(t.id) || {};
+    const nm = uu.name || t.name || t.id;
+    const mn = (MOCK.userOf(t.mentorId)||{}).name || t.mentorId || '—';
+    return `<a class="rowitem" href="mentor-mentee.html?wid=${esc(String(t.id))}" style="text-decoration:none">
+      <span class="avatar" aria-hidden="true">${esc(String(nm).slice(0,1))}</span>
+      <span class="mid"><b>${esc(String(nm))}</b>
+        <span class="d">${esc(String(t.id))} · 带教导师：${esc(String(mn))}</span></span>
+      <span class="ico" aria-hidden="true"><svg class="ic"><use href="#i-arrow-r"/></svg></span>
+    </a>`;
+  }).join('') : '<div class="empty-note">暂无学员档案</div>';
+  document.getElementById('levels').innerHTML = '';
+  document.getElementById('mxLegend').innerHTML = '';
+  if(typeof injectIcons==='function') injectIcons();
 }
 
 /* 【模块 B4】渲染后异步补截图缩略图（签名是异步的，先占位后填充） */

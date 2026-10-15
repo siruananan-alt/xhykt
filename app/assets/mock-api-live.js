@@ -182,6 +182,11 @@ async function liveRefresh(){
   if(d.user){
     LIVE.user = d.user;
     persistIdentity(d.user);                    // <- 持久化（与 liveLogin 同源；覆盖免密恢复路径）
+    /* 【2026-10-15 修】身份牌纠正：initRole/initTopbar 早于本异步完成，可能按
+       sessionStorage 残留的旧身份渲染（含**已被删除的账号**——身份牌显示一个系统里
+       不存在的人，实测线上踩到）。数据到达后按真实身份重渲染一次，顺带把 Mock 会话
+       （S.wid/role/name）同步为真实登录者。 */
+    try{ if(typeof setRoleSilently==='function') setRoleSilently(d.user.role); }catch(e){}
     const S = (typeof MOCKAPI !== 'undefined' && MOCKAPI && MOCKAPI.S) ? MOCKAPI.S : null;
     if(S){ S.wid = d.user.wid; S.role = d.user.role; S.name = d.user.name; }
     MOCK.DB.users = MOCK.DB.users || {};

@@ -658,9 +658,17 @@ function setRoleSilently(k){
      注意： 背景：ROLES 是沙盒演示的固定表（学员恒=朱子悦/S001）。线上真实账号登录后，
         若仍走 ROLES，**张三登录也会显示「朱子悦」**（实测线上踩到）。
         真实身份由 mock-api-live 的 persistIdentity() 落进 sessionStorage.etrainWho。
-     优先级：etrainWho（真实）> LIVE.user（内存，刷新后才有）> ROLES（沙盒）。 */
-  const live=(typeof window.readIdentity==='function'&&window.readIdentity())
-          || (window.LIVE&&LIVE.user&&LIVE.user.wid?LIVE.user:null);
+     优先级：etrainWho（真实）> LIVE.user（内存，刷新后才有）> ROLES（沙盒）。
+     【2026-10-15 修】etrainWho 是 sessionStorage **持久残留**：该账号后来被删除时，
+        身份牌会显示一个系统里已不存在的人，且下方 syncMockSession 对它 setSession
+        会连弹「账号不存在」（实测线上踩到：残留「史乃方」→ 身份牌错 + toast×2）。
+        修法：etrainWho 的 wid 必须在当前用户表（种子或 live 拉回的数据）里能查到才采用。 */
+  let live=null;
+  if(typeof window.readIdentity==='function'){
+    const who=window.readIdentity();
+    if(who && typeof MOCK!=='undefined' && MOCK.userOf && MOCK.userOf(who.wid)) live=who;
+  }
+  if(!live && window.LIVE && LIVE.user && LIVE.user.wid) live=LIVE.user;
   const nm=(live&&live.name)||r.name, rl=live?r.role:r.role, av=(nm||'?').slice(0,1);
   document.querySelectorAll('[data-who-name]').forEach(e=>e.textContent=nm);
   document.querySelectorAll('[data-who-role]').forEach(e=>e.textContent=rl);
