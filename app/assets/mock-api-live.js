@@ -112,13 +112,25 @@ async function liveApi(action, extra){
   if(DELETE_ACTIONS[action] && body.confirm === undefined) body.confirm = true;
   let r;
   try{
-    r = await fetch(LIVE.apiUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body)
-    });
+    /* 【2026-10-15 修】请求必须带超时：无 signal 时网络黑洞（代理丢包/连接悬挂）
+       会让 fetch 永远 pending —— 登录按钮停在「登录中…」、写操作静默无响应，
+       用户只能干等（实况：xhykt.work 上点击登录后 6 秒仍 pending，手动重试又秒通，
+       典型间歇性网络故障）。20s 超时后走下方 catch，给用户明确错误。 */
+    const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 20000) : null;
+    try{
+      r = await fetch(LIVE.apiUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: ctrl ? ctrl.signal : undefined
+      });
+    }finally{
+      if(timer){ clearTimeout(timer); }
+    }
   }catch(e){
-    const err = new Error('连不上后端（' + LIVE.apiUrl + '）：' + (e.message || e));
+    const msg = (e && e.name === 'AbortError') ? '请求超时（20 秒无响应，请检查网络后重试）' : (e.message || e);
+    const err = new Error('连不上后端（' + LIVE.apiUrl + '）：' + msg);
     LIVE.lastError = err.message; throw err;
   }
   let j;
