@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>学员管理 · 教务管理员</title>
+<title>人员管理 · 教务管理员</title>
 <link rel="stylesheet" href="../assets/theme.css">
 <link rel="stylesheet" href="../assets/sandbox.css">
 </head>
@@ -15,13 +15,29 @@
 
   <div class="pg-head">
     <span class="eyebrow">星禾云课堂</span>
-    <h1>学员管理</h1>
-    <p class="sub">编辑学员资料、调整带教老师、重置密码与换工号。</p>
+    <h1>人员管理</h1>
+    <p class="sub">管理导师与学员：添加人员、编辑学员资料、调整带教老师、重置密码与换工号。</p>
   </div>
 
   <div class="card">
     <div class="row" style="justify-content:space-between;align-items:center">
-      <div class="sub">共 <b id="stuCount">0</b> 名在训学员。</div>
+      <div class="sub">导师（<b id="mentorCount">0</b>）—— 先有导师，学员才能挂靠。</div>
+      <button class="btn sm" onclick="openAddPerson('mentor')">＋ 添加导师</button>
+    </div>
+    <div class="tblwrap" style="margin-top:12px">
+      <table>
+        <thead><tr>
+          <th>工号</th><th>姓名</th><th>校区</th><th>职称</th><th>带教学徒</th><th>操作</th>
+        </tr></thead>
+        <tbody id="mentorRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="sub">学员（<b id="stuCount">0</b>）—— 全部在训名单。</div>
+      <button class="btn sm" onclick="openAddPerson('student')">＋ 添加学员</button>
     </div>
     <div class="tblwrap" style="margin-top:12px">
       <table>
@@ -52,9 +68,10 @@
 <script src="../assets/mock-api-live.js"></script>
 <script src="../assets/ui.js"></script>
 <script>
-/* 学员管理：基线 viewAdminStudents（只读 7 列）
-   【2026-10-09 第三轮·模块 A】改为可管理：
-     A1 编辑资料 / A3 改带教老师 / A4 重置密码 / A5 换工号。
+/* 人员管理（原「学员管理」，2026-10-15 改版）：分「导师 / 学员」两区块。
+   学员保留第三轮模块 A 全部能力（A1 编辑 / A3 改带教 / A4 重置密码 / A5 换工号）；
+   新增：openAddPerson('mentor'|'student') 添加导师/学员（复用 mockAddUser → adminUserUpsert 同一接线）。
+   导师行提供「重置密码」（复用 openResetPwReal）。
    注册 window.__rerender 重绘钩子（沿用 P0-3 约定），真实数据异步到达后重绘。 */
 document.addEventListener('DOMContentLoaded',()=>{
   if(typeof needsLoginGate==='function'&&needsLoginGate())return;
@@ -68,6 +85,28 @@ document.addEventListener('DOMContentLoaded',()=>{
 function render(){
   if(typeof needsLoginGate==='function'&&needsLoginGate())return;
   const n = MOCK.DB.levels.length;
+
+  /* 导师表：校区取 users 档案（mentors.json 只有 id/name/title）；
+     带教学徒数按 trainees.mentorId 实时统计，与「我的带教」同口径。 */
+  const mentors = MOCK.DB.mentors || [];
+  document.getElementById('mentorCount').textContent = mentors.length;
+  document.getElementById('mentorRows').innerHTML = mentors.map(m=>{
+    const u = MOCK.userOf(m.id) || {};
+    const cnt = (MOCK.DB.trainees||[]).filter(t=>t.mentorId===m.id).length;
+    const wid = UI.esc(m.id);
+    return `<tr>
+      <td><b>${wid}</b></td>
+      <td>${UI.esc(m.name)}</td>
+      <td>${UI.esc(u.dept||'—')}</td>
+      <td>${UI.esc(m.title||u.title||'—')}</td>
+      <td>${cnt} 人</td>
+      <td>
+        <button class="btn ghost sm" onclick="openResetPwReal('${wid}')">重置密码</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="sub">暂无导师，点右上「＋ 添加导师」创建。</td></tr>';
+
+  /* 学员表：保持既有 7 列与操作不变。 */
   const list = MOCK.DB.trainees || [];
   document.getElementById('stuCount').textContent = list.length;
   document.getElementById('stuRows').innerHTML = list.map(t=>{

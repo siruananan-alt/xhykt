@@ -368,7 +368,7 @@ const PAGE_CN={
   'student-course.html':'课程详情','student-learn.html':'章节学习','student-level.html':'关卡详情',
   'mentor.html':'带教工作台','mentor-coach.html':'我的带教','mentor-mentee.html':'徒弟详情',
   'admin-dashboard.html':'数据看板','admin-tracking.html':'学习跟踪','admin-journey.html':'闯关总览',
-  'admin-readiness.html':'转正达标线','admin-courses.html':'课程管理','admin-students.html':'学员管理',
+  'admin-readiness.html':'转正达标线','admin-courses.html':'课程管理','admin-students.html':'人员管理',
   'admin-plans.html':'带教计划','admin-perms.html':'权限矩阵','admin-users.html':'用户管理'
 };
 function showGuardNotice(){

@@ -22,7 +22,7 @@ const NAV_ADMIN = [
   ['admin-journey.html',   '闯关总览'],
   ['admin-readiness.html', '转正达标线'],
   ['admin-courses.html',   '课程管理'],
-  ['admin-students.html',  '学员管理'],
+  ['admin-students.html',  '人员管理'],
   ['admin-plans.html',     '带教计划'],
   ['admin-perms.html',     '权限矩阵'],
   ['admin-users.html',     '用户管理']
@@ -804,6 +804,49 @@ function isMentorId(wid){
   return !!(u && u.role === 'mentor');
 }
 
+/* 【2026-10-15 人员管理】按角色预填的新增弹层：openAddPerson('student'|'mentor')。
+   复用 mockAddUser()（沙盒）→ live adminUserUpsert 同一接线（读固定 id：
+   uRole/uWid/uName/uDept/uPw/uMentor/uPlan/uTitle），只控制字段与角色，
+   不新增账号状态体系。角色不含 admin（管理员入口不走此弹层，防止误建）。
+   校区用 CAMPUS_LIST 下拉（与后端 CAMPUS_WHITELIST 逐字一致），替代旧 openAddUser 的自由输入。
+   ⚠️ mockAddUser 会无条件读取全部 8 个 id，故不适用字段必须渲染为 hidden 空值
+   （沿用旧 openAddUser「元素常在 + hidden 切换」的做法，不能省略）。 */
+function openAddPerson(role){
+  if(role !== 'student' && role !== 'mentor') return toast('角色不合法','err');
+  const mentorBox = role === 'student'
+    ? fld('带教导师 *', `<select id="uMentor"><option value="">请选择</option>
+        ${MOCK.DB.mentors.map(m=>`<option value="${m.id}">${esc(m.name)}（${m.id}）</option>`).join('')}</select>`,
+        '学员必须挂导师，否则带教链断掉')
+    : '<input type="hidden" id="uMentor" value="">';
+  const planBox = role === 'student'
+    ? fld('带教计划', `<select id="uPlan"><option value="">不绑定</option>
+        ${MOCK.DB.plans.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>`)
+    : '<input type="hidden" id="uPlan" value="">';
+  const titleBox = role === 'mentor'
+    ? fld('职称', `<input id="uTitle" placeholder="如 带教导师">`, '选填，展示在导师名旁')
+    : '<input type="hidden" id="uTitle" value="">';
+  const roleTxt = role === 'student' ? '学员' : '导师';
+  openModal(modal('添加' + roleTxt,
+    `<form id="addUserForm" data-form="addUserForm">
+     <input type="hidden" id="uRole" value="${role}">
+     ${fld('工号 *', `<input id="uWid" data-rule="wid" placeholder="${role==='student'?'如 S0100':'如 M3'}" autocomplete="off">`,
+        '字母开头、字母+数字组合；已被占用会被拒绝，不会覆盖')}
+     ${fld('姓名 *', `<input id="uName" placeholder="真实姓名">`)}
+     ${fld('校区 *', `<select id="uDept">${CAMPUS_LIST.map(c=>`<option value="${c}"${c==='武汉'?' selected':''}>${c}</option>`).join('')}</select>`,
+        '仅支持 14 个固定校区')}
+     ${mentorBox}
+     ${planBox}
+     ${titleBox}
+     ${fld('初始密码 *', `<input id="uPw" type="password" data-rule="pwd" placeholder="至少 6 位">`,
+        '创建后请通知本人首次登录后自行修改')}
+     </form>
+     <div class="note warn">${role==='student'
+       ? '创建后学员立即可登录；当前关卡从第 1 关开始。'
+       : '创建后导师立即可登录；先有导师，学员才能挂靠。'}</div>`,
+    `<button class="btn ghost" onclick="closeModal()">取消</button>
+     <button class="btn" onclick="mockAddUser()">创建${roleTxt}</button>`));
+}
+
 /* A3 独立入口：只改带教老师（详情页/列表快捷操作都可用） */
 function openChangeMentor(wid){
   const u = MOCK.userOf(wid); if(!u) return;
@@ -992,6 +1035,7 @@ function roleCN(r){ return {student:'学员',mentor:'带教导师',admin:'教务
 window.UI={topbarHTML,initTopbar,refreshTodoDot,mxCell,mxLegend,stagebar,rdBadgeGrid,readinessMeta,taskCardClass,taskTagHTML,tbl,tr,
   readinessBadge,openModal:window.openModal,modal,fld,openJourney,openAdminReview,openGateConfirm,
   openReadiness,openAddUser,onRoleChange,openResetPw,openTransfer,openDeleteCourse,openTimeline,
+  openAddPerson,
   openSignoff,openPlayer,openSync,openQuiz,gradeQuiz,
   pendingList,bulkListHTML,bulkSkipHTML,openBulkPass,
   exportCSV,exportLearningReport,exportCertCSV,esc,roleCN,NAV_ADMIN,
