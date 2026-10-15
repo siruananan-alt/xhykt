@@ -230,8 +230,19 @@ function liveWrite(action, buildBody, opts){
   opts = opts || {};
   return async function(){
     const args = Array.prototype.slice.call(arguments);
-    const body = buildBody.apply(null, args);
-    const out = await liveApi(action, body);
+    /* 【2026-10-15 修】写失败必须可见：多数调用点（弹层确认按钮 onclick 直接调
+       async 函数）不 catch —— 后端报错/组参失败会变成 **unhandled rejection 静默失败**，
+       用户以为操作成功了（实况：添加账号失败 → 用户以为注册成功 → 登录报
+       「工号或密码错误」其实是账号根本没建）。统一在这里 toast 后继续抛出
+       （有 catch 的调用方会再提示一次，重复但绝不漏报）。 */
+    let body, out;
+    try{
+      body = buildBody.apply(null, args);
+      out = await liveApi(action, body);
+    }catch(e){
+      try{ toast('操作失败：' + (e && e.message ? e.message : e), 'err'); }catch(_){ }
+      throw e;
+    }
     if(opts.noRefresh !== true){
       try{ await liveRefresh(); }catch(e){ /* 读失败不阻断写成功提示 */ }
     }
