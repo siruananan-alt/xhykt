@@ -184,13 +184,46 @@ async function liveRefresh(){
   };
   Object.keys(map).forEach(k=>{ if(d[k] !== undefined) MOCK.DB[map[k]] = d[k]; });
   if(d.levelPhases) MOCK.DB.phases = d.levelPhases;              // <- 唯一改名点
+  /* 【2026-10-15 修】users 镜像补齐：把 trainees / mentors 补成**只增不改**的用户桩。
+     为什么必须补（线上实测的完整根因链）：
+       后端 actionData **不对非管理员下发 users 字典**（只带自己那一条），
+       而前端多个公开助手（todoCounts / visibleTrainees / canReview / pendingList）
+       统一是「按 wid 查 userOf(wid).role，再按角色分派」的写法 —— 导师登录后查自己徒弟时
+       userOf(徒弟工号) 恒为 undefined -> 抛 TypeError：
+         renderHero -> MOCK.todoCounts('S002') -> userOf('S002').role  ← 实测断点
+       而该异常发生在 liveRerender 的重绘里，被 liveRerender 的 try/catch 吞掉
+       （只 console.warn）-> **页面永久停在数据到达前那一帧**：
+       种子数据「朱子悦 / 带教导师郑丽薪」，而顶栏身份牌是真实登录者「史力丹」
+       —— 用户报的「身份是史力丹、数据是朱子悦」就是这么来的。
+     注意：① **只补缺失键**，绝不覆盖已存在的记录（管理员权威列表优先）；
+          ② 管理员路径随后会被 adminUserList 整体替换（见下面 fetchUsersIfAdmin），
+             故「人员管理 / 数据看板」的账号口径不受影响；
+          ③ 桩的 role 用 trainees->student / mentors->mentor，与沙盒种子 DB_USERS 的建模一致
+             （种子里 S001 这条学员就同时存在于 users 与 trainees）。 */
+  try{
+    MOCK.DB.users = MOCK.DB.users || {};
+    (MOCK.DB.trainees || []).forEach(function(t){
+      if(!t || !t.id || MOCK.DB.users[t.id]) return;
+      MOCK.DB.users[t.id] = { wid: t.id, role: 'student', name: t.name || t.id,
+        dept: t.dept || '', planId: t.planId || '', mentorId: t.mentorId || '' };
+    });
+    (MOCK.DB.mentors || []).forEach(function(m){
+      if(!m || !m.id || MOCK.DB.users[m.id]) return;
+      MOCK.DB.users[m.id] = { wid: m.id, role: 'mentor', name: m.name || m.id,
+        dept: m.dept || '', title: m.title || '' };
+    });
+  }catch(e){ console.warn('[live] users 镜像补齐失败（不影响其它数据）：' + e.message); }
   /* 会话同步：注意： MOCKAPI / S 由 mock-api.js 定义，正常都在；但**跳页时序**下
      liveBootstrap 可能在页面脚本完成初始化前跑，故一律防御性赋值，
      绝不让「同步会话」这一步抛错把整个 refresh 打断（数据其实已写好）。 */
   /* 注意： users 字典：actionData **不下发**（后端已核对）-> 管理员单独补一次全量账号列表。
-     非管理员不补（后端 adminUserList 仅 admin 可调）；他们的 DB.users 保持 mock 种子，
-     但**非管理员页面不消费 DB.users**（实测：只有 admin-dashboard/admin-users/student-me
-     三处，前两者仅 admin 可见；student-me 只用来渲染「带教联系人」，其数据本就在 trainees 里）。 */
+     【2026-10-10 的错误结论，2026-10-15 实测推翻】**别再相信「非管理员页面不消费 DB.users」**：
+       这句话只统计了直接 `Object.values(MOCK.DB.users)` 的三处，漏掉了**间接消费**——
+       todoCounts / visibleTrainees / canReview / pendingList 这些公开助手全部是
+       `userOf(wid).role` 的写法，导师端页面（mentor / mentor-coach / mentor-mentee）
+       传进去的正是**徒弟工号**，学员端传的是自己。users 镜像不全 -> 这些助手直接抛异常
+       -> 页面渲染中断（且异常被 liveRerender 吞掉，表面看就是「数据没更新」）。
+       所以：非管理员也必须把 trainees / mentors 补成桩（见上方「users 镜像补齐」）。 */
   if(d.user){
     LIVE.user = d.user;
     persistIdentity(d.user);                    // <- 持久化（与 liveLogin 同源；覆盖免密恢复路径）

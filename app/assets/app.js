@@ -364,8 +364,31 @@ function guardPage(){
    拿不到任何登录痕迹 -> 返回 null（守卫不拦，交给各页原有逻辑；线上真实后端仍会在
    接口层拒绝，页面表现为数据空，不会泄露）。 */
 function currentRole(){
-  let k=null, hasToken=false;
-  try{ k=sessionStorage.getItem('protoRole'); hasToken=!!sessionStorage.getItem('etrainToken'); }catch(e){}
+  let k=null, hasToken=false, hasWho=false;
+  try{
+    k=sessionStorage.getItem('protoRole');
+    hasToken=!!sessionStorage.getItem('etrainToken');
+    hasWho=!!sessionStorage.getItem('etrainWho');
+  }catch(e){}
+  /* 【2026-10-15 三次修】live 下「有真实登录身份（etrainWho）+ 角色（protoRole）却**没有 token**」
+     = **半登录态**，一律按未登录处理。
+     为什么必须堵：守卫原来认「protoRole 或 token 有其一」即算登录 -> 半登录态不被拦 ->
+     各页 render() 直读 mock-data.js 的**沙盒种子**（朱子悦 / 郑丽薪 / admin）当真实数据渲染。
+     实测线上症状吻合：M4 史力丹登录后进徒弟页，顶栏身份牌显示「史力丹」（读 etrainWho，是真的），
+     页面数据却是种子的「朱子悦 + 带教导师郑丽薪」—— 身份真、数据假，比全假更危险。
+     真实登录**必然同时写 token**（login.html 写 protoRole、liveLogin 写 etrainToken），
+     缺 token 只意味着会话被清 / 被顶掉 / 复制到新标签页，此时按未登录收敛才是对的。
+
+     注意：【判据必须同时要求 etrainWho】—— 三个豁免一个都不能少，否则会打坏验证套件：
+       · 显式沙盒（?sandbox=1 / 开发环境 etrainLive=0）：21 个验收脚本靠它直切视角；
+       · file:// 直开：截图脚本从磁盘打开预览页；
+       · **只有 protoRole、没有 etrainWho**：_p-acctsw / verify-role-chip / _p-phfold /
+         shot-ui / _p-brand 等线上脚本都是「clear() 后只写 protoRole」，
+         它们本来就不带真实身份，没有「身份真、数据假」的问题，必须放行。
+       反过来，真实用户登录后 etrainWho 一定在（persistIdentity 与 token 同时写），
+       所以这三条例外不会漏掉任何真实用户。 */
+  const localFile=(location.protocol==='file:');
+  if(hasWho && !hasToken && !localFile && !isSandboxPreview()) return null;
   const loggedIn=!!k||hasToken;
   if(!loggedIn) return null;                       // 未登录：不认任何身份
   if(k && ROLE_HOME[k]) return k;                  // 1. 显式角色（最准）
@@ -663,19 +686,71 @@ function setRoleSilently(k){
         身份牌会显示一个系统里已不存在的人，且下方 syncMockSession 对它 setSession
         会连弹「账号不存在」（实测线上踩到：残留「史乃方」→ 身份牌错 + toast×2）。
         修法：etrainWho 的 wid 必须在当前用户表（种子或 live 拉回的数据）里能查到才采用。 */
-  let live=null;
-  if(typeof window.readIdentity==='function'){
-    const who=window.readIdentity();
-    if(who && typeof MOCK!=='undefined' && MOCK.userOf && MOCK.userOf(who.wid)) live=who;
+  let live=null, who=null;
+  const liveOn=(typeof window.LIVE!=='undefined'&&window.LIVE&&window.LIVE.enabled===true);
+  if(typeof window.readIdentity==='function') who=window.readIdentity();
+  if(who && who.wid){
+    /* 【2026-10-15 二次修】etrainWho 的取舍必须区分「数据是否已到」两种情况：
+       ① 用户表**已就绪**（LIVE.user 有值，说明 liveRefresh 已跑完）：etrainWho 必须能在
+          用户表里查到才采用 —— 挡住「账号已被删除、sessionStorage 还留着旧身份」的残留。
+       ② live 模式且**数据尚未到达**：必须**乐观采用** etrainWho。否则 live=null 会回落到
+          ROLES 演示表（mentor 恒等 M1 郑丽薪），把会话写成演示账号 M1。
+          实测线上：M4 史力丹登录后进徒弟页，「带教导师」显示郑丽薪、徒弟显示种子朱子悦
+          —— 根因就在这里（沙盒种子 users 只有 M1/M2/S001/admin，没有 M4，
+          MOCK.userOf('M4') 恒为 undefined）。 */
+    const known=(typeof MOCK!=='undefined' && MOCK.userOf && MOCK.userOf(who.wid));
+    if(known || (liveOn && !(window.LIVE && LIVE.user))) live=who;
   }
   if(!live && window.LIVE && LIVE.user && LIVE.user.wid) live=LIVE.user;
-  const nm=(live&&live.name)||r.name, rl=live?r.role:r.role, av=(nm||'?').slice(0,1);
+  /* 角色中文标签一律取自 ROLES（live.role 是 'mentor' 这类英文码），k 决定用哪一行。 */
+  const nm=(live&&live.name)||r.name, rl=r.role, av=(nm||'?').slice(0,1);
   document.querySelectorAll('[data-who-name]').forEach(e=>e.textContent=nm);
   document.querySelectorAll('[data-who-role]').forEach(e=>e.textContent=rl);
   document.querySelectorAll('[data-who-av]').forEach(e=>e.textContent=av);
   document.body.className=document.body.className.replace(/role-\w+/g,'').trim()+' role-'+k;
-  // Mock 会话：真实账号优先用其真实 wid；沙盒才回落到 ROLES 的演示 wid
-  syncMockSession((live&&live.wid)||r.wid);
+  /* 会话同步（S.wid/role/name）三档，判据 = 「live 下有没有真实身份来源」：
+     ① 有真实身份（etrainWho 可用 / LIVE.user）-> 直接写会话；不走 syncMockSession
+        （它内部 setSession 有 MOCK.userOf 门禁：数据未到时真实工号不在种子表里 ->
+         会误弹「账号不存在」toast 且写不进会话）。
+     ② **非 live（沙盒 / ?sandbox=1 / 开发环境）** -> 永远回落 ROLES 演示工号。
+        注意这里必须**无视 etrainWho 残留**：用户从线上切到沙盒（同一标签页）时 etrainWho 还在，
+        若因此不回落，会话会停在 mock 默认的 admin -> 沙盒页面全变成管理端视角。
+     ③ live 且**完全没有真实身份来源**（无 etrainWho）-> 也回落演示工号。
+        这一类是验收 / 截图脚本：它们只写 protoRole、不写 etrainWho，本来就靠演示身份看数据
+        （_p-acctsw / verify-role-chip / _p-phfold / shot-ui / _p-brand … 20+ 个脚本依赖）。
+        **绝不能顺手改掉**，否则整套验收立刻变红。
+     ④ live + 有 etrainWho 但暂不可解析、数据又未到 -> **保持会话不动**，等 liveRefresh 写入。
+        绝不用演示工号覆盖 —— 那正是「M4 登录后徒弟页显示种子朱子悦」的根因。 */
+  if(live && live.wid){
+    syncSessionDirect(live);
+  }else if(!liveOn || !who){
+    syncMockSession(r.wid);          // 沙盒演示 / 验收脚本：保持原行为
+  }
+}
+
+/* 直接写 Mock 会话（绕开 setSession 的用户表门禁）。
+   适用于「身份已确认、但用户表可能尚未拉到该账号」的 live 首屏场景。
+   注意：【必须同时补进用户表】live 模式下后端 **不对非管理员下发 users 字典**（只带自己一条），
+     而多处内部函数（visibleTrainees / canReview / pendingList 等）会无保护地执行
+     `MOCK.userOf(S.wid).role`。若只改 S.wid 而不补表，这些函数会在数据到达前抛
+     TypeError。补一条**只增不改**的桩，等价于 liveRefresh 里那次补写。 */
+function syncSessionDirect(u){
+  if(!u || !u.wid) return;
+  try{
+    const S=(typeof window.MOCKAPI!=='undefined'&&window.MOCKAPI)?MOCKAPI.S:null;
+    if(!S) return;
+    S.wid=u.wid; S.role=u.role||S.role; S.name=u.name||u.wid;
+    try{
+      if(typeof MOCK!=='undefined' && MOCK.DB){
+        MOCK.DB.users = MOCK.DB.users || {};
+        /* 只补缺失键：已在表内（含管理员权威下发）的记录一律不动。 */
+        if(!MOCK.DB.users[u.wid]){
+          MOCK.DB.users[u.wid] = { wid:u.wid, role:u.role||'student', name:u.name||u.wid, dept:u.dept||'' };
+        }
+      }
+    }catch(e){}
+    if(typeof UI!=='undefined' && UI && typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(S.wid);
+  }catch(e){/* 会话层异常不得影响身份牌渲染 */}
 }
 
 /* ---------- 6. 列表筛选 + 批量选择 ---------- */

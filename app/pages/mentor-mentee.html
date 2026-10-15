@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>徒弟详情 · 导师</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015d">
-<link rel="stylesheet" href="../assets/sandbox.css?v=1015d">
+<link rel="stylesheet" href="../assets/theme.css?v=1015e">
+<link rel="stylesheet" href="../assets/sandbox.css?v=1015e">
 </head>
 <body class="role-mentor" data-role="mentor" data-nav-done="1">
 
@@ -54,11 +54,11 @@
   数据来源：window.MOCK / window.MOCKAPI / window.UI（proto/assets/*.js）
 -->
 
-<script src="../assets/app.js?v=1015d"></script>
-<script src="../assets/mock-data.js?v=1015d"></script>
-<script src="../assets/mock-api.js?v=1015d"></script>
-<script src="../assets/mock-api-live.js?v=1015d"></script>
-<script src="../assets/ui.js?v=1015d"></script>
+<script src="../assets/app.js?v=1015e"></script>
+<script src="../assets/mock-data.js?v=1015e"></script>
+<script src="../assets/mock-api.js?v=1015e"></script>
+<script src="../assets/mock-api-live.js?v=1015e"></script>
+<script src="../assets/ui.js?v=1015e"></script>
 <script>
 /* ============================================================
    徒弟详情 · 数据驱动（#36 第二部分）
@@ -102,16 +102,38 @@ function render(){
         现在：无显式 ?wid 时每次渲染都重算回退（liveRefresh 完成后的 liveRerender
         会再次调 render()，此时 S.wid 已是真实登录者）。
      ② admin 没有「徒弟」概念：无 ?wid 时渲染学员选择列表（可点进入详情），不再死页。 */
-  if(!qs('wid') && (!WID || !MOCK.traineeOf(WID))){
-    const mine = myMentees();
-    if(mine.length) WID = mine[0].id;
-  }
-  const t = MOCK.traineeOf(WID);
-  const u = MOCK.userOf(WID);
+  /* 【2026-10-15 二次修】WID 的重算判据从「存不存在」改成「**是不是我名下的**」。
+     旧判据 `!MOCK.traineeOf(WID)` 不够：WID 一旦在 live 竞速期落到一个**仍然存在**的徒弟
+     （如种子 users 里 M1 的徒弟 S001），liveRerender 到达时它依然查得到 -> 永不重算 ->
+     页面永久停在种子数据上。实测线上：M4 史力丹登录后进徒弟页，「带教导师」显示郑丽薪、
+     徒弟显示朱子悦（种子里 M1 的徒弟）。现在每次渲染都按当前会话重算，竞速结束后
+     liveRerender 会自动换成本人徒弟。 */
   const isAdmin = MOCKAPI.S && MOCKAPI.S.role==='admin';
+  const mine = myMentees();
+  if(!qs('wid') && (!WID || !mine.some(x=>x.id===WID))) WID = mine.length ? mine[0].id : '';
+  const t = MOCK.traineeOf(WID);
+  /* 【2026-10-15 二次修】这里**必须**兜底成 {}：live 模式下后端不给非管理员下发 users 字典，
+     徒弟的账号记录在 DB.users 里根本不存在 -> `MOCK.userOf(WID)` 返回 undefined ->
+     下面 `const name = u.name || ...` 抛 TypeError -> **整个 render() 中断**，
+     而中断发生在 live 数据到达后的那次重绘里 -> 页面永久停在数据到达前的那一帧
+     （即种子数据「朱子悦 / 带教导师郑丽薪」），且控制台只报一行 TypeError，用户无从察觉。
+     实测线上：M4 史力丹登录 → 徒弟页显示「朱子悦 + 带教导师郑丽薪」，顶栏却是「史力丹」。
+     兜底后姓名按 `t.name`（trainees 表里有）显示，不再依赖 users 表。 */
+  const u = MOCK.userOf(WID) || {};
 
   if(!t){
     if(isAdmin && !qs('wid')){ renderPickList(); return; }
+    /* 导师名下暂无徒弟：给「空」提示，而不是「找不到这名学员」——
+       后者会让用户以为系统坏了（竞速期也会短暂走到这里，但主内容区被加载态遮住）。 */
+    if(!qs('wid') && !mine.length){
+      document.getElementById('eyebrow').textContent = '徒弟详情';
+      document.getElementById('pageTitle').textContent = '暂无带教徒弟';
+      document.getElementById('pageSub').textContent = '你名下暂时还没有分配学员；如需带教，请联系教务管理员在「人员管理」里指定。';
+      document.getElementById('heroCard').innerHTML = '<div class="empty-note"><b>暂无带教徒弟</b></div>';
+      document.getElementById('levels').innerHTML = '';
+      document.getElementById('mxLegend').innerHTML = '';
+      return;
+    }
     document.getElementById('eyebrow').textContent = WID;
     document.getElementById('pageTitle').textContent = '找不到这名学员';
     document.getElementById('pageSub').textContent = '学员可能已被移除';
@@ -125,7 +147,9 @@ function render(){
   const name = u.name || t.name || WID;
   const cur  = MOCK.currentLevelOf(WID);
   const days = t.joined ? Math.max(0, Math.floor((Date.now()-new Date(t.joined))/86400000)) : null;
-  const mentor = MOCK.userOf(t.mentorId) || {};
+  /* 带教导师姓名：优先 users（管理员场景权威），回落到 mentors 表（后端**一定**下发，
+     含 name/dept/title）。live 下非管理员拿不到别人的 users 记录，只靠 users 会显示工号。 */
+  const mentor = MOCK.userOf(t.mentorId) || MOCK.mentorOf(t.mentorId) || {};
 
   document.title = `${name} · 徒弟详情 · 导师`;
 
