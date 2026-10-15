@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>导师工作台</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015g">
-<link rel="stylesheet" href="../assets/sandbox.css?v=1015g">
+<link rel="stylesheet" href="../assets/theme.css?v=1015h">
+<link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 </head>
 <body class="role-mentor" data-role="mentor" data-nav-done="1">
 
@@ -105,11 +105,11 @@
   数据来源：window.MOCK / window.MOCKAPI（proto/assets/*.js）
 -->
 
-<script src="../assets/app.js?v=1015g"></script>
-<script src="../assets/mock-data.js?v=1015g"></script>
-<script src="../assets/mock-api.js?v=1015g"></script>
-<script src="../assets/mock-api-live.js?v=1015g"></script>
-<script src="../assets/ui.js?v=1015g"></script>
+<script src="../assets/app.js?v=1015h"></script>
+<script src="../assets/mock-data.js?v=1015h"></script>
+<script src="../assets/mock-api.js?v=1015h"></script>
+<script src="../assets/mock-api-live.js?v=1015h"></script>
+<script src="../assets/ui.js?v=1015h"></script>
 <script>
 /* ============================================================
    导师工作台 · 数据驱动
@@ -343,7 +343,9 @@ function renderMentees(mentees){
     const name = u.name || t.name || t.id;
     // 12 格矩阵（UI.mxCell 是四态唯一来源）
     const cells = MOCK.DB.levels.map(lv=>UI.mxCell(t.id, lv, {cur: cur && cur.id===lv.id})).join('');
-    const days = t.joined ? Math.max(0, Math.floor((Date.now()-new Date(t.joined))/86400000)) : null;
+    /* 【2026-10-15 修字段名】入职日期真名 = joinDate（见 mentor-coach.html 同处说明）。 */
+    const jd = t.joinDate || t.joined;
+    const days = jd ? Math.max(0, Math.floor((Date.now()-new Date(jd))/86400000)) : null;
     return `
     <a class="rowitem" href="mentor-mentee.html?wid=${esc(t.id)}" style="text-decoration:none;display:block">
       <span class="avatar" style="float:left;margin-right:12px">${esc(String(name).slice(0,1))}</span>

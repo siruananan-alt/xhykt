@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>我的带教 · 导师</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015g">
-<link rel="stylesheet" href="../assets/sandbox.css?v=1015g">
+<link rel="stylesheet" href="../assets/theme.css?v=1015h">
+<link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 </head>
 <body class="role-mentor" data-role="mentor" data-nav-done="1">
 
@@ -16,87 +16,84 @@
   <div class="pg-head">
     <span class="eyebrow" id="eyebrow">—</span>
     <h1>我的带教</h1>
-    <p class="sub">5 周学习地图、胜任力清单、PK 三项指标。</p>
+    <p class="sub">先看谁需要你动手，再点进去看细节；5 周地图等通用内容收在页面下方。</p>
   </div>
 
-  <!-- PK 三项指标（带教体系的核心考核口径） -->
+  <!-- PK 三项指标（带教体系的核心考核口径，全部徒弟合并计算） -->
   <div class="kpis" id="kpis" style="margin-bottom:var(--s5)"></div>
 
-  <!-- 5 周学习地图 -->
-  <div class="card" style="border:3px solid var(--ink)">
+  <!-- 我的徒弟：总览榜（2026-10-15 多徒弟改版）
+       改版前：本页只放一份「5 周学习地图 + 胜任力清单」，阶段条只取 mentees[0]，
+       胜任力清单把所有人压成一行（「2 人合并 · 周旭 未过 · 徐泽林 未过」）——
+       带 2 名以上徒弟的导师（生产 M5 刘璐瑶带 2 人）看不出每个人卡在哪。
+       改版后：先给一张「谁需要我动手」的榜，通用课表下沉到折叠区。 -->
+  <div class="card">
     <div class="card-h">
-      <h2>5 周学习地图</h2>
+      <h2>我的徒弟</h2>
+      <span class="tag ghost" id="menteeN">—</span>
     </div>
-
-    <div id="mapStagebar" style="margin-bottom:var(--s5)"></div>
-
-    <div class="tblwrap">
-      <table>
-        <thead>
-          <tr><th>周次</th><th>阶段</th><th>学员要过的关</th><th>带教重点动作</th><th>关键卡点</th></tr>
-        </thead>
-        <tbody id="mapBody"></tbody>
-      </table>
-    </div>
-
-    <div class="note warn" style="margin-top:var(--s4)" id="realityNote"></div>
+    <p class="hint" id="sortHint" style="margin-bottom:var(--s4)"></p>
+    <div id="menteeList"></div>
   </div>
 
-  <!-- 教日志（2026-10-05 收口）
-       【为什么下线填写入口】教日志目前只存浏览器内存，刷新即丢（后端无教日志表）。
-       对真实导师来说，写完就消失的记录比没有记录更伤 —— 所以上线版隐藏整个填写卡，
-       只保留下方可直接抄写的模板。等后端有正式存储后再恢复填写入口。 -->
-  <div class="grid g-side">
-    <div>
-      <!-- 教日志模板（直接可抄） -->
-      <div class="card">
-        <div class="card-h">
-          <h2>教日志模板</h2>
-          <span class="tag ghost">填空式 · 1 分钟</span>
-        </div>
-        <p class="hint" style="margin-bottom:var(--s4)">可复制到飞书文档按日填写</p>
-        <div class="note">
-          <b>今天教了什么：</b>（一句话，带他拆了哪条对标视频）<br>
-          <b>学员卡在哪：</b>（一句话，剪辑模板还没沉淀）<br>
-          <b>下一步做什么：</b>（一句话，明天盯 T-G3 剪辑模板）
-        </div>
-      </div>
-    </div>
+  <!-- 带教通用参考：对所有人都一样，折叠收起，不占屏 -->
+  <details class="fold" id="refFold" style="margin-top:var(--s5)">
+    <summary>带教通用参考 · 5 周学习地图 / 胜任力清单 / 教日志模板 / 每周固定动作</summary>
+    <div class="fold-body">
 
-    <div>
-      <!-- 胜任力清单（按真实关卡进度推导，不是写死的三绿两灰） -->
-      <div class="card">
-        <div class="card-h">
-          <h2>胜任力清单进度</h2>
-          <span class="tag ghost" id="compN">—</span>
-        </div>
-        <div id="comp"></div>
-        <div class="note" style="margin-top:var(--s4)">
-          由导师勾选，学员只读。5 项全过是转正的隐性前提 —— 达标线全绿但胜任力不过，导师有权建议延长带教。
-        </div>
+      <div class="card-h" style="margin-top:var(--s3)"><h2>5 周学习地图</h2></div>
+      <div class="tblwrap">
+        <table>
+          <thead>
+            <tr><th>周次</th><th>阶段</th><th>学员要过的关</th><th>带教重点动作</th><th>关键卡点</th></tr>
+          </thead>
+          <tbody id="mapBody"></tbody>
+        </table>
+      </div>
+      <div class="note warn" style="margin-top:var(--s4)" id="realityNote"></div>
+
+      <div class="card-h" style="margin-top:var(--s5)">
+        <h2>胜任力清单进度</h2>
+        <span class="tag ghost" id="compN">—</span>
+      </div>
+      <div id="comp"></div>
+      <div class="note" style="margin-top:var(--s4)">
+        由导师勾选，学员只读。5 项全过是转正的隐性前提 —— 达标线全绿但胜任力不过，导师有权建议延长带教。
       </div>
 
-      <!-- 每周固定动作 -->
-      <div class="card">
-        <div class="card-h"><h2>每周固定动作</h2></div>
-        <div class="tl">
-          <div class="ev"><div class="ts">每日 20:00 前</div>
-            <div class="tx">批完当天全部提交</div></div>
-          <div class="ev"><div class="ts">每周一</div>
-            <div class="tx">对一次胜任力清单 · 给出本周重点动作</div></div>
-          <div class="ev"><div class="ts">每周三</div>
-            <div class="tx">看一次月引流数据，差 800 人的尽早干预</div></div>
-          <div class="ev"><div class="ts">每周五</div>
-            <div class="tx">写本周带教小结 · 填 PK 三项指标</div></div>
-          <div class="ev"><div class="ts">第 5 周</div>
-            <div class="tx">转正面谈（学员 + 导师 + 教务三方）</div></div>
-        </div>
+      <!-- 教日志（2026-10-05 收口）
+           【为什么下线填写入口】教日志目前只存浏览器内存，刷新即丢（后端无教日志表）。
+           对真实导师来说，写完就消失的记录比没有记录更伤 —— 所以上线版隐藏整个填写卡，
+           只保留下方可直接抄写的模板。等后端有正式存储后再恢复填写入口。 -->
+      <div class="card-h" style="margin-top:var(--s5)">
+        <h2>教日志模板</h2>
+        <span class="tag ghost">填空式 · 1 分钟</span>
+      </div>
+      <p class="hint" style="margin-bottom:var(--s4)">可复制到飞书文档按日填写</p>
+      <div class="note">
+        <b>今天教了什么：</b>（一句话，带他拆了哪条对标视频）<br>
+        <b>学员卡在哪：</b>（一句话，剪辑模板还没沉淀）<br>
+        <b>下一步做什么：</b>（一句话，明天盯 T-G3 剪辑模板）
+      </div>
+
+      <div class="card-h" style="margin-top:var(--s5)"><h2>每周固定动作</h2></div>
+      <div class="tl">
+        <div class="ev"><div class="ts">每日 20:00 前</div>
+          <div class="tx">批完当天全部提交</div></div>
+        <div class="ev"><div class="ts">每周一</div>
+          <div class="tx">对一次胜任力清单 · 给出本周重点动作</div></div>
+        <div class="ev"><div class="ts">每周三</div>
+          <div class="tx">看一次月引流数据，差 800 人的尽早干预</div></div>
+        <div class="ev"><div class="ts">每周五</div>
+          <div class="tx">写本周带教小结 · 填 PK 三项指标</div></div>
+        <div class="ev"><div class="ts">第 5 周</div>
+          <div class="tx">转正面谈（学员 + 导师 + 教务三方）</div></div>
       </div>
 
       <!-- 【2026-10-05 收口】原「常用操作」卡三按钮（导出周报/查看待批/答疑群）
            均为点了只弹「暂未开放」的占位入口，按上线收口规则整体移除。 -->
     </div>
-  </div>
+  </details>
 
 </main>
 
@@ -109,22 +106,24 @@
      - "带教学徒 2 人" -> 真实 M1 只带 1 人（S001）
      - "李彦（S002）" -> 该账号**不存在**
      - "朱子悦 3/5 胜任力" -> 真实进度需按关卡推导
-  2. 5 周学习地图：周次/关卡/任务卡张数**全部从 LEVEL_PHASES + TASK_DEFS 推导**，
-     不写死 5/3/1 张卡。
-  3. 教日志：真实数据只到「没有记录」就显示空态，**不为好看编数据**。
-  4. 胜任力清单：5 项各自绑定"对应关卡"，通过与否读该关真实进度。
+  2. 【2026-10-15 多徒弟改版】「我的徒弟」总览榜：
+     每人一行 = 头像 / 姓名·工号 / 卡在第几关 / 已过关数 / 达标线条数 / 进度条 / 风险标签。
+     默认排序 = 待我批改 → 进度落后 → 已过关数少的优先。行点击 -> mentor-mentee.html?wid=xxx。
+  3. 5 周学习地图：周次/关卡/任务卡张数**全部从 LEVEL_PHASES + TASK_DEFS 推导**，不写死 5/3/1 张卡。
+  4. 胜任力清单：**每个徒弟一列**（行 = 5 项胜任力）——改版前是所有人压成一行，人一多就读不动。
+  5. 教日志：真实数据只到「没有记录」就显示空态，**不为好看编数据**。
 
   数据来源：window.MOCK / window.MOCKAPI / window.UI（proto/assets/*.js）
 -->
 
-<script src="../assets/app.js?v=1015g"></script>
-<script src="../assets/mock-data.js?v=1015g"></script>
-<script src="../assets/mock-api.js?v=1015g"></script>
-<script src="../assets/mock-api-live.js?v=1015g"></script>
-<script src="../assets/ui.js?v=1015g"></script>
+<script src="../assets/app.js?v=1015h"></script>
+<script src="../assets/mock-data.js?v=1015h"></script>
+<script src="../assets/mock-api.js?v=1015h"></script>
+<script src="../assets/mock-api-live.js?v=1015h"></script>
+<script src="../assets/ui.js?v=1015h"></script>
 <script>
 /* ============================================================
-   我的带教 · 数据驱动（#36 第三部分）
+   我的带教 · 数据驱动（#36 第三部分 / 2026-10-15 多徒弟改版）
    ============================================================ */
 
 const ME = ()=>MOCKAPI.S.wid;
@@ -135,8 +134,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('mentor','mentor-coach.html');
   if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(ME());
   render();
-  /* 【2026-10-05 收口】教日志填写入口已下线（只存内存、刷新即丢），
-     addLog 绑定与 renderLogs 调用一并摘除；旧函数实现已删除（见文件下方收口说明）。 */
 });
 
 function render(){
@@ -147,17 +144,111 @@ function render(){
     `带教导师 ${ME()} · ${esc((meU&&meU.dept)||'—')} · 带教学徒 ${mentees.length} 人`;
 
   renderKpis(mentees);
-  renderMap(mentees);
+  renderMenteeList(mentees);
   /* renderLogs(mentees) 已随教日志入口下线摘除（2026-10-05 收口） */
   renderComp(mentees);
+  renderMap(mentees);
   if(typeof injectIcons==='function') injectIcons();
+}
+
+/* ---------- 我的徒弟：总览榜 ---------- */
+
+/* 风险画像：**只用平台已有的口径**推导，不编造新指标。
+   · todo     待批改条数（口径 = MOCK.todoCounts，全站唯一）
+   · done     已过关卡数
+   · met      达标线已过条数（只认 met === true）
+   · behindN  落后关数：按 5 周学习地图推导「入职 N 天应至少过完前 X 关」，
+              再用 done 与之相减。阶段边界取自 LEVEL_PHASES 自己的周次标签
+              （新手期 = 第 1 周 / 成长期 = 第 2–3 周 / 成熟期 = 第 4–5 周），不另立标准。 */
+function expectedDoneMin(days){
+  if(days === null) return null;
+  if(days <= 7)  return 0;   // 第 1 周内：还没要求过完新手期
+  if(days <= 21) return 6;   // 第 2–3 周：新手期 6 关应已过完
+  return 9;                  // 第 4–5 周：成长期 3 关应已过完
+}
+function menteeRisk(t){
+  const todo = MOCK.todoCounts(t.id);
+  const done = MOCK.DB.levels.filter(l=>MOCK.levelDone(t.id,l)).length;
+  const cur  = MOCK.currentLevelOf(t.id);
+  /* 【2026-10-15 修字段名】学徒的入职日期真名是 **joinDate**（种子 mock-data.js / 后端一致），
+     页面上原来读的是 `t.joined` —— 全站没人写过这个字段，所以生产上「入职 N 天」从来没显示过
+     （恒 null）。这里按真名读，并保留旧名兜底。 */
+  const jd = t.joinDate || t.joined;
+  const days = jd ? Math.max(0, Math.floor((Date.now()-new Date(jd))/86400000)) : null;
+  const expMin = expectedDoneMin(days);
+  const behindN = (expMin === null) ? 0 : Math.max(0, expMin - done);
+  return { todo: todo.total, done, cur, days, curLvNo: cur ? cur.no : null,
+           met: readinessLineMet(t.id), behindN };
+}
+
+/* 排序键：① 需要我动手的先 ② 落后的先 ③ 落后越多越靠前 ④ 已过关数少的先 ⑤ 待批改多的先 */
+function riskKey(r){ return [ r.todo>0?0:1, r.behindN>0?0:1, -r.behindN, r.done, -r.todo ]; }
+
+function renderMenteeList(mentees){
+  const box  = document.getElementById('menteeList');
+  const hint = document.getElementById('sortHint');
+  document.getElementById('menteeN').textContent = `${mentees.length} 人`;
+
+  if(!mentees.length){
+    box.innerHTML = `<p class="hint" style="margin:0">暂无带教学员；如需带教，请联系教务管理员在「人员管理」里指定。</p>`;
+    hint.textContent = '';
+    return;
+  }
+
+  const rows = mentees.map(t=>({ t, r: menteeRisk(t), nm: (MOCK.userOf(t.id)||{}).name || t.name || t.id }));
+  rows.sort((a,b)=>{
+    const ka = riskKey(a.r), kb = riskKey(b.r);
+    for(let i=0;i<ka.length;i++){ if(ka[i]!==kb[i]) return ka[i]-kb[i]; }
+    return String(a.nm).localeCompare(String(b.nm),'zh');
+  });
+
+  const anyRisk = rows.some(x=>x.r.todo>0 || x.r.behindN>0);
+  hint.innerHTML = anyRisk
+    ? '排序：<b>待你批改</b> → <b>进度落后</b>（落后越多越靠前）→ 已过关数少的优先。<br>点任意一行进入该徒弟的闯关详情。'
+    : '暂无需要你立刻处理的项；排序：已过关数少的优先。<br>点任意一行进入该徒弟的闯关详情。';
+
+  const totalLv = MOCK.DB.levels.length || 1;
+  box.innerHTML = rows.map(({ t, r, nm })=>{
+    const pct = Math.round(r.done / totalLv * 100);
+    const cls = r.todo>0 ? 'act' : (r.behindN>0 ? 'risk' : '');
+    const tags = [
+      r.todo>0    ? `<span class="tag warn">待我批改 ${r.todo}</span>` : '',
+      r.behindN>0 ? `<span class="tag danger">进度落后 ${r.behindN} 关</span>` : '',
+      r.days!==null ? `<span class="tag ghost">入职 ${r.days} 天</span>` : '',
+      r.met > 0   ? `<span class="tag ok">达标线 ${r.met}/4</span>` : `<span class="tag ghost">达标线 0/4</span>`,
+    ].filter(Boolean).join('');
+    const prog = (r.curLvNo===null) ? '已全部通关' : `卡在第 ${r.curLvNo} 关`;
+    return `<a class="mrow ${cls}" href="mentor-mentee.html?wid=${esc(String(t.id))}">
+      <span class="mrow-h">
+        <span class="avatar">${esc(String(nm).slice(0,1))}</span>
+        <span class="nm">
+          <b>${esc(String(nm))} · ${esc(String(t.id))}</b>
+          <span class="d">${prog} · 已过 ${r.done}/${totalLv} 关</span>
+        </span>
+        <span class="tag ghost">详情</span>
+      </span>
+      <div class="bar sm" style="margin-top:var(--s3)"><i style="width:${pct}%"></i></div>
+      <span class="mrow-f">${tags}</span>
+    </a>`;
+  }).join('');
+}
+
+/* 达标线条数（只认 met === true，阈值从不参与判定）
+   注意： readinessBadge 挂在 window.UI 上（也挂了全局），不在 MOCK 上 */
+function readinessLineMet(wid){
+  const fn = (typeof readinessBadge==='function') ? readinessBadge
+           : (window.UI && window.UI.readinessBadge);
+  if(typeof fn!=='function') return 0;
+  return MOCK.READINESS_LINES.filter(l=>{
+    const b = fn(l.key, wid);
+    return b && b.met;
+  }).length;
 }
 
 /* ---------- PK 三项指标 ----------
    注意： 真实数据里没有「新人反馈评分」「带教投入时长」这两个量，
       所以不编数字，直接明说"未登记"。 */
 function renderKpis(mentees){
-  const wids = mentees.map(t=>t.id);
   const totalLv = MOCK.DB.levels.length || 1;
 
   /* 节点通过率 = 所有徒弟「已过关卡数 / 总关卡数」的均值 */
@@ -178,8 +269,8 @@ function renderKpis(mentees){
   const certCls = certRate >= 30 ? 'kpi' : 'kpi plain';
 
   document.getElementById('kpis').innerHTML = `
-    <div class="${rateCls}"><b>${rate}%</b><span>节点通过率 · 目标 50%</span></div>
-    <div class="${certCls}"><b>${certRate}%</b><span>新人转正率 · 目标 30%</span></div>
+    <div class="${rateCls}"><b>${rate}%</b><span>节点通过率 · 目标 50%（${mentees.length} 人合并）</span></div>
+    <div class="${certCls}"><b>${certRate}%</b><span>新人转正率 · 目标 30%（${mentees.length} 人合并）</span></div>
     <div class="kpi plain"><b>未登记</b><span>新人反馈评分 · 目标 4.0</span></div>
     <div class="kpi plain"><b>未登记</b><span>本周带教投入（小时）</span></div>`;
 }
@@ -194,9 +285,9 @@ const COACH_ACTIONS = {
 };
 
 function renderMap(mentees){
-  /* 阶段条：按 3 个阶段的实际关卡数 */
-  document.getElementById('mapStagebar').innerHTML = UI.stagebar(mentees[0] ? mentees[0].id : ME());
-
+  /* 【2026-10-15】原来这里还有一条「阶段条」= UI.stagebar(mentees[0].id) ——
+     它只反映**第一个**徒弟的进度，多徒弟时是误导（本页其余内容都是全员的）。
+     阶段条本来就在「徒弟详情」的学员速览里按人渲染，这里不再重复，直接去掉。 */
   const rows = MOCK.LEVEL_PHASES.map(ph=>{
     const lvs = MOCK.DB.levels.filter(l=>l.no>=ph.from && l.no<=ph.to);
     const cards = MOCK.TASK_DEFS.filter(d=>lvs.some(l=>l.id===d.levelId));
@@ -231,10 +322,11 @@ function renderMap(mentees){
    填写入口（renderLogs / openLogEditor / addLog 绑定）已整体移除，仅保留页面上可直接抄写的模板卡。
    待后端有正式存储后，从 _bak/round3-pre/mentor-coach.html 可找回原实现。 */
 
-/* ---------- 胜任力清单 ----------
+/* ---------- 胜任力清单（2026-10-15：改成「每个徒弟一列」） ----------
    注意： 5 项各自绑定一个"可判定的关卡"：是否达标 = 该关是否全环节通过。
-      （真实后端没有独立的胜任力表 —— 这里是按关卡进度的**可解释**推导，
-        不是凭空勾选；正式版应改为后端字段。） */
+     （真实后端没有独立的胜任力表 —— 这里是按关卡进度的**可解释**推导，
+       不是凭空勾选；正式版应改为后端字段。）
+   改版前：所有人挤成一行（「2 人合并 · 周旭 未过 · 徐泽林 未过」），人一多就没法读。 */
 const COMPETENCIES = [
   { name:'独立剪出可发布视频',       lvNo:2  },
   { name:'按飞书规范提交数据',       lvNo:3  },
@@ -245,32 +337,39 @@ const COMPETENCIES = [
 
 function renderComp(mentees){
   const box = document.getElementById('comp');
+  const tag = document.getElementById('compN');
   if(!mentees.length){
-    document.getElementById('compN').textContent = '—';
+    tag.textContent = '—';
     box.innerHTML = `<p class="hint" style="margin:0">暂无带教学员</p>`;
     return;
   }
-  /* 汇总：任一徒弟达标即勾选 */
-  const state = COMPETENCIES.map(c=>{
-    const lv = MOCK.DB.levels.find(l=>l.no===c.lvNo);
-    const hits = mentees.filter(t=> lv && MOCK.levelDone(t.id, lv));
-    return { c, lv, hits, ok: hits.length>0 };
-  });
-  const mine = mentees.length===1 ? state.filter(s=>s.ok).length : state.filter(s=>s.ok).length;
-  document.getElementById('compN').textContent =
-    mentees.length===1 ? `${mentees[0].name||mentees[0].id} ${mine}/${COMPETENCIES.length}`
-                       : `${mentees.length} 人合并 · 已过 ${mine}/${COMPETENCIES.length} 项`;
+  const lvOf = no => MOCK.DB.levels.find(l=>l.no===no);
+  /* 汇总口径写清：每项「至少 1 名徒弟达标」即算过 */
+  const okN = COMPETENCIES.filter(c=>{ const lv=lvOf(c.lvNo); return lv && mentees.some(t=>MOCK.levelDone(t.id,lv)); }).length;
+  tag.textContent = mentees.length===1
+    ? `${(MOCK.userOf(mentees[0].id)||{}).name || mentees[0].name || mentees[0].id} · 已过 ${okN}/${COMPETENCIES.length} 项`
+    : `${mentees.length} 人 · 每项至少 1 人过 ${okN}/${COMPETENCIES.length} 项`;
 
-  box.innerHTML = state.map(({c,lv,hits,ok})=>{
-    const who = mentees.map(t=>{
-      const u = MOCK.userOf(t.id)||{};
-      const done = lv && MOCK.levelDone(t.id, lv);
-      return `${esc(u.name||t.id)} ${done?'<svg class="ic"><use href="#i-check"/></svg>':'未过'}`;
-    }).join(' · ');
-    return `<div class="chk ${ok?'on':'off'}"><span class="bx">${ok?'<svg class="ic"><use href="#i-check"/></svg>':''}</span>
-      <span class="cb"><b${ok?'':' style="color:var(--muted)"'}>${esc(c.name)}</b>
-        <span class="d">${who}${lv?` · 对应第 ${lv.no} 关`:' · 无对应关卡'}</span></span></div>`;
+  const who = mentees.map(t=>{
+    const u = MOCK.userOf(t.id) || {};
+    const nm = u.name || t.name || t.id;
+    return `<th style="text-align:center">${esc(String(nm))}<br><span style="font-size:11px;color:var(--faint)">${esc(String(t.id))}</span></th>`;
   }).join('');
+
+  const trs = COMPETENCIES.map(c=>{
+    const lv = lvOf(c.lvNo);
+    const cells = mentees.map(t=>{
+      const done = lv && MOCK.levelDone(t.id, lv);
+      return `<td style="text-align:center">${done
+        ? '<svg class="ic" style="color:var(--ok-ink)"><use href="#i-check"/></svg>'
+        : '<span style="color:var(--faint)">未过</span>'}</td>`;
+    }).join('');
+    return `<tr><td>${esc(c.name)}<br><span style="font-size:11.5px;color:var(--muted)">${lv?`对应第 ${lv.no} 关`:'无对应关卡'}</span></td>${cells}</tr>`;
+  }).join('');
+
+  box.innerHTML = `<div class="tblwrap"><table>
+    <thead><tr><th>胜任力</th>${who}</tr></thead>
+    <tbody>${trs}</tbody></table></div>`;
 }
 
 /* ---------- 工具 ---------- */
