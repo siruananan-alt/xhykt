@@ -110,14 +110,27 @@ async function liveApi(action, extra){
      注意：不要在这里无条件给所有 action 加：只给这 4 个删除类动作加，
         否则等于把服务端门禁架空（门禁的意义是挡脚本/直调，不挡人）。 */
   if(DELETE_ACTIONS[action] && body.confirm === undefined) body.confirm = true;
-  let r;
+  let r, j;
+  /* 【2026-10-15 修】请求必须带超时：无 signal 时网络黑洞（代理丢包/连接悬挂）
+     会让 fetch 永远 pending —— 登录按钮停在「登录中…」、写操作静默无响应，
+     用户只能干等（实况：xhykt.work 上点击登录后 6 秒仍 pending，手动重试又秒通，
+     典型间歇性网络故障）。20s 超时后走下方 catch，给用户明确错误。 */
+  /* 【2026-10-16 修 · 关键】超时必须覆盖「响应头 + 响应体」**全程**，不能只管到响应头。
+     旧写法把 clearTimeout 放在 fetch 的 finally 里 —— 而 fetch 一拿到响应头就 resolve，
+     定时器随即被清掉，随后的 `await r.json()`（读响应体）**完全没有超时保护**。
+     后果：响应体传输中途挂死（代理丢包 / 连接黑洞 / 弱网下传较大 JSON）时，
+     liveApi 永久 pending -> 首屏遮罩「正在加载真实数据…」永不撤、错误卡也永不出现，
+     用户只能硬刷新（2026-10-16 用户实测截图：一直转圈）。
+     判据与复现：_tools/_p-liveload-hang.js
+       S1 响应体挂死 -> 修复前 26s 仍停在遮罩上（红）；修复后出错误卡（绿）
+       S2 完全不应答 -> 两版都在 20s 出错误卡（证明既有超时本身有效，只是覆盖不全）
+     改法：timer 的生命周期交由**最外层 try/finally** 掌管，覆盖到 body 解析完成；
+     abort 会同时中断响应体读取，故 r.json() 阶段同样会抛 AbortError（归一到同一句文案）。
+     文案一律保持原样，避免影响既有断言。 */
+  const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 20000) : null;
+  const TIMEOUT_MSG = '请求超时（20 秒无响应，请检查网络后重试）';
   try{
-    /* 【2026-10-15 修】请求必须带超时：无 signal 时网络黑洞（代理丢包/连接悬挂）
-       会让 fetch 永远 pending —— 登录按钮停在「登录中…」、写操作静默无响应，
-       用户只能干等（实况：xhykt.work 上点击登录后 6 秒仍 pending，手动重试又秒通，
-       典型间歇性网络故障）。20s 超时后走下方 catch，给用户明确错误。 */
-    const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 20000) : null;
     try{
       r = await fetch(LIVE.apiUrl, {
         method: 'POST',
@@ -125,16 +138,23 @@ async function liveApi(action, extra){
         body: JSON.stringify(body),
         signal: ctrl ? ctrl.signal : undefined
       });
-    }finally{
-      if(timer){ clearTimeout(timer); }
+    }catch(e){
+      const msg = (e && e.name === 'AbortError') ? TIMEOUT_MSG : (e.message || e);
+      const err = new Error('连不上后端（' + LIVE.apiUrl + '）：' + msg);
+      LIVE.lastError = err.message; throw err;
     }
-  }catch(e){
-    const msg = (e && e.name === 'AbortError') ? '请求超时（20 秒无响应，请检查网络后重试）' : (e.message || e);
-    const err = new Error('连不上后端（' + LIVE.apiUrl + '）：' + msg);
-    LIVE.lastError = err.message; throw err;
+    try{
+      j = await r.json();
+    }catch(e){
+      if(e && e.name === 'AbortError'){
+        const err = new Error('连不上后端（' + LIVE.apiUrl + '）：' + TIMEOUT_MSG);
+        LIVE.lastError = err.message; throw err;
+      }
+      throw new Error('后端返回的不是 JSON（HTTP ' + r.status + '）');
+    }
+  }finally{
+    if(timer){ clearTimeout(timer); }
   }
-  let j;
-  try{ j = await r.json(); }catch(e){ throw new Error('后端返回的不是 JSON（HTTP ' + r.status + '）'); }
   if(j && j.error){ const err = new Error(j.error); LIVE.lastError = j.error; throw err; }
   return j;
 }
