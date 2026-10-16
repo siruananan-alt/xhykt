@@ -314,61 +314,106 @@ function liveWrite(action, buildBody, opts){
      各自签的 token 快照未必同一份（q-ak 与 token 必须同源，否则 COS 报
      InvalidAccessKeyId）。故每一片都调 uploadSign 拿「该片专属」的 url+token，
      不复用 init 返回的那个 token —— 后端注释里也是这么要求的。 */
-const UPLOAD_PART = 5 * 1024 * 1024;   // 5MB/片：远大于 1MB 下限，又不至于让 500MB 视频变成 100 片
+const UPLOAD_PART = 5 * 1024 * 1024;
+const UPLOAD_PARALLEL = 3;
+const UPLOAD_RETRIES = 2; // 首次失败后最多重试两次，仅重试临时网络错误
+const UPLOAD_TIMEOUT = 120000;
+const activeVideoUploads = new Set();
 
-/* 单片 PUT 到 COS。返回该片的 ETag（合并分片时必需，格式带引号要原样传给后端）。 */
-async function putPart(url, token, blob, onProgress){
-  /* COS 分片直传必须带 x-cos-security-token，否则 403。 */
-  const r = await fetch(url, {
-    method: 'PUT',
-    headers: { 'x-cos-security-token': token },
-    body: blob
-  });
-  if(!r.ok){
-    const t = await r.text().catch(() => '');
-    throw new Error('分片上传失败 HTTP ' + r.status + ' ' + t.replace(/\s+/g, ' ').slice(0, 160));
+/* 数据直接 PUT 到 COS；每次尝试使用同一次 uploadSign 返回的 URL + token。 */
+async function putPart(url, token, blob){
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), UPLOAD_TIMEOUT);
+  try{
+    let r;
+    try{
+      r = await fetch(url, {
+        method: 'PUT',
+        headers: { 'x-cos-security-token': token },
+        body: blob,
+        signal: ctrl.signal
+      });
+    }catch(e){
+      const err = new Error(e.name === 'AbortError' ? '分片上传超时' : '分片上传网络中断');
+      err.retryable = true;
+      throw err;
+    }
+    if(!r.ok){
+      const err = new Error('分片上传失败 HTTP ' + r.status);
+      err.retryable = r.status === 408 || r.status === 429 || r.status >= 500;
+      throw err;
+    }
+    const etag = r.headers.get('ETag') || '';
+    if(!etag) throw new Error('COS 未返回 ETag，请检查跨域响应头配置');
+    return etag;
+  }finally{
+    clearTimeout(timer);
   }
-  const etag = r.headers.get('ETag') || '';
-  if(!etag) throw new Error('COS 未返回 ETag（合并分片必需），可能被中间层剥掉了响应头');
-  if(onProgress) onProgress();
-  return etag;
 }
 
-/* 上传一个视频到指定章节。
-   onProgress(done, total) —— 已传片数/总片数（UI 画进度条用，不是字节级）。
-   注意： 失败时必须调 uploadClear 清掉半成品分片：否则 COS 上留一个未合并的
-     uploadId 占着存储，且同名旧对象已在 init 阶段被删 -> 章节变成「既没旧视频也没新视频」。 */
+/* 3 路分片直传；回调仍为已完成片数/总片数，兼容现有进度条。 */
 async function liveUploadVideo(cid, chid, file, onProgress){
   if(!LIVE.enabled) throw new Error('当前是沙盒模式，无法真正上传（沙盒只演示界面）');
   if(!file) throw new Error('没有选文件');
   if(file.size <= 0) throw new Error('文件是空的');
   if(!/\.mp4$/i.test(file.name)) throw new Error('只支持 .mp4（当前项目视频统一 mp4，避免服务端转码开销）');
+  const key = JSON.stringify([cid, chid]);
+  if(activeVideoUploads.has(key)) throw new Error('该章节正在上传，请等待完成');
+  activeVideoUploads.add(key);
 
-  let init = null, done = 0;
+  let init = null, done = 0, next = 1, firstError = null, completing = false;
   try{
-    /* 1. init：云函数签发 init/complete 预签名 URL + uploadId（并删掉同名旧对象） */
     init = await liveApi('uploadInit', { cid, chid });
-    const total = Math.max(1, Math.ceil(file.size / UPLOAD_PART));
-    const parts = [];
-    /* 2. 逐片 PUT 到 COS。每片都现签 URL，保证 token 与该片的 q-ak 同源。 */
-    for(let pn = 1; pn <= total; pn++){
-      const blob = file.slice((pn - 1) * UPLOAD_PART, pn * UPLOAD_PART);
-      const s = await liveApi('uploadSign', { cid, chid, uploadId: init.uploadId, partNumber: pn });
-      const etag = await putPart(s.url, s.token, blob, () => {
-        done++; if(onProgress) onProgress(done, total);
-      });
-      parts.push({ partNumber: pn, etag });
+    if(!init || !init.uploadId) throw new Error('上传初始化未返回 uploadId');
+    const total = Math.ceil(file.size / UPLOAD_PART);
+    const parts = new Array(total);
+    async function worker(){
+      try{
+        while(!firstError && next <= total){
+          const pn = next++;
+          const blob = file.slice((pn - 1) * UPLOAD_PART, pn * UPLOAD_PART);
+          let etag;
+          for(let attempt = 0; attempt <= UPLOAD_RETRIES; attempt++){
+            if(firstError) return;
+            // 重试重新签名，避免使用过期凭据；不混用其他实例的 token。
+            const sign = await liveApi('uploadSign', { cid, chid, uploadId: init.uploadId, partNumber: pn });
+            if(firstError) return;
+            try{
+              etag = await putPart(sign.url, sign.token, blob);
+              break;
+            }catch(e){
+              if(firstError) return;
+              if(!e.retryable || attempt === UPLOAD_RETRIES) throw e;
+              await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+            }
+          }
+          parts[pn - 1] = { partNumber: pn, etag };
+          done++;
+          // 进度 UI 异常不能触发重复上传或清理已上传数据。
+          if(onProgress){ try{ onProgress(done, total); }catch(e){ console.warn('[upload] 进度更新失败'); } }
+        }
+      }catch(e){
+        if(!firstError) firstError = e;
+      }
     }
-    /* 3. complete：云函数代发合并请求（带完成标记），并把 videoUrl 写进 ch.src。
-       注意： 合并后还要 HEAD 校验字节数，由后端做，前端不重复校验。 */
+    // worker 吞入自身错误并停止派发；等所有在途请求结束后才允许清理。
+    await Promise.all(Array.from({ length: Math.min(UPLOAD_PARALLEL, total) }, () => worker()));
+    if(firstError) throw firstError;
+    // parts 按编号写入，与完成顺序无关。所有分片成功后仅合并一次。
+    completing = true;
     const fin = await liveApi('uploadComplete', { cid, chid, uploadId: init.uploadId, parts });
-    try{ await liveRefresh(); }catch(e){ /* 读失败不阻断「上传成功」这个结论 */ }
+    try{ await liveRefresh(); }catch(e){ /* 读失败不改变上传成功结果 */ }
     try{ liveRerender(); }catch(e){ console.warn('[live] 上传后重绘失败：' + e.message); }
     return fin;
   }catch(e){
-    /* 半成品清理：尽力而为，失败不掩盖原始错误（原始错误才是用户要看的） */
-    try{ await liveApi('uploadClear', { cid, chid }); }catch(_){ /* 忽略 */ }
+    // 合并响应丢失时服务端可能已成功；不要盲目清理已合并的视频。
+    if(init && init.uploadId && !completing){
+      try{ await liveApi('uploadClear', { cid, chid }); }catch(_){ /* 保留原始错误 */ }
+    }
+    if(completing) throw new Error('视频合并结果未确认，请刷新课程核对后再重试：' + e.message);
     throw e;
+  }finally{
+    activeVideoUploads.delete(key);
   }
 }
 
