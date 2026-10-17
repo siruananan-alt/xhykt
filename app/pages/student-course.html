@@ -38,6 +38,62 @@ document.addEventListener('DOMContentLoaded',()=>{
   render();
 });
 
+function courseDocumentUrl(url){
+  const value = String(url || '');
+  // PDF 仍保存在腾讯云静态托管；网站迁到 GitHub Pages 后，
+  // /assets/docs/ 不能再按当前站点域名解析。外链和其他路径保持原样。
+  if(!value.startsWith('/assets/docs/')) return value;
+  return new URL(value, 'https://micheal-enviorment1-d0bh1b0787c0-1492265383.tcloudbaseapp.com').href;
+}
+
+async function openCourseDocument(event){
+  const link = event.currentTarget;
+  const url = courseDocumentUrl(link.getAttribute('href'));
+  const hosting = 'https://micheal-enviorment1-d0bh1b0787c0-1492265383.tcloudbaseapp.com/assets/docs/';
+  if(!url.startsWith(hosting)) return;
+  event.preventDefault();
+  const preview = window.open('', '_blank');
+  if(!preview){ toast('请允许浏览器打开新窗口后重试。', 'err'); return; }
+  preview.opener = null;
+  const title = link.textContent.trim() || '课程资料';
+  preview.document.title = title;
+  const body = preview.document.body;
+  body.style.margin = '0';
+  body.textContent = '正在加载 PDF…';
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), 20000);
+  try{
+    // 托管网关强制 attachment；读取文件后在新窗口内展示 PDF，
+    // 保留原文件及课程数据，不依赖网关修改 Content-Disposition。
+    const response = await fetch(url, { signal: controller.signal });
+    if(!response.ok) throw new Error('HTTP ' + response.status);
+    const bytes = await response.arrayBuffer();
+    const header = new Uint8Array(bytes, 0, Math.min(5, bytes.byteLength));
+    if(String.fromCharCode(...header) !== '%PDF-') throw new Error('返回内容不是有效 PDF');
+    if(preview.closed) return;
+    const blob = new preview.Blob([bytes], { type: 'application/pdf' });
+    const objectUrl = preview.URL.createObjectURL(blob);
+    const frame = preview.document.createElement('iframe');
+    frame.title = title;
+    frame.style.cssText = 'display:block;width:100%;height:100vh;border:0';
+    frame.src = objectUrl;
+    body.replaceChildren(frame);
+    preview.addEventListener('pagehide', ()=>preview.URL.revokeObjectURL(objectUrl), { once: true });
+  }catch(error){
+    if(!preview.closed){
+      body.style.cssText = 'margin:24px;font:16px/1.6 sans-serif';
+      body.textContent = '资料加载失败：' + (error.name === 'AbortError' ? '请求超时，请重试。' : error.message) + ' ';
+      const download = preview.document.createElement('a');
+      download.href = url;
+      download.textContent = '下载 PDF';
+      download.rel = 'noopener';
+      body.appendChild(download);
+    }
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
 function render(){
   if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
   const c = MOCK.courseOf(CID);
@@ -70,7 +126,7 @@ function render(){
               && (syncChs.length===0 || syncChs.length===syncDone)
               && (quizChs.length===0 || quizChs.every(q=>done.includes(q.id)));
   const firstIncomplete = vchs.find(v=>!done.includes(v.id)) || vchs[0];
-  const docs = c.docs||[];
+  const docs = (c.docs||[]).map(d=>Object.assign({}, d, { url: courseDocumentUrl(d.url) }));
   const lno = MOCK.levelOfCourseIn(CID);
 
   // 关卡徽章：读 courseGateOf 的 levelNo（开关关闭时它是 0，所以另走 levelOfCourseIn）
@@ -104,7 +160,7 @@ function render(){
     <div class="card">
       <h2 style="font-size:15px;margin:0 0 10px">资料 / 文档链接</h2>
       ${docs.length ? docs.map(d=>`<div class="rowitem"><span><svg class='ic'><use href='#i-file'/></svg></span>
-          <a href="${UI.esc(d.url)}" target="_blank" rel="noopener" style="flex:1">${UI.esc(d.name)}</a>
+          <a href="${UI.esc(d.url)}" target="_blank" rel="noopener" onclick="openCourseDocument(event)" style="flex:1">${UI.esc(d.name)}</a>
           ${d.size?`<span class="sub">· ${UI.esc(d.size)}</span>`:''}</div>`).join('')
         : '<p class="sub">暂无链接</p>'}
     </div>
