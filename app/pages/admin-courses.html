@@ -71,7 +71,7 @@
             <td>在课程列表对应章节点「上传视频 / 换视频」</td>
             <td>直传云端存储，学员端支持拖进度条；建议 mp4、单文件 ≤ 500MB</td></tr>
           <tr><td><b>PDF</b></td>
-            <td>在章节行点「换 PDF」，填资料地址</td>
+            <td>在课程卡片的「课件 / 资料」区点「换 PDF」，填资料地址</td>
             <td>填站点目录文件名（如 <code>/assets/docs/xxx.pdf</code>）或外链</td></tr>
         </tbody>
       </table>
@@ -111,7 +111,7 @@
        - "C5 对应第 2 关 / C6 对应第 3 关" -> 真实 C11 在第 2 关、C5 在第 3 关
   2. 每门课一个 <details>：点行展开章节列表（标题、时长、存储位置、PDF、操作按钮）。
      有未上传视频的课程用红描边 + 红底，整块一眼可辨。
-  3. 章节操作：「上传视频 / 换视频 / 换 PDF / 删」走真实链路；「预览」在弹层内直接
+  3. 章节操作：「上传视频 / 换视频 / 删」走真实链路；「预览」在弹层内直接
      播放该章视频（不离开列表页），无视频地址的章节预览按钮置灰、点击给提示。
   4. 搜索 + 筛选 chip（全部 / 已就绪 / 有缺口 / 含 PDF）叠加，计数实时更新。
   5. 危险操作：删除课程走 MOCKAPI.mockDeleteCourse（要求完整输入课程名）；
@@ -144,7 +144,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('delCourseBtn').onclick = ()=>openDeleteCourse();
   /* 【2026-10-05 收口】「新增章节」表单与拖拽占位区已下线：
      后端没有对应保存接口，表单点了只能弹"保存接口尚未开放"。
-     章节的维护走课程列表里每章的「上传视频 / 换 PDF / 删」真实操作。 */
+     章节的维护走课程列表里每章的「上传视频 / 换视频 / 删」；
+     课件（PDF）统一在「课件 / 资料」区用「换 PDF」（2026-10-17 挪过去，因为它写的是课程级 docs）。 */
   /* 预览视频兜底：点遮罩关闭弹层时停掉视频（app.js 的监听先执行 closeModal，
      这里检测到 .on 已被移除，就把 #pvVideo 停掉并释放；普通弹层无此元素，安全空跑） */
   document.getElementById('mask').addEventListener('click',()=>{
@@ -298,7 +299,8 @@ function bind(){
 }
 
 /* ============================================================
-   上传视频/ 换 PDF / 删章节（2026-10-05 接线，此前是 data-toast 占位）
+   上传视频 / 换视频 / 删章节（2026-10-05 接线，此前是 data-toast 占位）
+   「换 PDF」2026-10-17 已挪到课程卡片的「课件 / 资料」区（它写的是课程级 docs，不是章节级）
    ============================================================
    后端 4 个上传 action（uploadInit/Sign/Complete/Clear）2026-10-04 就已存在且
    带 admin 权限校验，只是前端一直没接线 —— 按钮点开只是「暂未开放」的说明弹层。
@@ -357,6 +359,8 @@ async function doUpload(cid,chid,file){
 }
 
 /* ---- 2. 换 PDF：写课程级 docs（真实结构里 PDF 在课程上，不在章节上） ----
+   入口已从章节行挪到「课件 / 资料」区（docsBlock 的「换 PDF」按钮，2026-10-17）。
+   第二个参数 chid 已闲置，只为兼容旧调用；新调用直接 editPdf(cid)。
    用 confirmBox：body 里放表单，onOk 是普通函数名（confirmBox 会拼进 onclick），
    所以不能写 async 箭头函数 —— 必须挂到 window 上再传函数名。 */
 function editPdf(cid, chid){
@@ -412,12 +416,17 @@ function docLinks(cid, i, d){
   }
 }
 
-/* 课程卡片里的「课件 / 资料」区：PDF 给「预览」，每份都给「文件链接」 */
+/* 课程卡片里的「课件 / 资料」区：PDF 给「预览」，每份都给「文件链接」；
+   「换 PDF」也从章节行挪到这里（2026-10-17）—— 它写的是**课程级 docs**，
+   放在每个章节下面会让人以为是在改那一章的资料。 */
 function docsBlock(c){
   const docs = c.docs || [];
+  const editBtn = `<button class="btn sm ghost" style="margin-left:auto" onclick="editPdf('${esc(c.id)}')">换 PDF</button>`;
   if(!docs.length){
-    return '<div style="border:1px dashed var(--line);border-radius:var(--radius-btn);padding:var(--s3);margin-bottom:var(--s3)">'+
-      '<span class="hint">无课件：这门课还没挂 PPT / 资料。补的话点章节行的「换 PDF」，或直接改课程的 docs 字段。</span></div>';
+    return `<div style="border:1px dashed var(--line);border-radius:var(--radius-btn);padding:var(--s3);margin-bottom:var(--s3)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="hint">无课件：这门课还没挂 PPT / 资料。</span>${editBtn}
+      </div></div>`;
   }
   const rows = docs.map((d,i)=>{
     const k = docKind(d.url), L = docLinks(c.id, i, d);
@@ -432,7 +441,7 @@ function docsBlock(c){
   }).join('');
   return `<div style="border:1px solid var(--line);border-radius:var(--radius-btn);padding:var(--s3) var(--s3) 0;margin-bottom:var(--s3)">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <b style="font-size:13px">课件 / 资料</b><span class="tag ghost">${docs.length} 份</span>
+      <b style="font-size:13px">课件 / 资料</b><span class="tag ghost">${docs.length} 份</span>${editBtn}
     </div>
     ${rows}</div>`;
 }
@@ -570,7 +579,6 @@ function courseBlock(c){
         ${miss
           ? `<button class="btn sm ghost" onclick="pickVideo('${esc(c.id)}','${esc(ch.id)}')">上传视频</button>`
           : `<button class="btn sm ghost" onclick="pickVideo('${esc(c.id)}','${esc(ch.id)}')">换视频</button>`}
-        <button class="btn sm ghost" onclick="editPdf('${esc(c.id)}','${esc(ch.id)}')">换 PDF</button>
         <button class="btn sm ghost danger" onclick="delChapter('${esc(c.id)}','${esc(ch.id)}','${esc(ch.title)}')">删</button>
       </span></div>`;
   }).join('') : `<p class="hint" style="margin:0">这门课还没有章节。</p>`;
