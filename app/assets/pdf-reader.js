@@ -56,7 +56,7 @@
     if(!$('readerError')) return;
     status(''); controls(false);
     $('readerError').hidden=false;
-    $('readerErrorText').textContent=error.name==='PasswordException' ? '这份 PDF 需要密码，请下载后打开。' : 'PDF 加载失败：'+(error.message || '请检查网络后重试。');
+    $('readerErrorText').textContent=error.name==='PasswordException' ? '这份 PDF 需要密码，请联系管理员提供可在线阅读的版本。' : 'PDF 加载失败：'+(error.message || '请检查网络后重试。');
   }
   async function openDocument(force){
     if(typeof needsLoginGate==='function' && needsLoginGate()) return;
@@ -75,7 +75,6 @@
       $('backToCourse').href=back.href;
       $('documentTitle').textContent=doc.name || '课程资料';
       document.title=(doc.name || '课程资料')+' · PDF 阅读';
-      $('downloadDocument').href=url; $('downloadDocument').hidden=false;
       if(openedUrl===url && !force) return;
       serial=++loadSerial;
       openedUrl=url;
@@ -90,7 +89,7 @@
       loadTask=pdfjs.getDocument({url, cMapUrl:new URL('cmaps/',vendor).href,cMapPacked:true,
         standardFontDataUrl:new URL('standard_fonts/',vendor).href,wasmUrl:new URL('wasm/',vendor).href,
         iccUrl:new URL('iccs/',vendor).href, isEvalSupported:false, enableXfa:false, withCredentials:false});
-      let timer=setTimeout(()=>{ if(serial===loadSerial){ loadTask?.destroy(); showError(new Error('加载超过 30 秒，请重试或下载 PDF。')); } },30000);
+      let timer=setTimeout(()=>{ if(serial===loadSerial){ loadTask?.destroy(); showError(new Error('加载超过 30 秒，请重新加载。')); } },30000);
       loadTask.onProgress=({loaded,total})=>{ if(serial===loadSerial) status(total ? '正在加载 PDF… '+Math.min(100,Math.round(loaded/total*100))+'%' : '正在加载 PDF…'); };
       loadTask.onPassword=()=>{ loadTask.destroy(); showError({name:'PasswordException'}); };
       try{
