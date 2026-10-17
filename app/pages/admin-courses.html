@@ -125,6 +125,7 @@
 <script src="../assets/mock-api.js?v=1015h"></script>
 <script src="../assets/mock-api-live.js?v=1017c"></script>
 <script src="../assets/ui.js?v=1017a"></script>
+<script src="../assets/document-preview.js?v=1017a"></script>
 <script>
 /* ============================================================
    课程管理 · 数据驱动（#37）
@@ -381,6 +382,61 @@ async function savePdf(cid){
   }catch(e){ toast('保存失败：'+(e&&e.message?e.message:e),'err'); }
 }
 
+/* ---- 2b. 课件（PPT / 资料）：2026-10-17 新增 ----
+   数据：课程级 c.docs[{name,size,url}]。PDF 是 PPT 转的，也可能是飞书等外链。
+   🔴 预览一律走共享 DocumentPreview（10-17 另一位同学接入的 PDF.js 阅读器）：
+      它解析出 pdf-reader.html?c=&doc=，PDF 从课程数据里取，不把裸文件地址放进查询串。
+      真身在腾讯云静态托管（网关强制 content-disposition: attachment）。
+      不要把预览改回 blob/iframe —— 阅读器已有页码记忆、搜索、缩放/旋转，且没有下载按钮。
+   🔴 「同标签页」是必须的：登录态在 sessionStorage，开新标签页会丢登录。 */
+function docKind(u){
+  const p = String(u||'').split('?')[0].toLowerCase();
+  if(/\.pdf$/.test(p)) return 'pdf';
+  if(/\.pptx?$/.test(p)) return 'ppt';
+  if(/\.(png|jpe?g|gif|webp)$/.test(p)) return 'img';
+  return 'link';
+}
+function docShort(u){
+  const v = String(u||'');
+  if(v.indexOf('/assets/docs/')===0) return v;
+  try{ const a=new URL(v); return a.host + a.pathname; }catch(e){ return v; }
+}
+/* 返回 {href 预览地址, src 原文件地址, preview 是否可在线预览} */
+function docLinks(cid, i, d){
+  try{
+    const href = DocumentPreview.readerLink(cid, i, d, location.href);
+    const src  = DocumentPreview.resolveUrl(d.url, location.href);
+    return { href, src, preview: /pdf-reader\.html/.test(href) };
+  }catch(e){
+    return { href:'', src:'', preview:false };
+  }
+}
+
+/* 课程卡片里的「课件 / 资料」区：PDF 给「预览」，每份都给「文件链接」 */
+function docsBlock(c){
+  const docs = c.docs || [];
+  if(!docs.length){
+    return '<div style="border:1px dashed var(--line);border-radius:var(--radius-btn);padding:var(--s3);margin-bottom:var(--s3)">'+
+      '<span class="hint">无课件：这门课还没挂 PPT / 资料。补的话点章节行的「换 PDF」，或直接改课程的 docs 字段。</span></div>';
+  }
+  const rows = docs.map((d,i)=>{
+    const k = docKind(d.url), L = docLinks(c.id, i, d);
+    const pv   = L.preview ? `<a class="btn sm ghost" href="${esc(L.href)}">预览</a>` : '';
+    const link = L.src ? `<a class="btn sm ghost" href="${esc(L.src)}" target="_blank" rel="noopener">文件链接</a>` : '';
+    return `<div class="rowitem">
+      <span class="ico">${i+1}</span>
+      <span class="mid"><b>${esc(d.name||'未命名资料')}</b>
+        <span class="d">${k==='pdf'?'PPT 转 PDF':(k==='ppt'?'PPT 原文件':(k==='img'?'图片':'外部链接'))}`+
+        `${d.size?` · ${esc(d.size)}`:''} · <code>${esc(docShort(d.url))}</code></span></span>
+      <span class="acts">${pv}${link}</span></div>`;
+  }).join('');
+  return `<div style="border:1px solid var(--line);border-radius:var(--radius-btn);padding:var(--s3) var(--s3) 0;margin-bottom:var(--s3)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <b style="font-size:13px">课件 / 资料</b><span class="tag ghost">${docs.length} 份</span>
+    </div>
+    ${rows}</div>`;
+}
+
 /* ---- 3. 删章节：二次确认，说明连带影响 ---- */
 function delChapter(cid, chid, title){
   const c=MOCK.courseOf(cid); if(!c) return;
@@ -531,7 +587,7 @@ function courseBlock(c){
       </span>
       <span class="mxrow">${tags}</span>
     </summary>
-    <div class="lvbody">${body}</div>
+    <div class="lvbody">${docsBlock(c)}${body}</div>
   </details>`;
 }
 
