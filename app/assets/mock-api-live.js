@@ -513,7 +513,7 @@ function wireLiveWrites(){
        live 模式新增学员会被后端「学员必须指定导师」拦死（接线遗漏）。 */
     mockAddUser:     liveWrite('adminUserUpsert',  ()=>({
       wid: val('#uWid'), name: val('#uName'), dept: val('#uDept'),
-      role: val('#uRole'), password: val('#uPw'),
+      role: val('#uRole'), password: rawVal('#uPw'),
       mentorId: val('#uMentor'), planId: val('#uPlan'), title: val('#uTitle')
     })),
     mockTransfer:    liveWrite('adminTransferTrainee', (wid)=>({ tid: wid, to: val('#trTo') })),
@@ -623,7 +623,8 @@ function wireLiveWrites(){
 }
 
 /* 小工具：读表单值（找不到则返回空串，避免 undefined 传到后端） */
-function val(sel){ const e = document.querySelector(sel); return e ? String(e.value || '').trim() : ''; }
+function rawVal(sel){ const e = document.querySelector(sel); return e ? String(e.value || '') : ''; }
+function val(sel){ return rawVal(sel).trim(); }
 
 /* ---------- 统一重绘入口（live 层的兜底，不依赖页面注册 __rerender） ----------
    注意：【2026-10-04 修正 · 关键】
