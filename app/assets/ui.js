@@ -296,20 +296,32 @@ function shotsHTML(shots, urls, opts){
     const url = (urls && urls[s.key]) || '';
     const name = esc(s.name || ('截图'+(i+1)));
     return url
-      ? `<a class="shotthumb" href="javascript:;" onclick="openShotViewer('${esc(s.key)}')" title="${name}"><img src="${esc(url)}" alt="${name}" loading="lazy"></a>`
+      ? `<a class="shotthumb" href="javascript:;" data-shot-key="${esc(s.key)}" onclick="openShotViewer(this.dataset.shotKey,this);return false;" title="${name}"><img src="${esc(url)}" alt="${name}" loading="lazy"></a>`
       : `<span class="shotthumb miss" title="${name}">图片待加载</span>`;
   }).join('')}</div>`;
 }
 
-/* 截图放大查看（单图） */
+/* 截图查看：每次重新鉴权，Viewer.js 按需加载，保留底层批改弹窗。 */
 let __shotCache = {};
 window.__shotCache = __shotCache;
-function openShotViewer(key){
-  const url = __shotCache[key] || '';
-  openModal(modal('查看截图',
-    url ? `<div style="text-align:center"><img src="${esc(url)}" alt="截图" style="max-width:100%;border-radius:12px;border:2px solid var(--line)"></div>`
-        : `<div class="note warn">图片地址已过期，请关闭后重新打开。</div>`,
-    '<button class="btn ghost" onclick="closeModal()">关闭</button>'));
+const __imagePreviewUrl = new URL('image-preview.js?v=1017a', document.currentScript.src).href;
+let __shotOpenSerial = 0;
+async function openShotViewer(key, trigger){
+  const serial=++__shotOpenSerial;
+  const grid=trigger && trigger.closest('.shotgrid');
+  const links=grid ? Array.from(grid.querySelectorAll('[data-shot-key]')).slice(0,3) : [];
+  const keys=links.length ? links.map(a=>a.dataset.shotKey) : [key];
+  try{
+    const fresh=await signShots(keys);
+    if(serial!==__shotOpenSerial) return;
+    const live=window.LIVE && LIVE.enabled;
+    const items=keys.map((k,i)=>({key:k,url:fresh[k] || (!live ? __shotCache[k] : ''),name:links[i]?.querySelector('img')?.alt || '作业截图'})).filter(item=>item.url);
+    const index=items.findIndex(item=>item.key===key);
+    if(index<0) throw new Error('图片授权已失效或你没有查看权限，请重新登录后重试。');
+    const preview=await import(__imagePreviewUrl);
+    if(serial!==__shotOpenSerial) return;
+    await preview.showImages(items,index,trigger);
+  }catch(error){ if(serial===__shotOpenSerial) toast(error.message || '图片暂时无法打开，请重试。','err'); }
 }
 /* 批量取签名 URL（按身份可见范围，后端短时 URL）。返回写入 __shotCache。 */
 async function signShots(keys){

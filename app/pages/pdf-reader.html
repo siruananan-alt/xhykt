@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PDF 阅读 · 星禾云课堂</title>
+<link rel="stylesheet" href="../assets/theme.css?v=1015h">
+<link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
+<link rel="stylesheet" href="../assets/vendor/pdfjs-6.4.299/web/pdf_viewer.css">
+<link rel="stylesheet" href="../assets/pdf-reader.css?v=1017a">
+</head>
+<body data-role="student" data-nav-done="1">
+<main class="reader-shell">
+  <header class="reader-header">
+    <a id="backToCourse" class="btn ghost sm" href="student-courses.html">返回课程</a>
+    <h1 id="documentTitle">课程资料</h1>
+    <a id="downloadDocument" class="btn ghost sm" hidden target="_blank" rel="noopener">下载 PDF</a>
+  </header>
+  <section class="reader-toolbar" aria-label="PDF 阅读工具">
+    <button id="previousPage" data-reader-control disabled type="button" aria-label="上一页">上一页</button>
+    <label>页码 <input id="pageNumber" data-reader-control disabled type="number" min="1" value="1" aria-label="页码"></label>
+    <span id="pageCount">/ —</span>
+    <button id="nextPage" data-reader-control disabled type="button" aria-label="下一页">下一页</button>
+    <button id="zoomOut" data-reader-control disabled type="button" aria-label="缩小">−</button>
+    <span id="zoomValue" aria-live="polite">—</span>
+    <button id="zoomIn" data-reader-control disabled type="button" aria-label="放大">＋</button>
+    <button id="fitWidth" data-reader-control disabled type="button">适合宽度</button>
+    <button id="rotatePage" data-reader-control disabled type="button">旋转</button>
+    <form id="searchForm" role="search">
+      <input id="searchText" data-reader-control disabled type="search" placeholder="搜索文档文字" aria-label="搜索文档文字">
+      <button data-reader-control disabled type="submit">查找</button>
+      <button id="findPrevious" data-reader-control disabled type="button" aria-label="上一处匹配">↑</button>
+      <button id="findNext" data-reader-control disabled type="button" aria-label="下一处匹配">↓</button>
+      <span id="searchResult" role="status"></span>
+    </form>
+  </section>
+  <div id="readerStatus" class="reader-status" role="status" aria-live="polite">正在加载资料…</div>
+  <div id="readerError" class="reader-error" role="alert" hidden>
+    <p id="readerErrorText"></p>
+    <button id="retryDocument" class="btn sm" type="button">重新加载</button>
+    <span>也可以使用上方“下载 PDF”。</span>
+  </div>
+  <div class="reader-stage">
+    <div id="pdfContainer" tabindex="0" aria-label="PDF 文档内容"><div id="pdfPages" class="pdfViewer"></div></div>
+  </div>
+</main>
+<div class="toasts" id="toasts"></div>
+<script src="../assets/app.js?v=1015h"></script>
+<script src="../assets/mock-data.js?v=1015h"></script>
+<script src="../assets/mock-api.js?v=1015h"></script>
+<script src="../assets/mock-api-live.js?v=1016a"></script>
+<script src="../assets/document-preview.js?v=1017a"></script>
+<script src="../assets/pdf-reader.js?v=1017a"></script>
+</body>
+</html>

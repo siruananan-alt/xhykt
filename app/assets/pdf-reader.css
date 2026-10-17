@@ -1,0 +1,16 @@
+body{margin:0;background:#f2f2f2;color:var(--text,#4b4b4b)}
+.reader-shell{height:100dvh;display:flex;flex-direction:column;max-width:none;padding:0}
+.reader-header{display:flex;align-items:center;gap:16px;padding:12px 20px;background:white;border-bottom:2px solid #000437}
+.reader-header h1{flex:1;min-width:0;font-size:18px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reader-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:white;padding:10px 20px;border-bottom:1px solid #ddd}
+.reader-toolbar button,.reader-toolbar input{font:inherit;font-size:14px;border:2px solid #ddd;border-radius:8px;background:white;min-height:36px;padding:4px 10px;color:inherit}
+.reader-toolbar button{cursor:pointer;white-space:nowrap}.reader-toolbar button:hover:not(:disabled){border-color:#58cc02}
+.reader-toolbar :disabled{opacity:.45;cursor:default}.reader-toolbar :focus-visible{outline:3px solid #1cb0f6;outline-offset:2px}
+.reader-toolbar label{display:flex;align-items:center;gap:6px}.reader-toolbar input[type=number]{width:64px}.reader-toolbar input[type=search]{width:180px}
+#searchForm{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-left:auto}#searchResult,#zoomValue{font-size:13px;white-space:nowrap}
+.reader-status{padding:8px 20px;background:#e8f7ff;font-size:14px}.reader-error{padding:14px 20px;background:#fff0f0;border-bottom:1px solid #e5484d}.reader-error p{margin:0 0 10px}
+.reader-status[hidden],.reader-error[hidden],[hidden]{display:none!important}
+.reader-stage{position:relative;flex:1;min-height:0}#pdfContainer{position:absolute;inset:0;overflow:auto;overscroll-behavior:contain}
+.pdfViewer .page{box-sizing:content-box}
+.reader-shell .needlogin{margin:60px auto;padding:24px}
+@media(max-width:700px){.reader-header{padding:10px 12px;gap:8px}.reader-header h1{font-size:15px}.reader-toolbar{padding:8px;gap:5px}.reader-toolbar button,.reader-toolbar input{font-size:13px;padding:4px 7px}#searchForm{margin-left:0;flex-basis:100%}#searchText{flex:1;min-width:100px}.reader-error span{display:block;margin-top:10px}}
