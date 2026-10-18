@@ -122,7 +122,57 @@ function topbarHTML(role,page,opts){
      1. 真实登录身份（sessionStorage.etrainWho，由 mock-api-live.persistIdentity 落盘）
      2. 沙盒 Mock 会话（MOCKAPI.S，真实用户不在其中时会落空）
      3. protoRole / data-role -> setRoleSilently 兜底 */
+/* 【2026-10-18 修】顶栏「强制解锁」开关此前是**假开关**：
+   全站没有任何代码监听 #gateSw 的 change/click —— 点下去只有原生 checkbox 会翻，
+   既不弹确认、也不调 mockSetGate / adminSetSetting（不写后端），
+   标签文案还停在「强制解锁 已关」，刷新后视觉又弹回去 ⇒ 用户看到的就是"开关失效"。
+   现在：点开关不直接改状态，统一走 openGateConfirm（高危操作必须二次确认），
+   真实状态由 doSetGate 写成功后回填。 */
+function initGateSwitch(){
+  const sw=document.getElementById('gateSw');
+  if(!sw || sw.dataset.gateBound==='1') return;   /* 顶栏可能被重新渲染，避免重复绑定 */
+  sw.dataset.gateBound='1';
+  sw.addEventListener('click', e=>{
+    e.preventDefault();                            /* 阻止原生勾选：状态只由确认后的写入决定 */
+    if(typeof openGateConfirm==='function') openGateConfirm();
+  });
+}
+
+/* 只做「把状态画到顶栏」这一件事：checkbox 勾选态 + 标签文案/配色。
+   抽出来的原因见 doSetGate 的注释 —— live 模式下写入函数被替换后，
+   mock-api.js 里原来那两行回填代码根本不会执行。 */
+function syncGateSwitchUI(on){
+  const v = on===true;
+  const sw=document.getElementById('gateSw'); if(sw) sw.checked=v;
+  const lb=document.querySelector('.gatesw .tag');
+  if(lb){ lb.className='tag '+(v?'ok':'ghost'); lb.textContent=v?'强制解锁 已开':'强制解锁 已关'; }
+}
+
+/* 确认弹窗「确认开启 / 关闭强制解锁」的唯一落库入口。
+   【为什么不能继续 onclick="mockSetGate(n)"】两种模式的 mockSetGate 行为不同：
+     · 沙盒：同步写入 + 自己 closeModal() + 回填 checkbox/标签；
+     · 线上：mock-api-live 把它换成了 liveWrite('adminSetSetting') 包装的 **async** 函数，
+             写后只 liveRefresh + liveRerender（重绘页面正文），**既不关弹窗也不回填顶栏**。
+             于是线上点了「确认开启」→ 弹窗一直挂着、标签还是「已关」，
+             用户会判定"这开关是坏的"（就是这个 bug 的另一半）。
+   所以统一在这里：先关弹窗 → 乐观画一帧 → await 写入 → 用服务端真值再画一帧；
+   写入抛错（liveWrite 已 toast）时回滚到写入前的状态。 */
+async function doSetGate(on){
+  const prev = !!(typeof MOCK!=='undefined' && MOCK.DB && MOCK.DB.settings && MOCK.DB.settings.enforceGate===true);
+  closeModal();
+  syncGateSwitchUI(!!on);
+  try{
+    await mockSetGate(on);
+  }catch(e){
+    syncGateSwitchUI(prev);
+    return;
+  }
+  const real = !!(typeof MOCK!=='undefined' && MOCK.DB && MOCK.DB.settings && MOCK.DB.settings.enforceGate===true);
+  syncGateSwitchUI(real);
+}
+
 function initTopbar(){
+  initGateSwitch();
   if(typeof renderRoleMenu==='function'){
     try{ renderRoleMenu(); }catch(e){ /* 公开页无 #acctMenu -> 空操作 */ }
   }
@@ -667,7 +717,7 @@ function openGateConfirm(){
       ? '关闭后，学员可以跳关直接看后面的课程。影响：失去「必须按顺序闯关」的约束；学员可能跳过任务卡训练。<br>建议：只有在紧急补救（如某关卡视频下架）时才临时关闭。'
       : '开启后，学员只能按顺序闯关：看第 N 关 <svg class="ic"><use href="#i-arrow-dl"/></svg> 第 N−1 关全过。未解锁课程的<b>视频地址不会下发</b>到学员端。<br>影响：L01–L04 目前只有管理和考，没有任务卡 —— 开启后学员在第 5 关前就会卡住，请先确认代录已补齐。'}</div>`,
     `<button class="btn ghost" onclick="closeModal()">取消</button>
-     <button class="btn" onclick="mockSetGate(${on?0:1})">${on?'关闭强制解锁':'确认开启'}</button>`));
+     <button class="btn" onclick="doSetGate(${on?0:1})">${on?'关闭强制解锁':'确认开启'}</button>`));
 }
 // 4. 转正达标线登记 openReadiness（L1922）—— 按 source 分支
 function openReadiness(tid, key){
