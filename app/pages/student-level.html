@@ -69,8 +69,9 @@
 <script src="../assets/app.js?v=1018a"></script>
 <script src="../assets/mock-data.js?v=1018a"></script>
 <script src="../assets/mock-api.js?v=1018a"></script>
-<script src="../assets/mock-api-live.js?v=1018c"></script>
+<script src="../assets/mock-api-live.js?v=1018d"></script>
 <script src="../assets/ui.js?v=1018c"></script>
+<script src="../assets/practice-video.js?v=1018b"></script>
 <script>
 /* ?lv=L07 —— 缺省回落到"当前关"（真实数据下 S001 是 L04） */
 const LVQ = new URLSearchParams(location.search).get('lv');
@@ -202,6 +203,7 @@ function renderStages(wid, lv){
     if(s==='exam')     html.push(examBlock(wid,lv,idx+1));
   });
   box.innerHTML = html.join('');
+  PracticeVideo.bindErrors(box);
 }
 
 /* 环节 1：学（系统自动） */
@@ -273,6 +275,7 @@ function practiceBlock(wid, lv, no){
       </div>
       <span class="tag ${passed===defs.length?'ok':'warn'}">${passed}/${defs.length} 通过</span>
     </div>
+    ${PracticeVideo.player(lv.id)}
     ${cards || '<div class="note">本关暂无任务卡定义。</div>'}
   </div>`;
 }

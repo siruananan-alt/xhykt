@@ -20,10 +20,11 @@ function harness(options = {}) {
     clearTimeout,
     async liveApi(action, args) {
       calls.push({ action, ...args, active });
+      action=({practiceVideoInit:'uploadInit',practiceVideoSign:'uploadSign',practiceVideoComplete:'uploadComplete',practiceVideoAbort:'uploadClear'})[action]||action;
       if (action === 'uploadInit') {
         stopped = false;
         if (options.initError) throw new Error('init denied');
-        return { uploadId: 'isolated-upload' };
+        return { uploadId: 'isolated-upload', key:'assets/practice-videos/L05-abcdefabcdefabcdefabcdef.mp4' };
       }
       if (action === 'uploadSign') {
         if (options.signError) throw new Error('sign denied');
@@ -69,7 +70,7 @@ function harness(options = {}) {
   vm.runInContext(uploadSource + '\nglobalThis.upload = liveUploadVideo;', context);
   return {
     file, calls, progress, attempts,
-    upload: (input = file, cb = (done, total) => progress.push([done, total])) => context.upload('C5', 'g1', input, cb),
+    upload: (input = file, cb = (done, total) => progress.push([done, total])) => context.upload(options.practice?'__practice__':'C5', options.practice?'L05':'g1', input, cb),
     maxActive: () => maxActive,
   };
 }
@@ -157,4 +158,27 @@ test('invalid files and sandbox never reach backend', async () => {
   assert.equal(h.calls.length, 0);
   const sandbox = harness({ enabled: false }); await assert.rejects(sandbox.upload(), /沙盒/);
   assert.equal(sandbox.calls.length, 0);
+});
+
+test('practice video upload uses the per-level endpoints and carries the same staged object key',async()=>{
+  const h=harness({practice:true,parts:2});
+  await h.upload();
+  assert.equal(h.calls[0].action,'practiceVideoInit');
+  assert.equal(h.calls[0].levelId,'L05');
+  assert.equal(h.calls[0].size,h.file.size);
+  for(const call of h.calls.slice(1)){
+    assert.ok(['practiceVideoSign','practiceVideoComplete'].includes(call.action));
+    assert.equal(call.uploadId,'isolated-upload');
+    assert.equal(call.key,'assets/practice-videos/L05-abcdefabcdefabcdefabcdef.mp4');
+  }
+});
+
+test('practice upload failure aborts only its multipart session; oversized files never initialize',async()=>{
+  const h=harness({practice:true,parts:2,status:()=>403});
+  await assert.rejects(h.upload(),/403/);
+  assert.equal(h.calls.at(-1).action,'practiceVideoAbort');
+  assert.equal(h.calls.at(-1).uploadId,'isolated-upload');
+  const big=harness({practice:true});
+  await assert.rejects(big.upload({...big.file,size:3*1024**3}),/2GB/);
+  assert.equal(big.calls.length,0);
 });

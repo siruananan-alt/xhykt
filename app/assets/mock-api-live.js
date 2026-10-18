@@ -382,8 +382,12 @@ async function liveUploadVideo(cid, chid, file, onProgress){
   activeVideoUploads.add(key);
 
   let init = null, done = 0, next = 1, firstError = null, completing = false;
+  const practice = cid === '__practice__';
+  if(practice && file.size > 2*1024**3){activeVideoUploads.delete(key);throw new Error('教学视频不能超过 2GB');}
+  const uploadApi = (action,body)=>liveApi(practice ? ({uploadInit:'practiceVideoInit',uploadSign:'practiceVideoSign',uploadComplete:'practiceVideoComplete',uploadClear:'practiceVideoAbort'})[action] : action,
+    practice ? Object.assign({},body,{levelId:chid,key:init&&init.key,uploadId:init&&init.uploadId,name:file.name,size:file.size}) : body);
   try{
-    init = await liveApi('uploadInit', { cid, chid });
+    init = await uploadApi('uploadInit', { cid, chid });
     if(!init || !init.uploadId) throw new Error('上传初始化未返回 uploadId');
     const total = Math.ceil(file.size / UPLOAD_PART);
     const parts = new Array(total);
@@ -396,7 +400,7 @@ async function liveUploadVideo(cid, chid, file, onProgress){
           for(let attempt = 0; attempt <= UPLOAD_RETRIES; attempt++){
             if(firstError) return;
             // 重试重新签名，避免使用过期凭据；不混用其他实例的 token。
-            const sign = await liveApi('uploadSign', { cid, chid, uploadId: init.uploadId, partNumber: pn });
+            const sign = await uploadApi('uploadSign', { cid, chid, uploadId: init.uploadId, partNumber: pn });
             if(firstError) return;
             try{
               etag = await putPart(sign.url, sign.token, blob);
@@ -421,14 +425,14 @@ async function liveUploadVideo(cid, chid, file, onProgress){
     if(firstError) throw firstError;
     // parts 按编号写入，与完成顺序无关。所有分片成功后仅合并一次。
     completing = true;
-    const fin = await liveApi('uploadComplete', { cid, chid, uploadId: init.uploadId, parts });
+    const fin = await uploadApi('uploadComplete', { cid, chid, uploadId: init.uploadId, parts });
     try{ await liveRefresh(); }catch(e){ /* 读失败不改变上传成功结果 */ }
     try{ liveRerender(); }catch(e){ console.warn('[live] 上传后重绘失败：' + e.message); }
     return fin;
   }catch(e){
     // 合并响应丢失时服务端可能已成功；不要盲目清理已合并的视频。
     if(init && init.uploadId && !completing){
-      try{ await liveApi('uploadClear', { cid, chid }); }catch(_){ /* 保留原始错误 */ }
+      try{ await uploadApi('uploadClear', { cid, chid }); }catch(_){ /* 保留原始错误 */ }
     }
     if(completing) throw new Error('视频合并结果未确认，请刷新课程核对后再重试：' + e.message);
     throw e;
