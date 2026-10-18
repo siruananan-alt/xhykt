@@ -1136,7 +1136,7 @@ function roleCN(r){ return {student:'学员',mentor:'带教导师',admin:'教务
 // roleCN 保留 trainer 映射：后端 adminUserUpsert 仍支持该角色，仅沙盒演示不再提供入口
 // 切角色时统一落点（app.js 的 ROLE_HOME 用它）
 window.UI={topbarHTML,initTopbar,refreshTodoDot,mxCell,mxLegend,stagebar,rdBadgeGrid,readinessMeta,taskCardClass,taskTagHTML,tbl,tr,
-  readinessBadge,openModal:window.openModal,modal,fld,openJourney,openAdminReview,openGateConfirm,
+  readinessBadge,openModal:window.openModal,modal,fld,openJourney,openAdminReview,openGateConfirm,syncGateSwitchUI,doSetGate,
   openReadiness,openAddUser,onRoleChange,openResetPw,openTransfer,openDeleteCourse,openTimeline,
   openAddPerson,
   openPlayer,openSync,openQuiz,gradeQuiz,

@@ -633,12 +633,24 @@ function val(sel){ return rawVal(sel).trim(); }
      且**无需改任何页面代码**（守住"接线不改页面"的原则）。 */
 function liveRerender(){
   try{
-    if(typeof window.__rerender === 'function'){ window.__rerender(); return; }
-    if(typeof window.render === 'function'){ window.render(); return; }
-    console.warn('[live] 页面未暴露 render/__rerender，无法重绘（数据已就绪）');
+    if(typeof window.__rerender === 'function'){ window.__rerender(); }
+    else if(typeof window.render === 'function'){ window.render(); }
+    else console.warn('[live] 页面未暴露 render/__rerender，无法重绘（数据已就绪）');
   }catch(e){
     console.warn('[live] 重绘失败（数据已就绪，仅 UI 未刷新）：' + e.message);
   }
+  /* 【2026-10-18 修】顶栏只在页面 DOMContentLoaded 里渲一次（各页 `slot.innerHTML = topbarHTML()`），
+     而真实 settings 要等本函数之前的 liveRefresh 才到 —— 于是「强制解锁」开关的
+     checkbox/标签**永远停在种子默认值 false**。
+     线上实测（2026-10-18）：服务端 settings.enforceGate = true（data 接口原始响应确认），
+     顶栏却显示「强制解锁 已关」，管理员以为没开，其实学员一直在被强顺序闯关卡着。
+     重绘正文之后必须把开关按**服务端真值**再画一次。 */
+  try{
+    if(typeof UI!=='undefined' && typeof UI.syncGateSwitchUI==='function'
+       && window.MOCK && MOCK.DB && MOCK.DB.settings){
+      UI.syncGateSwitchUI(MOCK.DB.settings.enforceGate===true);
+    }
+  }catch(e){ /* 公开页/无顶栏页无此开关 -> 忽略 */ }
 }
 
 /* ---------- P0-2（2026-10-05）：首屏加载态 / 失败错误条 / token 失效收敛 ----------
