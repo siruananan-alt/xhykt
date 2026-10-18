@@ -301,7 +301,7 @@ const PAGE_ROLE={  // 文件名 -> 该页本该属于的角色（首页 index.ht
   'admin-readiness.html':'admin','admin-courses.html':'admin',
   // 【2026-10-04 补齐】原网站管理端 9 页，缺的 5 页此前没建，切角色时会漏跳
   'admin-tracking.html':'admin','admin-students.html':'admin',
-  'admin-plans.html':'admin','admin-perms.html':'admin','admin-users.html':'admin',
+  'admin-perms.html':'admin','admin-users.html':'admin',
   // 【2026-10-04 补齐】学员课程详情 / 播放器两页
   'student-course.html':'student','student-learn.html':'student',
   'design-spec.html':'admin'
@@ -410,7 +410,7 @@ const PAGE_CN={
   'mentor.html':'带教工作台','mentor-coach.html':'我的带教','mentor-mentee.html':'徒弟详情',
   'admin-dashboard.html':'数据看板','admin-tracking.html':'学习跟踪','admin-journey.html':'闯关总览',
   'admin-readiness.html':'转正达标线','admin-courses.html':'课程管理','admin-students.html':'人员管理',
-  'admin-plans.html':'带教计划','admin-perms.html':'权限矩阵','admin-users.html':'用户管理'
+  'admin-perms.html':'权限矩阵','admin-users.html':'用户管理'
 };
 function showGuardNotice(){
   let from='';

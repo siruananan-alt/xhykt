@@ -48,7 +48,7 @@
     <div class="tblwrap" style="margin-top:12px">
       <table>
         <thead><tr>
-          <th>工号</th><th>姓名</th><th>校区</th><th>导师</th><th>带教计划</th><th>当前关卡</th><th>状态</th><th>操作</th>
+          <th>工号</th><th>姓名</th><th>校区</th><th>导师</th><th>当前关卡</th><th>状态</th><th>操作</th>
         </tr></thead>
         <tbody id="stuRows"></tbody>
       </table>
@@ -68,11 +68,11 @@
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
 <div class="toasts" id="toasts"></div>
 
-<script src="../assets/app.js?v=1015h"></script>
-<script src="../assets/mock-data.js?v=1015h"></script>
-<script src="../assets/mock-api.js?v=1015h"></script>
-<script src="../assets/mock-api-live.js?v=1017c"></script>
-<script src="../assets/ui.js?v=1017a"></script>
+<script src="../assets/app.js?v=1018a"></script>
+<script src="../assets/mock-data.js?v=1018a"></script>
+<script src="../assets/mock-api.js?v=1018a"></script>
+<script src="../assets/mock-api-live.js?v=1018a"></script>
+<script src="../assets/ui.js?v=1018a"></script>
 <script>
 /* 人员管理（原「学员管理」，2026-10-15 改版）：分「导师 / 学员」两区块。
    学员保留第三轮模块 A 全部能力（A1 编辑 / A3 改带教 / A4 重置密码 / A5 换工号）；
@@ -123,14 +123,12 @@ function render(){
   document.getElementById('stuRows').innerHTML = list.map(t=>{
     const cur = MOCK.currentLevelOf(t.id);
     const curTxt = cur.no > n ? '已通关' : ('第 '+cur.no+' 关 · '+cur.title);
-    const planName = (MOCK.planOf(t.planId)||{}).name || '—';
     const wid = UI.esc(t.id);
     return `<tr>
       <td><b>${wid}</b></td>
       <td>${UI.esc(t.name)}</td>
       <td>${UI.esc(t.dept||'—')}</td>
       <td>${UI.esc((MOCK.mentorOf(t.mentorId)||{}).name||'—')}</td>
-      <td>${UI.esc(planName)}</td>
       <td>${UI.esc(curTxt)}</td>
       <td>${MOCK.DB.signoffs[t.id]?'<span class="tag ok">已出师</span>':'<span class="tag">培养中</span>'}</td>
       <td>

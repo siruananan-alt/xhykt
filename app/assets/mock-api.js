@@ -296,13 +296,13 @@ function mockAddUser(){
   if(errs.length) return toast(errs[0],'err');
   if(MOCK.userOf(wid)) return toast('工号 '+wid+' 已存在','err');
 
-  MOCK.DB.users[wid]={ wid, role, name, dept:g('uDept')||'武汉校区', planId:g('uPlan'),
+  MOCK.DB.users[wid]={ wid, role, name, dept:g('uDept')||'武汉校区',
     mentorId: role==='student'?mentorId:'', title: g('uTitle'), points:0, lastCheckin:'' };
   if(role==='student'){
-    MOCK.DB.trainees.push({ id:wid, name, wid, dept:g('uDept')||'武汉校区', mentorId, planId:g('uPlan'),
+    MOCK.DB.trainees.push({ id:wid, name, wid, dept:g('uDept')||'武汉校区', mentorId,
       joinDate:new Date().toISOString().slice(0,10), stage:'新手期', week:1, note:'' });
   }else{
-    MOCK.DB.mentors.push({ id:wid, name, wid, dept:g('uDept')||'武汉校区', title:g('uTitle')||roleCN(role), planId:g('uPlan'), replyBy:'' });
+    MOCK.DB.mentors.push({ id:wid, name, wid, dept:g('uDept')||'武汉校区', title:g('uTitle')||roleCN(role),  replyBy:'' });
   }
   toast('已创建 '+name+'（'+wid+'）','ok');
   closeModal(); rerenderAfterWrite();
@@ -341,14 +341,10 @@ function mockEditStudent(wid, fields){
   }
   if(fields.name !== undefined)   u.name = fields.name;
   if(fields.dept)                 u.dept = fields.dept;
-  if(fields.mentorId !== undefined) u.mentorId = fields.mentorId;
-  if(fields.planId !== undefined) u.planId = fields.planId;
-  if(t){
+  if(fields.mentorId !== undefined) u.mentorId = fields.mentorId;  if(t){
     if(fields.name !== undefined)   t.name = fields.name;
     if(fields.dept)                 t.dept = fields.dept;
-    if(fields.mentorId !== undefined) t.mentorId = fields.mentorId;
-    if(fields.planId !== undefined) t.planId = fields.planId;
-  }
+    if(fields.mentorId !== undefined) t.mentorId = fields.mentorId;  }
   return { ok:true, wid };
 }
 /* 【2026-10-15 · 账号管理并入人员管理】导师资料编辑（沙盒版）。
@@ -468,19 +464,6 @@ function mockDeleteCourse(cid){
   MOCK.DB.courses.splice(i,1);
   MOCK.DB.seedlogCourses.push(cid);       // 不复活（基线 seedlog-courses.json 语义）
   toast('已删除 '+cid+' · 已登记到 seedlog，不会被种子复活');
-  closeModal(); rerenderAfterWrite();
-}
-
-/* ---------- 出师 ---------- */
-function mockSignoff(wid){
-  const rt=document.getElementById('rt').value;
-  const byPlan=(MOCK.DB.competency[wid]||{}).byPlan||{};
-  const comps=Object.values(byPlan).flatMap(p=>Object.entries(p.comps||{}));
-  if(!(comps.length>0&&comps.every(([,v])=>v))) return toast('胜任力未全达标，不能出师','err');
-  MOCK.DB.signoffs[wid]={ planId:Object.keys(byPlan)[0]||'', rating:rt, mentorName:S.name, ts:new Date().toISOString() };
-  (MOCK.DB.coaching[wid]=MOCK.DB.coaching[wid]||{id:wid,events:[]}).events.push(
-    { ts:new Date().toISOString(), ev:'出师', txt:'结业评级：'+rt });
-  toast('已生成结业凭证 · 评级「'+rt+'」','ok');
   closeModal(); rerenderAfterWrite();
 }
 
@@ -620,14 +603,14 @@ function rerenderAfterWrite(){
 window.MOCKAPI={S,setSession,visibleTrainees,canReview,mockReview,askRejectReason,mockBulkPass,
   mockSetJourney,mockSetReadiness,mockSaveReadiness,mockCertify,mockRevokeCertify,mockSetGate,
   mockSetReadinessThreshold,
-  mockAddUser,mockTransfer,mockDeleteUser,mockCourseStatus,mockDeleteCourse,mockSignoff,
+  mockAddUser,mockTransfer,mockDeleteUser,mockCourseStatus,mockDeleteCourse,
   mockSubmitTask,mockCheckin,learnOf,mockToggleFav,mockSetRate,avgRating,mockPostQA,
   mockMarkDone,mockSubmitSync,rerenderAfterWrite,
   mockEditStudent,mockEditMentor,mockResetPw,mockMigrateWid,mockSetTaskShot,mockUploadInitShot,mockShotSign};
 Object.assign(window,{setSession,canReview,mockReview,askRejectReason,mockBulkPass,mockSetJourney,
   mockSetReadiness,mockSaveReadiness,mockCertify,mockRevokeCertify,mockSetGate,mockAddUser,
   mockSetReadinessThreshold,
-  mockTransfer,mockDeleteUser,mockCourseStatus,mockDeleteCourse,mockSignoff,mockSubmitTask,
+  mockTransfer,mockDeleteUser,mockCourseStatus,mockDeleteCourse,mockSubmitTask,
   mockCheckin,learnOf,mockToggleFav,mockSetRate,avgRating,mockPostQA,mockMarkDone,mockSubmitSync,
   mockEditStudent,mockEditMentor,mockResetPw,mockMigrateWid,mockSetTaskShot,mockUploadInitShot,mockShotSign});
 window.liveUploadShot = liveUploadShot;

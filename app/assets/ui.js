@@ -14,8 +14,7 @@
    ============================================================ */
 
 /* ---------- 顶栏 ---------- */
-// 管理端固定 8 项，顺序与基线一致（看板 L1456 / tracking L1474 / journey L1695 /
-// readiness L1897 / courses L1494 / students L1567 / plans L1578 / perms L1583）
+// 管理端导航：带教计划模块已移除，保留课程、人员和闯关管理。
 /* 【2026-10-15 · 账号管理并入人员管理】原第 9 项「用户管理」(admin-users.html) 已下线：
    其账号能力（列表、重置密码、删除账号、转移）全部并入「人员管理」(admin-students.html)。
    admin-users.html 文件保留（避免旧 URL / 历史脚本 404），页面顶部有「已并入」提示条。
@@ -27,7 +26,6 @@ const NAV_ADMIN = [
   ['admin-readiness.html', '转正达标线'],
   ['admin-courses.html',   '课程管理'],
   ['admin-students.html',  '人员管理'],
-  ['admin-plans.html',     '带教计划'],
   ['admin-perms.html',     '权限矩阵']
 ];
 const NAV_MENTOR = [
@@ -724,8 +722,6 @@ function openAddUser(){
      <div id="mentorBox">${fld('所属导师 *',`<select id="uMentor"><option value="">请选择</option>
         ${MOCK.DB.mentors.map(m=>`<option value="${m.id}">${m.name}（${m.id}）</option>`).join('')}</select>`,
         '学员必须挂导师，否则带教链断掉')}</div>
-     ${fld('带教计划',`<select id="uPlan"><option value="">不绑定</option>
-        ${MOCK.DB.plans.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select>`)}
      <div id="titleBox" hidden>${fld('职称',`<input id="uTitle" placeholder="如 带教导师">`)}</div>
      ${fld('初始密码 *',`<input id="uPw" data-rule="pwd" placeholder="至少 6 位">`,
        '<svg class="ic"><use href="#i-alert"/></svg> 基线此处是 <code>type="text"</code> 明文，是既有缺陷。迁移保持不变，不擅自改字段。')}
@@ -777,15 +773,12 @@ function openEditStudent(wid){
   const t = MOCK.traineeOf(wid) || {};
   const curDept = u.dept || t.dept || '';
   const curMentor = u.mentorId || t.mentorId || '';
-  const curPlan = u.planId || t.planId || '';
   // 历史校区不在名单内：照实回显并标红提示，绝不自动替换（A2 红线）
   const legacy = curDept && CAMPUS_LIST.indexOf(curDept) < 0;
   const options = (legacy ? `<option value="${esc(curDept)}" selected>${esc(curDept)}（历史值·需人工确认）</option>` : '')
     + CAMPUS_LIST.map(c=>`<option value="${c}"${c===curDept?' selected':''}>${c}</option>`).join('');
   const mentorOpts = `<option value="">请选择</option>` + MOCK.DB.mentors.map(m=>
     `<option value="${m.id}"${m.id===curMentor?' selected':''}>${esc(m.name)}（${m.id}）</option>`).join('');
-  const planOpts = `<option value="">不绑定</option>` + MOCK.DB.plans.map(p=>
-    `<option value="${p.id}"${p.id===curPlan?' selected':''}>${esc(p.name)}</option>`).join('');
   openModal(modal('编辑学员资料',
     `<div class="note">工号 <b>${esc(wid)}</b> 不可在此修改；如需换工号请用「换工号」入口（会迁移全部历史记录）。</div>
      ${fld('姓名 *',`<input id="esName" value="${esc(u.name||'')}">`)}
@@ -793,7 +786,6 @@ function openEditStudent(wid){
        legacy ? '<span class="err">该学员当前校区不在支持名单内，请从下拉中重新选择（不会自动替换）</span>'
               : '仅支持 15 个固定校区')}
      ${fld('带教老师 *',`<select id="esMentor">${mentorOpts}</select>`,'仅可指定导师角色；改后新导师接管后续审核')}
-     ${fld('带教计划',`<select id="esPlan">${planOpts}</select>`)}
      <div class="note warn">保存后学员端、导师端、管理端读取同一份最新资料；学习进度与历史记录不受影响。</div>`,
     `<button class="btn ghost" onclick="closeModal()">取消</button>
      <button class="btn" onclick="doEditStudent('${esc(wid)}')">保存</button>`));
@@ -802,13 +794,12 @@ async function doEditStudent(wid){
   const name = (document.getElementById('esName').value||'').trim();
   const dept = document.getElementById('esDept').value;
   const mentorId = document.getElementById('esMentor').value;
-  const planId = document.getElementById('esPlan').value;
   if(name.length < 2) return toast('姓名至少 2 个字','err');
   if(!dept) return toast('请选择校区','err');
   if(!mentorId) return toast('学员必须挂导师','err');
   if(typeof isMentorId === 'function' && !isMentorId(mentorId)) return toast('目标不是导师角色，不能作为带教老师','err');
   try{
-    await mockEditStudent(wid, { name, dept, mentorId, planId });
+    await mockEditStudent(wid, { name, dept, mentorId });
     toast('已保存 '+name+' 的资料','ok');
     closeModal(); rerenderAfterWrite();
   }catch(e){ toast('保存失败：'+(e&&e.message?e.message:e),'err'); }
@@ -887,10 +878,10 @@ async function doDelUser(wid){
 
 /* 【2026-10-15 人员管理】按角色预填的新增弹层：openAddPerson('student'|'mentor')。
    复用 mockAddUser()（沙盒）→ live adminUserUpsert 同一接线（读固定 id：
-   uRole/uWid/uName/uDept/uPw/uMentor/uPlan/uTitle），只控制字段与角色，
+   uRole/uWid/uName/uDept/uPw/uMentor/uTitle），只控制字段与角色，
    不新增账号状态体系。角色不含 admin（管理员入口不走此弹层，防止误建）。
    校区用 CAMPUS_LIST 下拉（与后端 CAMPUS_WHITELIST 逐字一致），替代旧 openAddUser 的自由输入。
-   ⚠️ mockAddUser 会无条件读取全部 8 个 id，故不适用字段必须渲染为 hidden 空值
+   ⚠️ mockAddUser 会无条件读取全部账号字段，故不适用字段必须渲染为 hidden 空值
    （沿用旧 openAddUser「元素常在 + hidden 切换」的做法，不能省略）。 */
 function openAddPerson(role){
   if(role !== 'student' && role !== 'mentor') return toast('角色不合法','err');
@@ -899,10 +890,6 @@ function openAddPerson(role){
         ${MOCK.DB.mentors.map(m=>`<option value="${m.id}">${esc(m.name)}（${m.id}）</option>`).join('')}</select>`,
         '学员必须挂导师，否则带教链断掉')
     : '<input type="hidden" id="uMentor" value="">';
-  const planBox = role === 'student'
-    ? fld('带教计划', `<select id="uPlan"><option value="">不绑定</option>
-        ${MOCK.DB.plans.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>`)
-    : '<input type="hidden" id="uPlan" value="">';
   const titleBox = role === 'mentor'
     ? fld('职称', `<input id="uTitle" placeholder="如 带教导师">`, '选填，展示在导师名旁')
     : '<input type="hidden" id="uTitle" value="">';
@@ -916,7 +903,6 @@ function openAddPerson(role){
      ${fld('校区 *', `<select id="uDept">${CAMPUS_LIST.map(c=>`<option value="${c}"${c==='武汉'?' selected':''}>${c}</option>`).join('')}</select>`,
         '仅支持 15 个固定校区')}
      ${mentorBox}
-     ${planBox}
      ${titleBox}
      ${fld('初始密码 *', `<input id="uPw" type="password" data-rule="pwd" placeholder="至少 6 位">`,
         '创建后请通知本人首次登录后自行修改')}
@@ -949,7 +935,7 @@ async function doChangeMentor(wid){
   if(!to) return toast('请选择新带教老师','err');
   const u = MOCK.userOf(wid) || {}, t = MOCK.traineeOf(wid) || {};
   try{
-    await mockEditStudent(wid, { name: u.name, dept: u.dept || t.dept, mentorId: to, planId: u.planId || t.planId });
+    await mockEditStudent(wid, { name: u.name, dept: u.dept || t.dept, mentorId: to });
     toast('已改到 '+(MOCK.mentorOf(to)||{}).name,'ok');
     closeModal(); rerenderAfterWrite();
   }catch(e){ toast('修改失败：'+(e&&e.message?e.message:e),'err'); }
@@ -1047,20 +1033,6 @@ function openTimeline(wid){
     items + `<div class="note">来源：<code>data/coaching.json</code> 的 <code>events[]</code>，<code>ev</code> 取值 <code>同频 / 出师 / 任务</code>。</div>`,
     '<button class="btn ghost" onclick="closeModal()">关闭</button>'));
 }
-// 10. 确认出师 openSignoff（L1398）—— 胜任力全达标才允许（后端 L839）
-function openSignoff(wid){
-  const t=MOCK.traineeOf(wid); if(!t) return;
-  const byPlan=(MOCK.DB.competency[wid]||{}).byPlan||{};
-  const comps=Object.values(byPlan).flatMap(p=>Object.entries(p.comps||{}));
-  const all=comps.length>0&&comps.every(([,v])=>v);
-  openModal(modal('确认出师',
-    `<div class="note ${all?'ok':'warn'}">胜任力 ${comps.filter(([,v])=>v).length} / ${comps.length} 项达标${all?'，<b>允许出师</b>':'，<b>未全过，不能出师</b>（基线 L839前置校验）'}</div>
-     ${fld('结业评级 *',`<select id="rt"><option value="达标">达标</option><option value="熟练">熟练</option><option value="可带教他人">可带教他人</option></select>`)}
-     <div class="note warn"><svg class='ic'><use href='#i-alert'/></svg> <code>signoffs.json</code> 只存一个 <code>planId</code> <svg class='ic'><use href='#i-arrow-r'/></svg> 一个学员只能出师一次（基线既有限制）。</div>`,
-    `<button class="btn ghost" onclick="closeModal()">取消</button>
-     <button class="btn" ${all?'':'disabled'} onclick="mockSignoff('${wid}')">生成结业凭证</button>`));
-}
-
 /* ---------- CSV 导出（基线 2 处，均带 BOM） ---------- */
 function exportCSV(filename, headers, rows){
   const csv=[headers.join(','),...rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(','))].join('\r\n');
@@ -1117,7 +1089,7 @@ window.UI={topbarHTML,initTopbar,refreshTodoDot,mxCell,mxLegend,stagebar,rdBadge
   readinessBadge,openModal:window.openModal,modal,fld,openJourney,openAdminReview,openGateConfirm,
   openReadiness,openAddUser,onRoleChange,openResetPw,openTransfer,openDeleteCourse,openTimeline,
   openAddPerson,
-  openSignoff,openPlayer,openSync,openQuiz,gradeQuiz,
+  openPlayer,openSync,openQuiz,gradeQuiz,
   pendingList,bulkListHTML,bulkSkipHTML,openBulkPass,
   exportCSV,exportLearningReport,exportCertCSV,esc,roleCN,NAV_ADMIN,
   openEditStudent,doEditStudent,openChangeMentor,doChangeMentor,

@@ -29,44 +29,24 @@
 const DB_SETTINGS = { enforceGate: false, readinessThresholds: {} };
 
 /* ---------- 2. data/users.json ---------- Object<wid,User> */
-// 字段：wid/role/name/dept/title(仅 mentor)/mentorId(仅 student)/planId/points/lastCheckin/passwordHash
+// 字段：wid/role/name/dept/title(仅 mentor)/mentorId(仅 student)/points/lastCheckin/passwordHash
 const DB_USERS = {
-  admin: { wid:'admin', role:'admin',  name:'范文淼', dept:'武汉校区', planId:'', points:0, lastCheckin:'' },
-  M1:    { wid:'M1',    role:'mentor', name:'郑丽薪', dept:'武汉校区', title:'带教导师', planId:'', points:120, lastCheckin:'2026-10-03' },
-  M2:    { wid:'M2',    role:'mentor', name:'曾锃湘', dept:'武汉校区', title:'带教导师', planId:'', points:80,  lastCheckin:'2026-10-02' },
+  admin: { wid:'admin', role:'admin',  name:'范文淼', dept:'武汉校区', points:0, lastCheckin:'' },
+  M1:    { wid:'M1',    role:'mentor', name:'郑丽薪', dept:'武汉校区', title:'带教导师', points:120, lastCheckin:'2026-10-03' },
+  M2:    { wid:'M2',    role:'mentor', name:'曾锃湘', dept:'武汉校区', title:'带教导师', points:80,  lastCheckin:'2026-10-02' },
   // 注意： 线上 S001 的密码已被用户改过，本文件不含 passwordHash，也不做登录校验
-  S001:  { wid:'S001',  role:'student',name:'朱子悦', dept:'武汉校区', mentorId:'M1', planId:'P1', points:70, lastCheckin:'2026-10-03' }
+  S001:  { wid:'S001',  role:'student',name:'朱子悦', dept:'武汉校区', mentorId:'M1', points:70, lastCheckin:'2026-10-03' }
 };
 
 /* ---------- 3. data/trainees.json ---------- Array<Trainee> */
 const DB_TRAINEES = [
-  { id:'S001', name:'朱子悦', wid:'S001', dept:'武汉校区', mentorId:'M1', planId:'P1',
-    joinDate:'2026-09-23', stage:'成长期', week:2, note:'剪辑耗时 2.1 小时，离 1.5 还差 0.6' }
+  { id:'S001', name:'朱子悦', wid:'S001', dept:'武汉校区', mentorId:'M1', joinDate:'2026-09-23', stage:'成长期', week:2, note:'剪辑耗时 2.1 小时，离 1.5 还差 0.6' }
 ];
 
 /* ---------- 4. data/mentors.json ---------- Array<Mentor> */
 const DB_MENTORS = [
-  { id:'M1', name:'郑丽薪', wid:'M1', dept:'武汉校区', title:'带教导师', planId:'', replyBy:'每工作日 20:00 前' },
-  { id:'M2', name:'曾锃湘', wid:'M2', dept:'武汉校区', title:'带教导师', planId:'', replyBy:'每工作日 20:00 前' }
-];
-
-/* ---------- 5. data/plans.json ---------- Array<Plan> */
-// competencies = 出师前置校验用的胜任力项（后端 L838 只取 comps）
-// 注意：【需要确认 #4】沙盒写死 5 项；线上 mentor.planId 恒 ""，真实项来源待确认
-const DB_PLANS = [
-  { id:'P1', name:'5 周新人转正计划', owner:'M1',
-    competencies:['能独立剪出一条可发布的视频','能找对标并说清对标为什么爆','能按飞书规范提交数据','能稳定拿到初始流量池','能做出高加粉的导流钩子'],
-    weeks:[
-      { w:1, phase:'新手期', levels:'L01–L06', focus:'跑通一次完整推流', gates:['L01','L02','L03','L04','L05','L06'] },
-      { w:'2–3', phase:'成长期', levels:'L07–L09', focus:'沉淀模板，冲月引流 800 人', gates:['L07','L08','L09'] },
-      { w:'4–5', phase:'成熟期', levels:'L10–L12', focus:'独立操盘 4 个账号，成果验收', gates:['L10','L11','L12'] }
-    ] },
-  { id:'P2', name:'进阶带教计划', owner:'M2',
-    competencies:['能独立带新人','能拆解爆款并输出方法论','能跑通矩阵分发'],
-    weeks:[
-      { w:1, phase:'成长期', levels:'L07–L09', focus:'带 1 名新人', gates:[] },
-      { w:'2–3', phase:'成熟期', levels:'L10–L12', focus:'独立操盘', gates:[] }
-    ] }
+  { id:'M1', name:'郑丽薪', wid:'M1', dept:'武汉校区', title:'带教导师', replyBy:'每工作日 20:00 前' },
+  { id:'M2', name:'曾锃湘', wid:'M2', dept:'武汉校区', title:'带教导师', replyBy:'每工作日 20:00 前' }
 ];
 
 /* ---------- 6. data/courses.json ---------- Array<Course> */
@@ -293,14 +273,7 @@ const DB_GATES = {
 };
 
 /* ---------- 14. data/competency.json ---------- Object<wid,{byPlan:{[pid]:{comps:{[name]:bool}}}}> */
-const DB_COMPETENCY = {
-  S001: { byPlan:{ P1:{ comps:{
-    '能独立剪出一条可发布的视频':true,
-    '能找对标并说清对标为什么爆':true,
-    '能按飞书规范提交数据':true,
-    '能稳定拿到初始流量池':false,
-    '能做出高加粉的导流钩子':false } } } }
-};
+const DB_COMPETENCY = {};
 
 /* ---------- 15. data/signoffs.json ---------- Object<wid,{planId,rating,mentorName,ts}> */
 // 注意： 只存一个 planId -> 一个学员只能出师一次（基线既有限制）
@@ -332,7 +305,7 @@ const DB_RATING = {};
    判定函数 —— 照抄后端，保证 Mock 结果 = 线上真实结果
    ============================================================ */
 const DB = {
-  users:DB_USERS, trainees:DB_TRAINEES, mentors:DB_MENTORS, plans:DB_PLANS,
+  users:DB_USERS, trainees:DB_TRAINEES, mentors:DB_MENTORS,
   courses:DB_COURSES, levels:DB_LEVELS, tasks:DB_TASKS, journey:DB_JOURNEY,
   readiness:DB_READINESS, learn:DB_LEARN, gates:DB_GATES, competency:DB_COMPETENCY,
   signoffs:DB_SIGNOFFS, coaching:DB_COACHING, fav:DB_FAV, qa:DB_QA, rating:DB_RATING,
@@ -345,7 +318,6 @@ const KEY3=(a,b,c)=>a+'|'+b+'|'+c;     // gates: "wid|cid|chid" —— 三段，
 const courseOf = cid=>DB.courses.find(c=>c.id===cid);
 const levelOf  = lid=>DB.levels.find(l=>l.id===lid);
 const userOf   = wid=>DB.users[wid];
-const planOf   = pid=>DB.plans.find(p=>p.id===pid);
 const traineeOf= wid=>DB.trainees.find(t=>t.id===wid);
 const mentorOf = mid=>DB.mentors.find(m=>m.id===mid);
 
@@ -477,7 +449,7 @@ function todoCounts(wid){
 window.MOCK = {
   DB, LV_STAGES, LV_STAGE_CN, EXAM_TASK, TASK_ST_CN, TASK_DEFS, READINESS_LINES,
   LEVEL_PHASES, SCORE_TOTAL, DB_SEEDLOG_COURSES, effectiveThreshold,
-  courseOf, levelOf, userOf, planOf, traineeOf, mentorOf, levelOfCourseIn,
+  courseOf, levelOf, userOf, traineeOf, mentorOf, levelOfCourseIn,
   studyAutoPass, lvStageOf, lvStageOk, practiceDone, levelDone,
   levelUnlocked, currentLevelOf, levelProgress, stageCountOf, scoreOf,
   courseGateOf, courseLocked, lockReason, todoCounts, KEY, KEY3

@@ -3,104 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>带教计划 · 教务管理员</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015h">
-<link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
+<title>前往人员管理</title>
+<script>location.replace('admin-students.html'+location.search+location.hash);</script>
 </head>
-<body class="role-admin" data-role="admin" data-nav-done="1">
-
-<!-- 顶栏由 ui.js 的 topbarHTML() 统一生成（管理端固定 9 项） -->
-<div id="topbarSlot"></div>
-
-<main class="wrap wide">
-
-  <div class="pg-head">
-    <span class="eyebrow">星禾云课堂</span>
-    <h1>带教计划</h1>
-    <p class="sub">计划定义每个阶段的胜任力项与关卡路线。</p>
-  </div>
-
-  <div class="card">
-    <div class="tblwrap">
-      <table>
-        <thead><tr>
-          <th>计划名</th><th>负责导师</th><th>胜任力</th><th>阶段路线</th>
-        </tr></thead>
-        <tbody id="planRows"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2 style="font-size:15px;margin:0 0 10px">阶段路线明细</h2>
-    <div id="planDetail"></div>
-  </div>
-
-  <details class="fold">
-    <summary>本页只读</summary>
-    <div class="fold-body">
-      计划只在「新增用户」时作为下拉选项出现，本站不提供编辑入口。
-    </div>
-  </details>
-
-</main>
-
-<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
-<div class="toasts" id="toasts"></div>
-
-<script src="../assets/app.js?v=1015h"></script>
-<script src="../assets/mock-data.js?v=1015h"></script>
-<script src="../assets/mock-api.js?v=1015h"></script>
-<script src="../assets/mock-api-live.js?v=1017c"></script>
-<script src="../assets/ui.js?v=1017a"></script>
-<script>
-/* 带教计划：基线 viewAdminPlans（4 列，只读） */
-document.addEventListener('DOMContentLoaded',()=>{
-  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换
-  // 顶栏
-  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-plans.html');
-  initNav();
-  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
-  window.__rerender = render;   // 注册给 liveRerender：真实数据到达后重绘
-  render();
-});
-
-/* 【P0-3 2026-10-09】拆出顶层 render()：原先内联渲染无重绘钩子，
-   真实数据到达后 liveRerender() 无法重绘 -> 计划名停在种子值（旧计划名）。 */
-function render(){
-  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
-  const plans = MOCK.DB.plans || [];
-  /* 兼容真实后端结构：胜任力字段后端用 `comps`（种子旧版用 `competencies`）；
-     weeks 后端为字符串数组（种子旧版为 {w,phase,levels,focus,gates} 对象）。
-     只做展示层字段容错，不改业务规则、不改数据。 */
-  const compsOf = p => (p.comps || p.competencies || []);
-  const weekLabel = w => (typeof w === 'string') ? w : (w.levels || w.phase || '—');
-
-  document.getElementById('planRows').innerHTML = plans.map(p=>`<tr>
-    <td><b>${UI.esc(p.name)}</b></td>
-    <td>${UI.esc((MOCK.mentorOf(p.owner)||{}).name||'—')}</td>
-    <td>${compsOf(p).map(c=>UI.esc(c)).join('、')||'—'}</td>
-    <td>${(p.weeks||[]).map(w=>UI.esc(weekLabel(w))).join(' / ')||'—'}</td>
-  </tr>`).join('');
-
-  // 阶段路线明细：对象型 weeks 展开为块；字符串型 weeks 退化为单行（真实后端口径）
-  document.getElementById('planDetail').innerHTML = plans.map(p=>`
-    <div class="pgroup">
-      <div class="gh"><b>${UI.esc(p.name)}</b><span class="d">负责导师 ${UI.esc((MOCK.mentorOf(p.owner)||{}).name||'—')}</span></div>
-      ${(p.weeks||[]).map(w=>{
-        if(typeof w === 'string'){
-          return `<div class="rowitem"><div style="flex:1;min-width:220px"><b>${UI.esc(w)}</b></div></div>`;
-        }
-        return `<div class="rowitem">
-          <div style="flex:1;min-width:220px">
-            <b>第 ${UI.esc(String(w.w))} 周 · ${UI.esc(w.phase||'')}</b>
-            <div class="sub">关卡 ${UI.esc(w.levels||'—')} · 重点：${UI.esc(w.focus||'—')}</div>
-          </div>
-          <div class="sub">闯关节点：${(w.gates&&w.gates.length)?w.gates.map(UI.esc).join('、'):'—'}</div>
-        </div>`;
-      }).join('')}
-    </div>`).join('');
-}
-</script>
+<body><p>请前往<a id="destination" href="admin-students.html">人员管理</a>。</p>
+<script>document.getElementById('destination').href='admin-students.html'+location.search+location.hash;</script>
 </body>
 </html>

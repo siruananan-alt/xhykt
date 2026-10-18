@@ -195,7 +195,7 @@ async function liveRefresh(){
   const d = await liveApi('data');
   // 覆盖式写入：只覆盖后端真正下发的键，未下发的保持（如 seedlogCourses）
   const map = {
-    courses:'courses', plans:'plans', mentors:'mentors', trainees:'trainees',
+    courses:'courses', mentors:'mentors', trainees:'trainees',
     gates:'gates', competency:'competency', signoffs:'signoffs', coaching:'coaching',
     learn:'learn', fav:'fav', qa:'qa', rating:'rating', levels:'levels',
     journey:'journey', readiness:'readiness', courseGate:'courseGate',
@@ -225,7 +225,7 @@ async function liveRefresh(){
     (MOCK.DB.trainees || []).forEach(function(t){
       if(!t || !t.id || MOCK.DB.users[t.id]) return;
       MOCK.DB.users[t.id] = { wid: t.id, role: 'student', name: t.name || t.id,
-        dept: t.dept || '', planId: t.planId || '', mentorId: t.mentorId || '' };
+        dept: t.dept || '', mentorId: t.mentorId || '' };
     });
     (MOCK.DB.mentors || []).forEach(function(m){
       if(!m || !m.id || MOCK.DB.users[m.id]) return;
@@ -509,23 +509,17 @@ function wireLiveWrites(){
     }),
     mockCertify:     liveWrite('adminCertify',     (tid)=>({ tid })),
     mockSetGate:     liveWrite('adminSetSetting',  (on)=>({ key:'enforceGate', value: !!on })),
-    /* 【2026-10-09 P0-2】补传 mentorId/planId/title：表单里选了却从没提交过，
+    /* 【2026-10-09 P0-2】补传 mentorId/title：表单里选了却从没提交过，
        live 模式新增学员会被后端「学员必须指定导师」拦死（接线遗漏）。 */
     mockAddUser:     liveWrite('adminUserUpsert',  ()=>({
       wid: val('#uWid'), name: val('#uName'), dept: val('#uDept'),
       role: val('#uRole'), password: rawVal('#uPw'),
-      mentorId: val('#uMentor'), planId: val('#uPlan'), title: val('#uTitle')
+      mentorId: val('#uMentor'), title: val('#uTitle')
     })),
     mockTransfer:    liveWrite('adminTransferTrainee', (wid)=>({ tid: wid, to: val('#trTo') })),
     mockDeleteUser:  liveWrite('adminUserDelete',  (wid)=>({ wid })),
     mockCourseStatus:liveWrite('adminCourseStatus',(cid, on)=>({ cid, status: on ? 'on' : 'off' })),
     mockDeleteCourse:liveWrite('adminCourseDelete',(cid)=>({ cid })),
-    mockSignoff:     liveWrite('signoff',          (wid)=>{
-      // 后端 actionSignoff(me,d) 读 d.tid / d.pid / d.rating；pid 取该学员带教计划的第一个 plan
-      const byPlan = ((MOCK.DB.competency[wid] || {}).byPlan) || {};
-      const pid = Object.keys(byPlan)[0] || '';
-      return { tid: wid, pid, rating: val('#rt') };
-    }),
     mockCheckin:     liveWrite('checkin',          ()=>({})),
     mockToggleFav:   liveWrite('fav',              (cid)=>({ cid })),
     mockSetRate:     liveWrite('rate',             (cid, n)=>({ cid, n })),
@@ -541,7 +535,7 @@ function wireLiveWrites(){
     mockEditStudent: liveWrite('adminUserUpsert', (wid, f)=>{
       f = f || {};
       return { wid, name: f.name, dept: f.dept, role: 'student',
-               mentorId: f.mentorId, planId: f.planId };
+               mentorId: f.mentorId };
     }),
     /* 【2026-10-15 · 账号管理并入人员管理】编辑导师资料（姓名/校区/职称）。
        复用 adminUserUpsert（role 固定 mentor）——后端会写 users.json 的 name/dept/title
