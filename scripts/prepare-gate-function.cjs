@@ -1,0 +1,17 @@
+const fs=require('node:fs'),path=require('node:path');
+const [sourceDir,destDir]=process.argv.slice(2);
+if(!sourceDir||!destDir)throw new Error('Usage: node scripts/prepare-gate-function.cjs <backup> <staging>');
+const source=path.resolve(sourceDir),dest=path.resolve(destDir);
+if(source===dest)throw new Error('Keep backup separate');
+fs.mkdirSync(dest,{recursive:true});
+for(const name of ['index.js','server.js','package.json','scf_bootstrap','practice-video.js'])fs.copyFileSync(path.join(source,name),path.join(dest,name));
+let code=fs.readFileSync(path.join(dest,'index.js'),'utf8');
+const policy=/function levelUnlockedFor\(all, wid, lv\) \{[\s\S]*?\r?\n\}/g;
+if([...code.matchAll(policy)].length!==1)throw new Error('Unexpected upstream gate policy');
+code=code.replace(policy,'function levelUnlockedFor(all, wid, lv) {\n  return require("./gate-policy.js")(all, wid, lv, levelDoneFor);\n}');
+const tag=/if \(act === "buildTag"\) return \{ tag: "([^"]+)" \};/g;
+if([...code.matchAll(tag)].length!==1)throw new Error('Unexpected build tag');
+code=code.replace(tag,'if (act === "buildTag") return { tag: "b20261018-gate-switch-v1" };');
+fs.writeFileSync(path.join(dest,'index.js'),code);
+fs.copyFileSync(path.resolve(__dirname,'../functions/etrain-api/gate-policy.js'),path.join(dest,'gate-policy.js'));
+console.log('Prepared gate fix, preserving existing video service and runtime configuration.');

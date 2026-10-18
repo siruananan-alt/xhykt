@@ -375,6 +375,7 @@ function levelDone(wid, lv){
 // 后端 L650 lvUnlocked：第 1 关恒开；第 N 关需第 N−1 关全环节通过
 function levelUnlocked(wid, lv){
   if(!lv) return false;
+  if(!DB.settings || DB.settings.enforceGate!==true) return true;
   if(lv.no<=1) return true;
   const prev=DB.levels.find(l=>l.no===lv.no-1);
   return levelDone(wid,prev);

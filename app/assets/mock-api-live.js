@@ -304,6 +304,7 @@ function liveWrite(action, buildBody, opts){
     try{
       body = buildBody.apply(null, args);
       out = await liveApi(action, body);
+      if(opts.applyResult) opts.applyResult(out);
     }catch(e){
       try{ toast('操作失败：' + (e && e.message ? e.message : e), 'err'); }catch(_){ }
       throw e;
@@ -512,7 +513,14 @@ function wireLiveWrites(){
                note: nEl ? String(nEl.value || '').slice(0,200) : '' };
     }),
     mockCertify:     liveWrite('adminCertify',     (tid)=>({ tid })),
-    mockSetGate:     liveWrite('adminSetSetting',  (on)=>({ key:'enforceGate', value: !!on })),
+    mockSetGate:     liveWrite('adminSetSetting',  (on)=>({ key:'enforceGate', value: !!on }),{
+      // 用保存响应的真值回填；随后的读取失败不能把已成功的开关画回旧值。
+      noRefresh:true,
+      applyResult:out=>{
+        if(!out || out.ok!==true || !out.settings || typeof out.settings.enforceGate!=='boolean') throw new Error('开关保存结果无效，请刷新核对');
+        MOCK.DB.settings=Object.assign({},MOCK.DB.settings,{enforceGate:out.settings.enforceGate});
+      }
+    }),
     /* 【2026-10-09 P0-2】补传 mentorId/title：表单里选了却从没提交过，
        live 模式新增学员会被后端「学员必须指定导师」拦死（接线遗漏）。 */
     mockAddUser:     liveWrite('adminUserUpsert',  ()=>({

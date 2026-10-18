@@ -150,9 +150,9 @@
 -->
 
 <script src="../assets/app.js?v=1018a"></script>
-<script src="../assets/mock-data.js?v=1018a"></script>
+<script src="../assets/mock-data.js?v=1018f"></script>
 <script src="../assets/mock-api.js?v=1018a"></script>
-<script src="../assets/mock-api-live.js?v=1018e"></script>
+<script src="../assets/mock-api-live.js?v=1018f"></script>
 <script src="../assets/ui.js?v=1018c"></script>
 <script>
 /* 数据看板 · 数据驱动版
@@ -246,19 +246,22 @@ function syncBulk(){
 /* 3. 阶段卡点预警（真实算） */
 function renderWarn(rows,todo){
   const first=MOCK.DB.levels.filter(l=>l.no<=4);
-  const blocked=rows.filter(t=>!first.every(l=>MOCK.levelDone(t.id,l))).length;
+  const incomplete=rows.filter(t=>!first.every(l=>MOCK.levelDone(t.id,l))).length;
+  const enforce=MOCK.DB.settings.enforceGate===true;
+  const practice=MOCK.DB.levels.find(l=>l.stages&&l.stages.practice);
+  const blocked=enforce&&practice?rows.filter(t=>!MOCK.levelUnlocked(t.id,practice)).length:0;
   document.getElementById('warnNote').innerHTML=`
-    <div class="note danger" style="margin-bottom:var(--s4)">
-      <b><svg class='ic'><use href='#i-dot'/></svg> L01–L04 全关通过数 = ${rows.length-blocked} / ${rows.length}</b><br>
-      任务卡全部在 L05–L12，而 L01–L04 没有「练」。<b>前 4 关的「考」没及时代录 <svg class='ic'><use href='#i-arrow-r'/></svg> 没人能走到能交任务卡的关卡。</b>
+    <div class="note ${blocked?'danger':'warn'}" style="margin-bottom:var(--s4)">
+      <b><svg class='ic'><use href='#i-dot'/></svg> L01–L04 全关通过数 = ${rows.length-incomplete} / ${rows.length}</b><br>
+      <b>${enforce?'强制解锁已开启：'+blocked+' 名学员因前置关卡未完成，暂不能进入首个练习关卡。':'强制解锁已关闭：学员可进入后续关卡，不受前置关卡完成情况限制。'}</b>
     </div>`;
   const c5=MOCK.courseOf('C5'), c6=MOCK.courseOf('C6');
   const noVideo=[c5,c6].filter(c=>c&&(c.chapters||[]).some(ch=>ch.type==='video'&&!ch.src));
   document.getElementById('warnBody').innerHTML=`
     <tr>
-      <td><b>L01–L04 考核未代录</b></td>
-      <td><span class="tag danger">${blocked} 人受阻</span></td>
-      <td>所有任务卡提交入口锁死</td>
+      <td><b>L01–L04 完成情况</b></td>
+      <td><span class="tag ${blocked?'danger':'ghost'}">${incomplete} 人尚未全部完成</span></td>
+      <td>${enforce?blocked+' 人暂不能进入首个练习关卡':'强制解锁已关闭，不限制进入后续关卡'}</td>
       <td><a class="btn sm ghost" href="admin-journey.html">去闯关总览代录</a></td>
     </tr>
     <tr>
@@ -270,7 +273,7 @@ function renderWarn(rows,todo){
     <tr>
       <td><b>待批改积压</b></td>
       <td><span class="tag ${todo.total?'warn':'ok'}">${todo.total} 条（练 ${todo.practice} · 考 ${todo.exam}）</span></td>
-      <td>学员停在提交态，无法解锁下一关</td>
+      <td>${enforce?'待审核任务可能影响下一关解锁':'任务仍需审核，不限制进入后续关卡'}</td>
       <td><button class="btn sm warn" onclick="openBulkPass()">批量通过</button></td>
     </tr>
     <tr>

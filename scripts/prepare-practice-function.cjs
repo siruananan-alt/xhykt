@@ -7,6 +7,7 @@ const source=path.resolve(sourceDir),dest=path.resolve(destDir);
 if(source===dest)throw new Error('Keep the downloaded backup separate');
 fs.mkdirSync(dest,{recursive:true});
 for(const name of ['index.js','server.js','package.json','scf_bootstrap'])fs.copyFileSync(path.join(source,name),path.join(dest,name));
+if(fs.existsSync(path.join(source,'gate-policy.js')))fs.copyFileSync(path.join(source,'gate-policy.js'),path.join(dest,'gate-policy.js'));
 let code=fs.readFileSync(path.join(dest,'index.js'),'utf8');
 function replaceOne(from,to){if(code.split(from).length!==2)throw new Error('Unexpected upstream source near '+from.slice(0,80));code=code.replace(from,to);}
 if(!code.includes("const practiceVideos = require('./practice-video.js')")){
