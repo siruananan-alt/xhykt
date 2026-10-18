@@ -9,6 +9,7 @@ fs.mkdirSync(dest,{recursive:true});
 for(const name of ['index.js','server.js','package.json','scf_bootstrap'])fs.copyFileSync(path.join(source,name),path.join(dest,name));
 let code=fs.readFileSync(path.join(dest,'index.js'),'utf8');
 function replaceOne(from,to){if(code.split(from).length!==2)throw new Error('Unexpected upstream source near '+from.slice(0,80));code=code.replace(from,to);}
+if(!code.includes("const practiceVideos = require('./practice-video.js')")){
 replaceOne('async function handle(data) {',`const practiceVideos = require('./practice-video.js')({loadAll,writeJSON,PREFIX,getStaticBucket,getVerifiedCreds,cosRequest,presign,presignTokenHeader,videoUrl,REGION});
 async function handle(data) {`);
 replaceOne('  const act = data.action;',`  const act = data.action;
@@ -18,9 +19,12 @@ replaceOne('  const act = data.action;',`  const act = data.action;
     return await practiceVideos.handle(act, me, data);
   }`);
 replaceOne('settings: { enforceGate: enforce, taskShots }','settings: { enforceGate: enforce, taskShots, practiceVideos: practiceVideos.visible(all,me,(state,w,lv)=>!gateEnforced(state)||levelUnlockedFor(state,w,lv)) }');
+}else if(!code.includes("return await practiceVideos.handle(act, me, data);")||!code.includes('practiceVideos: practiceVideos.visible(all,me,')){
+  throw new Error('Incomplete upstream practice-video integration');
+}
 const tags=[...code.matchAll(/if \(act === "buildTag"\) return \{ tag: "([^"]+)" \};/g)];
 if(tags.length!==1)throw new Error('Unexpected build tag');
-code=code.replace(tags[0][0],'if (act === "buildTag") return { tag: "b20261018-practice-video-v1" };');
+code=code.replace(tags[0][0],'if (act === "buildTag") return { tag: "b20261018-practice-video-v2" };');
 fs.writeFileSync(path.join(dest,'index.js'),code);
 fs.copyFileSync(path.resolve(__dirname,'../functions/etrain-api/practice-video.js'),path.join(dest,'practice-video.js'));
 console.log('Prepared function code; previous runtime configuration and environment variables must be preserved.');

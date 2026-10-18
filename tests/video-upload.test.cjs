@@ -70,7 +70,7 @@ function harness(options = {}) {
   vm.runInContext(uploadSource + '\nglobalThis.upload = liveUploadVideo;', context);
   return {
     file, calls, progress, attempts,
-    upload: (input = file, cb = (done, total) => progress.push([done, total])) => context.upload(options.practice?'__practice__':'C5', options.practice?'L05':'g1', input, cb),
+    upload: (input = file, cb = (done, total) => progress.push([done, total])) => context.upload(options.practice?'__practice__':'C5', options.practice?(options.levelId||'L05'):'g1', input, cb,{slot:options.slot||0}),
     maxActive: () => maxActive,
   };
 }
@@ -181,4 +181,10 @@ test('practice upload failure aborts only its multipart session; oversized files
   const big=harness({practice:true});
   await assert.rejects(big.upload({...big.file,size:3*1024**3}),/2GB/);
   assert.equal(big.calls.length,0);
+});
+
+test('all requests for the third high-conversion tutorial retain slot identity',async()=>{
+  const h=harness({practice:true,levelId:'L08',slot:2,parts:2});
+  await h.upload();
+  for(const call of h.calls){assert.equal(call.levelId,'L08');assert.equal(call.slot,2);}
 });

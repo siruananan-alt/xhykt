@@ -5,8 +5,13 @@ module.exports=function createPracticeVideos(deps){
   function checkResponse(r,label){
     if(r.status<200||r.status>=300||/<Error>/.test(String(r.body))) throw new Error(label+'失败，请重试');
   }
-  function session(d){
-    if(!new RegExp('^assets/practice-videos/'+d.levelId+'-[a-f0-9]{24}\\.mp4$').test(d.key||''))throw new Error('视频上传标识无效');
+  function videosOf(value){return Array.isArray(value)?value:(value&&value.url?[value]:[]);}
+  function supported(lv){return lv&&(lv.id==='L04'||lv.stages&&lv.stages.practice);}
+  function session(d,slot){
+    const prefix='^assets/practice-videos/'+d.levelId+'-';
+    const current=new RegExp(prefix+'s'+(slot+1)+'-[a-f0-9]{24}\\.mp4$');
+    const legacy=new RegExp(prefix+'[a-f0-9]{24}\\.mp4$');
+    if(!current.test(d.key||'')&&!(slot===0&&legacy.test(d.key||'')))throw new Error('视频上传标识无效');
     if(typeof d.uploadId!=='string'||!d.uploadId)throw new Error('缺少上传会话');
   }
   async function handle(action,me,d){
@@ -15,18 +20,24 @@ module.exports=function createPracticeVideos(deps){
       if(!/^L\d{2}$/.test(d.levelId||''))return {error:'关卡编号无效'};
       const all=await loadAll();
       const lv=all.levels.find(x=>x.id===d.levelId);
-      if(!lv||!lv.stages||!lv.stages.practice)return {error:'该关卡没有练习环节'};
+      if(!supported(lv))return {error:'该关卡未开放教学视频'};
+      const slot=d.slot==null?0:d.slot;
+      const capacity=lv.id==='L08'?3:1;
+      if(!Number.isInteger(slot)||slot<0||slot>=capacity)return {error:'教学视频位置无效'};
       if(action==='practiceVideoRemove'){
         const st=all.settings||{};
         st.practiceVideos=Object.assign({},st.practiceVideos);
-        delete st.practiceVideos[lv.id];
+        const videos=videosOf(st.practiceVideos[lv.id]).slice();
+        videos[slot]=null;
+        if(videos.some(v=>v&&v.url))st.practiceVideos[lv.id]=videos;
+        else delete st.practiceVideos[lv.id];
         await writeJSON(PREFIX+'settings.json',st);
         return {ok:true};
       }
       const bucket=await getStaticBucket();
       if(action==='practiceVideoInit'){
         if(!/\.mp4$/i.test(d.name||'')||!Number.isSafeInteger(d.size)||d.size<=0||d.size>2*1024**3)return {error:'请选择不超过 2GB 的 MP4 视频'};
-        const key='assets/practice-videos/'+lv.id+'-'+crypto.randomBytes(12).toString('hex')+'.mp4';
+        const key='assets/practice-videos/'+lv.id+'-s'+(slot+1)+'-'+crypto.randomBytes(12).toString('hex')+'.mp4';
         const cred=await getVerifiedCreds();
         const r=await cosRequest('POST',key,Buffer.alloc(0),{'content-type':'video/mp4','x-cos-acl':'public-read'},{uploads:''},bucket,cred);
         checkResponse(r,'初始化上传');
@@ -34,7 +45,7 @@ module.exports=function createPracticeVideos(deps){
         if(!uploadId)throw new Error('未取得上传会话');
         return {ok:true,key,uploadId};
       }
-      session(d);
+      session(d,slot);
       if(action==='practiceVideoSign'){
         if(!Number.isInteger(d.partNumber)||d.partNumber<1||d.partNumber>10000)throw new Error('分片编号无效');
         const cred=await getVerifiedCreds();
@@ -59,8 +70,10 @@ module.exports=function createPracticeVideos(deps){
       // 合并、HEAD 全部成功后才发布新地址；失败时现有视频继续可用。
       const latest=await loadAll();
       const st=latest.settings||{};
-      const video={title:lv.title+' · 练习教学',url:videoUrl(bucket,d.key),size,updatedAt:new Date().toISOString()};
-      st.practiceVideos=Object.assign({},st.practiceVideos,{[lv.id]:video});
+      const video={title:lv.title+' · 教学视频'+(capacity>1?' '+(slot+1):''),url:videoUrl(bucket,d.key),size,updatedAt:new Date().toISOString()};
+      const videos=videosOf((st.practiceVideos||{})[lv.id]).slice();
+      videos[slot]=video;
+      st.practiceVideos=Object.assign({},st.practiceVideos,{[lv.id]:videos});
       await writeJSON(PREFIX+'settings.json',st);
       return {ok:true,video,size};
     }catch(e){return {error:e.message};}
@@ -69,7 +82,7 @@ module.exports=function createPracticeVideos(deps){
     const out={};
     for(const lv of all.levels||[]){
       const v=((all.settings||{}).practiceVideos||{})[lv.id];
-      if(v&&lv.stages&&lv.stages.practice&&(me.role!=='student'||levelUnlockedFor(all,me.wid,lv)))out[lv.id]=v;
+      if(v&&supported(lv)&&(me.role!=='student'||levelUnlockedFor(all,me.wid,lv)))out[lv.id]=v;
     }
     return out;
   }

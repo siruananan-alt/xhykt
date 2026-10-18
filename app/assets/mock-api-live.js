@@ -372,7 +372,7 @@ async function putPart(url, token, blob){
 }
 
 /* 3 路分片直传；回调仍为已完成片数/总片数，兼容现有进度条。 */
-async function liveUploadVideo(cid, chid, file, onProgress){
+async function liveUploadVideo(cid, chid, file, onProgress, options = {}){
   if(!LIVE.enabled) throw new Error('当前是沙盒模式，无法真正上传（沙盒只演示界面）');
   if(!file) throw new Error('没有选文件');
   if(file.size <= 0) throw new Error('文件是空的');
@@ -385,7 +385,7 @@ async function liveUploadVideo(cid, chid, file, onProgress){
   const practice = cid === '__practice__';
   if(practice && file.size > 2*1024**3){activeVideoUploads.delete(key);throw new Error('教学视频不能超过 2GB');}
   const uploadApi = (action,body)=>liveApi(practice ? ({uploadInit:'practiceVideoInit',uploadSign:'practiceVideoSign',uploadComplete:'practiceVideoComplete',uploadClear:'practiceVideoAbort'})[action] : action,
-    practice ? Object.assign({},body,{levelId:chid,key:init&&init.key,uploadId:init&&init.uploadId,name:file.name,size:file.size}) : body);
+    practice ? Object.assign({},body,{levelId:chid,slot:options.slot==null?0:options.slot,key:init&&init.key,uploadId:init&&init.uploadId,name:file.name,size:file.size}) : body);
   try{
     init = await uploadApi('uploadInit', { cid, chid });
     if(!init || !init.uploadId) throw new Error('上传初始化未返回 uploadId');
