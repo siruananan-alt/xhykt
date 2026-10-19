@@ -102,6 +102,8 @@ const DELETE_ACTIONS = {
   adminUserDelete:1, adminCourseDelete:1, adminChapterDelete:1, adminTaskRevoke:1
 };
 async function liveApi(action, extra){
+  const timing = window.ETRAIN_TIMING;
+  const sample = timing ? timing.start(action) : null;
   const body = Object.assign({ action }, extra || {});
   if(LIVE.token && body.token === undefined) body.token = LIVE.token;
   /* 【2026-10-05 上线前加固】不可逆操作（删用户/删课程/删章节/撤销任务）服务端要求
@@ -138,6 +140,7 @@ async function liveApi(action, extra){
         body: JSON.stringify(body),
         signal: ctrl ? ctrl.signal : undefined
       });
+      if(timing) timing.headers(sample);
     }catch(e){
       const msg = (e && e.name === 'AbortError') ? TIMEOUT_MSG : (e.message || e);
       const err = new Error('连不上后端（' + LIVE.apiUrl + '）：' + msg);
@@ -154,6 +157,7 @@ async function liveApi(action, extra){
     }
   }finally{
     if(timer){ clearTimeout(timer); }
+    if(timing) timing.end(sample,!!j && !j.error);
   }
   if(j && j.error){ const err = new Error(j.error); LIVE.lastError = j.error; throw err; }
   return j;
@@ -780,6 +784,7 @@ async function liveBootstrap(){
     liveSetLoading(false);
     liveClearError();
     liveRerender();
+    if(window.ETRAIN_TIMING) window.ETRAIN_TIMING.ready();
     return true;
   }catch(e){
     console.warn('[live] 拉取真实数据失败：' + e.message);

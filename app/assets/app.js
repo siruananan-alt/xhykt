@@ -877,3 +877,61 @@ function initNavigationPrefetch(){
   if(window.requestIdleCallback)window.requestIdleCallback(idle,{timeout:2500});
   else setTimeout(idle,1500);
 }
+
+/* 可选诊断：?perf=1 开启，?perf=0 关闭；仅存本标签页，不上传记录。 */
+(function initNavigationTiming(){
+  const key='etrainNavigationTiming';
+  let enabled=false;
+  try{
+    const flag=new URLSearchParams(location.search).get('perf');
+    if(flag==='1')sessionStorage.setItem(key,'1');
+    if(flag==='0')sessionStorage.removeItem(key);
+    enabled=sessionStorage.getItem(key)==='1';
+  }catch(e){}
+  const clock=window.performance;
+  if(!enabled || !clock || typeof clock.now!=='function')return;
+  const samples=[];
+  let readyMs=null,panel=null,closed=false;
+  const ms=value=>Math.round(Math.max(0,value))+' 毫秒';
+  function paint(){
+    if(closed || !document.body)return;
+    if(!panel){
+      panel=document.createElement('details');panel.id='navigationTiming';
+      panel.style.cssText='position:fixed;bottom:12px;right:12px;z-index:9999;background:white;color:#111;border:2px solid #080830;border-radius:12px;padding:10px;max-width:360px;max-height:65vh;overflow:auto;font:14px/1.6 sans-serif;box-shadow:0 3px 12px #0002';
+      document.body.appendChild(panel);
+    }
+    const opened=panel.open;panel.replaceChildren();panel.open=opened;
+    const summary=document.createElement('summary');
+    summary.textContent=readyMs===null?'加载诊断：等待真实数据':'加载诊断：本页 '+ms(readyMs);
+    panel.appendChild(summary);
+    const row=(label,value)=>{const p=document.createElement('div');p.textContent=label+'：'+value;panel.appendChild(p);};
+    const nav=clock.getEntriesByType('navigation')[0];
+    if(nav){
+      row('页面文件首字节',ms(nav.responseStart-nav.startTime));
+      row('页面文件接收',ms(nav.responseEnd-nav.responseStart));
+      if(nav.domContentLoadedEventEnd)row('页面脚本就绪',ms(nav.domContentLoadedEventEnd));
+    }
+    const resources=clock.getEntriesByType('resource').filter(r=>r.initiatorType==='script' || r.initiatorType==='link' && /\.css(?:\?|$)/.test(r.name));
+    if(resources.length)row('脚本与样式全部到达',ms(Math.max(...resources.map(r=>r.responseEnd))));
+    samples.forEach((sample,i)=>{
+      row('接口 '+(i+1)+' · '+sample.action,sample.end===undefined?'进行中':ms(sample.end-sample.start)+(sample.ok?'':'（失败）'));
+      if(sample.headers!==undefined)row('等待响应 / 读取解析',ms(sample.headers-sample.start)+' / '+(sample.end===undefined?'进行中':ms(sample.end-sample.headers)));
+    });
+    row('说明','耗时从本页导航开始计算，不能将各行相加。');
+    const close=document.createElement('button');close.type='button';close.textContent='关闭诊断';
+    close.addEventListener('click',()=>{
+      try{sessionStorage.removeItem(key);}catch(e){}
+      closed=true;window.ETRAIN_TIMING=null;panel.remove();
+    });panel.appendChild(close);
+  }
+  window.ETRAIN_TIMING={
+    start(action){const sample={action:String(action),start:clock.now()};samples.push(sample);return sample;},
+    headers(sample){sample.headers=clock.now();},
+    end(sample,ok){sample.end=clock.now();sample.ok=ok;paint();},
+    ready(){
+      // 两帧让真实数据重绘进入显示流程；后台标签页耗时不能当作前台体验。
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{readyMs=clock.now();paint();}));
+    }
+  };
+  document.addEventListener('DOMContentLoaded',paint);
+})();

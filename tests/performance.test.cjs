@@ -69,7 +69,7 @@ test('administrator refresh uses bundled users in one request, old servers retai
 
 test('prefetch finds a late-rendered navigation and excludes external, query and login URLs',()=>{
   const source=fs.readFileSync(path.join(__dirname,'../app/assets/app.js'),'utf8');
-  const chunk=source.slice(source.indexOf('function initNavigationPrefetch(){'));
+  const chunk=source.slice(source.indexOf('function initNavigationPrefetch(){'),source.indexOf('/* 可选诊断'));
   let idle,anchors=[];const links=[],listeners={};
   const ctx=vm.createContext({navigator:{connection:{effectiveType:'4g'}},URL,Set,
     location:{href:'https://site.test/app/pages/admin-courses.html',origin:'https://site.test',pathname:'/app/pages/admin-courses.html'},
@@ -85,4 +85,25 @@ test('prefetch finds a late-rendered navigation and excludes external, query and
   assert.equal(links.length,2);focus('https://site.test/app/pages/admin-perms.html');assert.equal(links.length,3);
   assert.ok(links.every(link=>link.rel==='prefetch' && link.as==='document'));
   links.length=0;ctx.navigator.connection.saveData=true;ctx.initNavigationPrefetch();assert.equal(links.length,0);
+});
+
+test('navigation timing is opt-in, separates response/body and stops painting when closed',()=>{
+  const source=fs.readFileSync(path.join(__dirname,'../app/assets/app.js'),'utf8');
+  const chunk=source.slice(source.indexOf('(function initNavigationTiming(){'));
+  const storage=new Map(),panels=[];let tick=0;
+  function element(){return {children:[],listeners:{},style:{},appendChild(child){this.children.push(child);},
+    replaceChildren(){this.children=[];},addEventListener(type,fn){this.listeners[type]=fn;},remove(){this.removed=true;}};}
+  const ctx=vm.createContext({URLSearchParams,location:{search:''},sessionStorage:{
+    getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
+    window:{performance:{now:()=>tick,getEntriesByType:type=>type==='navigation'?[{startTime:0,responseStart:30,responseEnd:40,domContentLoadedEventEnd:70}]:[]}},
+    requestAnimationFrame:fn=>fn(),document:{body:{appendChild:panel=>panels.push(panel)},createElement:element,addEventListener(){}}});
+  vm.runInContext(chunk,ctx);assert.equal(ctx.window.ETRAIN_TIMING,undefined);assert.equal(panels.length,0);
+  ctx.location.search='?perf=1';vm.runInContext(chunk,ctx);
+  const timing=ctx.window.ETRAIN_TIMING;
+  tick=100;const sample=timing.start('data');tick=400;timing.headers(sample);tick=450;timing.end(sample,true);tick=470;timing.ready();
+  assert.equal(panels.length,1);
+  const text=panels[0].children.map(e=>e.textContent).join('\n');
+  assert.match(text,/本页 470 毫秒/);assert.match(text,/300 毫秒 \/ 50 毫秒/);assert.equal(storage.size,1);
+  const close=panels[0].children.at(-1);close.listeners.click();assert.equal(storage.size,0);assert.equal(panels[0].removed,true);
+  const length=panels[0].children.length;timing.end(sample,false);assert.equal(panels[0].children.length,length);
 });
