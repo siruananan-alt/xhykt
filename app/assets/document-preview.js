@@ -10,7 +10,7 @@
     if(url.username || url.password) throw new Error('资料地址包含不支持的身份信息');
     return url.href;
   }
-  function readerLink(cid, index, doc, currentUrl){
+  function readerLink(cid, index, doc, currentUrl, context){
     const source = resolveUrl(doc.url, currentUrl);
     if(!new URL(source).pathname.toLowerCase().endsWith('.pdf') && !String(doc.name || '').toLowerCase().endsWith('.pdf')) return source;
     const current = new URL(currentUrl);
@@ -18,6 +18,10 @@
     reader.search = '';
     reader.searchParams.set('c', cid);
     reader.searchParams.set('doc', String(index));
+    if(context && context.mentorLevel){
+      reader.searchParams.set('from','mentor-courses');
+      reader.searchParams.set('lv',context.mentorLevel);
+    }
     for(const key of ['sandbox', 'live', 'api']){
       if(current.searchParams.has(key)) reader.searchParams.set(key, current.searchParams.get(key));
     }

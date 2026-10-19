@@ -324,7 +324,7 @@ function doLogout(){
 const PAGE_ROLE={  // 文件名 -> 该页本该属于的角色（首页 index.html 是所有角色共用，故不列入）
   'login.html':'student','student-journey.html':'student','student-level.html':'student',
   'student-courses.html':'student','student-me.html':'student',
-  'mentor.html':'mentor','mentor-mentee.html':'mentor','mentor-coach.html':'mentor',
+  'mentor.html':'mentor','mentor-mentee.html':'mentor','mentor-coach.html':'mentor','mentor-courses.html':'mentor',
   // trainer.html 已不挂入口（保留文件留痕）。若要重新启用，加回 'trainer.html':'trainer' 并补 ROLES 项。
   'admin-dashboard.html':'admin','admin-journey.html':'admin',
   'admin-readiness.html':'admin','admin-courses.html':'admin',
@@ -436,7 +436,7 @@ function currentRole(){
 const PAGE_CN={
   'student-journey.html':'我的闯关','student-courses.html':'课程库','student-me.html':'我的档案',
   'student-course.html':'课程详情','student-learn.html':'章节学习','student-level.html':'关卡详情',
-  'mentor.html':'带教工作台','mentor-coach.html':'我的带教','mentor-mentee.html':'徒弟详情',
+  'mentor.html':'带教工作台','mentor-coach.html':'我的带教','mentor-mentee.html':'徒弟详情','mentor-courses.html':'课程中心',
   'admin-dashboard.html':'数据看板','admin-tracking.html':'学习跟踪','admin-journey.html':'闯关总览',
   'admin-readiness.html':'转正达标线','admin-courses.html':'课程管理','admin-students.html':'人员管理',
   'admin-perms.html':'权限矩阵','admin-users.html':'用户管理'

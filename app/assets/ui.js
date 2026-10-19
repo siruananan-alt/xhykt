@@ -30,6 +30,7 @@ const NAV_ADMIN = [
 ];
 const NAV_MENTOR = [
   ['mentor.html','工作台'],
+  ['mentor-courses.html','课程中心'],
   ['mentor-coach.html','我的带教'],
   ['mentor-mentee.html','徒弟详情']
 ];

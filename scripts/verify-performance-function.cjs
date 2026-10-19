@@ -64,7 +64,7 @@ vm.runInContext(fs.readFileSync(filename,'utf8')+`
   ctx.fixtures['data/readiness.json']={S001:{traffic:{met:true,value:1000}},OTHER:{traffic:{met:true,value:5000}}};
   const mentor=await invoke({action:'login',wid:'M1',password:'local-password'});assert.ok(mentor.token);
   const mentorFull=await invoke({action:'data',token:mentor.token,page:'unknown.html'});
-  for(const page of ['mentor.html','mentor-coach.html','mentor-mentee.html']){
+  for(const page of ['mentor.html','mentor-coach.html','mentor-mentee.html','mentor-courses.html']){
     reads.length=0;const scopedMentor=await invoke({action:'data',token:mentor.token,page});
     assert.equal(scopedMentor.error,undefined);assert.equal(reads.length,10);assert.equal(scopedMentor.users,undefined);
     assert.equal(scopedMentor.trainees.length,1);assert.equal(scopedMentor.trainees[0].id,'S001');

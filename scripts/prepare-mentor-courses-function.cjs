@@ -1,0 +1,13 @@
+const fs=require('node:fs'),path=require('node:path');
+const [src,dst]=process.argv.slice(2);
+if(!src||!dst)throw Error('Usage: node prepare-mentor-courses-function.cjs <latest-backup> <staging>');
+if(path.resolve(src)===path.resolve(dst))throw Error('Keep the backup separate');
+fs.cpSync(src,dst,{recursive:true});
+const file=path.resolve(dst,'index.js');let code=fs.readFileSync(file,'utf8');
+if(!code.includes('dataView.keysFor(d.page,me.role)'))throw Error('Unexpected upstream page scope');
+const marker=/if \(act === "buildTag"\) return \{ tag: "[^"]+" \};/;
+if(!marker.test(code))throw Error('Missing build tag');
+code=code.replace(marker,'if (act === "buildTag") return { tag: "b20261019-mentor-courses-v1" };');
+fs.writeFileSync(file,code);
+fs.copyFileSync(path.resolve(__dirname,'../functions/etrain-api/data-view.js'),path.resolve(dst,'data-view.js'));
+console.log('Prepared teacher course data scope, preserving the latest readiness, video and performance implementations');

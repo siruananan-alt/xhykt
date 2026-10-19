@@ -70,9 +70,15 @@
       const doc=(course.docs || [])[docIndex];
       if(!doc) throw new Error('这份资料已被移除或尚未上传');
       const url=DocumentPreview.resolveUrl(doc.url,location.href);
-      const back=new URL('student-course.html',location.href); back.searchParams.set('c',cid);
+      const mentorContext=['mentor','admin'].includes(MOCKAPI.S.role)&&params.get('from')==='mentor-courses';
+      const back=new URL(mentorContext?'mentor-courses.html':'student-course.html',location.href);
+      if(mentorContext){
+        const level=MOCK.DB.levels.find(l=>l.id===params.get('lv')&&(l.stages?.study?.courseIds||[]).includes(cid));
+        if(level)back.searchParams.set('lv',level.id);
+      }else back.searchParams.set('c',cid);
       for(const key of ['sandbox','live','api']) if(params.has(key)) back.searchParams.set(key,params.get(key));
       $('backToCourse').href=back.href;
+      $('backToCourse').textContent=mentorContext?'返回关卡内容':'返回课程';
       $('documentTitle').textContent=doc.name || '课程资料';
       document.title=(doc.name || '课程资料')+' · PDF 阅读';
       if(openedUrl===url && !force) return;

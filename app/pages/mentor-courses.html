@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>课程中心 · 带教老师</title>
+<link rel="stylesheet" href="../assets/theme.css?v=1019rd2">
+<link rel="stylesheet" href="../assets/mentor-courses.css?v=1019mc1">
+</head>
+<body class="role-mentor" data-role="mentor" data-nav-done="1">
+<div id="topbarSlot"></div>
+<main class="wrap wide">
+  <div class="pg-head">
+    <span class="eyebrow" id="courseEyebrow">带教备课 · 关卡内容</span>
+    <h1>课程中心</h1>
+    <p class="sub">从第一关到最后一关，查看课程、练习和考核的完整内容。</p>
+  </div>
+  <div class="mc-layout">
+    <aside class="mc-sidebar" aria-label="关卡目录">
+      <div class="mc-directory-head"><h2>关卡目录</h2><span id="directoryCount" class="tag ghost">—</span></div>
+      <label class="mc-search"><span class="mc-label">搜索关卡、课程或任务</span><input id="courseSearch" type="search" placeholder="搜索关卡 / 课程 / 任务" autocomplete="off"></label>
+      <div id="directoryResults" class="hint" role="status" aria-live="polite"></div>
+      <label class="mc-mobile-select">选择关卡<select id="mobileLevel" aria-label="选择关卡"></select></label>
+      <nav id="levelDirectory" aria-label="按阶段选择关卡"></nav>
+    </aside>
+    <section id="courseContent" class="mc-content" aria-label="关卡完整内容" aria-live="polite">
+      <div class="card"><p class="hint">正在加载课程内容…</p></div>
+    </section>
+  </div>
+</main>
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+<script src="../assets/app.js?v=1019mc1"></script>
+<script src="../assets/readiness-rules.js?v=1019rd2"></script>
+<script src="../assets/mock-data.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019rd2"></script>
+<script src="../assets/mock-api-live.js?v=1019timing3"></script>
+<script src="../assets/ui.js?v=1019mc1"></script>
+<script src="../assets/document-preview.js?v=1019mc1"></script>
+<script src="../assets/mentor-courses.js?v=1019mc1"></script>
+</body>
+</html>

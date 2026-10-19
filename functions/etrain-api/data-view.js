@@ -5,7 +5,7 @@ const views={
   'admin-perms.html':['users','settings','tasks','trainees','mentors','levels']
 };
 // Shared by the mentor dashboard, coaching and mentee detail (including readiness).
-const mentorPages=new Set(['mentor.html','mentor-coach.html','mentor-mentee.html']);
+const mentorPages=new Set(['mentor.html','mentor-coach.html','mentor-mentee.html','mentor-courses.html']);
 const mentorKeys=['courses','users','mentors','trainees','levels','journey','learn','settings','tasks','readiness'];
 module.exports={
   keysFor(page,role='admin'){
