@@ -1,0 +1,42 @@
+.readiness-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:24px;align-items:start}
+.readiness-layout>*{min-width:0}
+.readiness-sidebar{position:sticky;top:84px;margin:0;padding:18px}
+.readiness-sidebar h2{margin:0 0 18px}
+.readiness-sidebar label{font-size:12px;margin:14px 0 6px;display:block}
+.readiness-sidebar input,.readiness-sidebar select{width:100%;min-width:0}
+.readiness-sidebar input[type=search]{font:inherit;border:2px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);color:var(--ink)}
+.readiness-sidebar input[type=search]:focus{outline:2px solid var(--link-ink);outline-offset:2px}
+.readiness-students{display:grid;gap:8px;max-height:calc(100vh - 370px);min-height:110px;overflow-y:auto;overscroll-behavior:contain;padding:3px}
+.readiness-student{display:flex;gap:10px;align-items:center;width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:left;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
+.readiness-student:hover{background:var(--soft2)}
+.readiness-student.is-selected{border:2px solid var(--ink);padding:11px 9px;background:var(--wash)}
+.readiness-student:focus-visible{outline:2px solid var(--link-ink);outline-offset:1px}
+.readiness-student .avatar{flex:none;width:30px;height:30px;font-size:13px}
+.readiness-student-text{min-width:0;display:grid;gap:5px}
+.readiness-student-text b{font-size:13px;overflow-wrap:anywhere}
+.readiness-student-text>span{font-size:11px;color:var(--muted)}
+.readiness-content{display:grid;gap:18px;min-width:0}
+.readiness-content>.card{margin:0;min-width:0}
+.readiness-content .card-h{gap:10px;flex-wrap:wrap}
+.readiness-content .card-h .hint{margin:0}
+.readiness-selected{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.readiness-selected-name{flex:1;min-width:140px}
+.readiness-selected-name h3{font-size:18px;margin:0;line-height:1.6}
+.readiness-selected-name .hint{margin:6px 0 0}
+.readiness-record>summary{font-size:13px;color:var(--muted);cursor:pointer;padding:12px 0;border-top:1px solid var(--line);margin-bottom:10px}
+.readiness-record:not([open])>summary{margin-bottom:0}
+.readiness-fold>summary.card-h{display:flex;cursor:pointer;align-items:center;margin-bottom:0;list-style:none}
+.readiness-fold>summary::-webkit-details-marker{display:none}
+.readiness-fold>summary::after{content:'展开 ▾';font-size:12px;color:var(--muted);margin-left:auto}
+.readiness-fold[open]>summary::after{content:'收起 ▴'}
+.readiness-fold[open]>summary.card-h{margin-bottom:18px}
+.readiness-fold>summary h2{margin:0}
+.readiness-mobile-select{display:none}
+#rdList .card{margin-bottom:12px}
+#rdList{display:grid;gap:12px;align-items:start}
+#rdList .readiness-item{margin:0;padding:18px;min-width:0}
+#rdList .readiness-main{gap:8px;flex-wrap:wrap}
+#rdList .readiness-audit{overflow-wrap:anywhere}
+@media(min-width:1100px){#rdList{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}#rdList .readiness-item{display:flex;flex-direction:column}#rdList .readiness-actions{margin-top:auto;padding-top:12px}}
+@media(max-width:1000px){.readiness-layout{grid-template-columns:220px minmax(0,1fr);gap:18px}.readiness-content>.card{padding:20px}}
+@media(max-width:800px){.readiness-layout{grid-template-columns:minmax(0,1fr)}.readiness-sidebar{position:static;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 12px;padding:18px}.readiness-sidebar h2{grid-column:1/-1;margin:0 0 4px}.readiness-sidebar>label{margin:0}.readiness-sidebar>label[for=studentSearch]{grid-column:1;grid-row:2}.readiness-sidebar>input{grid-column:1;grid-row:3}.readiness-sidebar>label[for=studentFilter]{grid-column:2;grid-row:2}.readiness-sidebar>#studentFilter{grid-column:2;grid-row:3}.readiness-sidebar #studentCount{grid-column:1/-1;margin:4px 0 0}.readiness-students{display:none}.readiness-mobile-select{display:block;grid-column:1/-1}.readiness-mobile-select label{margin:6px 0}.readiness-content>.card{padding:18px}.readiness-selected{gap:10px}.readiness-selected-name h3{font-size:16px}.readiness-fold>summary.card-h{gap:8px}.readiness-fold>summary .tag{font-size:11px}}

@@ -6,6 +6,7 @@
 <title>转正达标线登记 · 教务管理员</title>
 <link rel="stylesheet" href="../assets/theme.css?v=1019load1">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
+<link rel="stylesheet" href="../assets/admin-readiness.css?v=1019compact1">
 </head>
 <body class="role-admin" data-role="admin" data-nav-done="1">
 
@@ -24,33 +25,44 @@
 
   <div id="riskNote"></div>
 
-  <!-- 逐学员逐条线 -->
+  <div class="readiness-layout">
+  <aside class="card readiness-sidebar" aria-label="选择学员">
+    <h2>选择学员</h2>
+    <label for="studentSearch">搜索姓名、工号或导师</label><input id="studentSearch" type="search" placeholder="搜索学员…" autocomplete="off">
+    <label for="studentFilter">达标状态</label><select id="studentFilter"><option value="">全部学员</option><option value="incomplete">未全达标</option><option value="ready">待审批</option><option value="certified">已认证</option></select>
+    <p class="hint" id="studentCount" aria-live="polite"></p>
+    <div id="studentNav" class="readiness-students"></div>
+    <div class="readiness-mobile-select"><label for="studentSelect">当前学员</label><select id="studentSelect"></select></div>
+  </aside>
+  <div class="readiness-content">
+  <!-- 每次只展示一名学员，登记弹层和业务规则保持一致。 -->
   <div class="card">
     <div class="card-h">
-      <h2>学员达标线明细</h2>
+      <h2>学员达标线登记</h2>
       <p class="hint">带教老师或管理员登记实际数值，系统按统一标准自动判定。</p>
     </div>
-    <div id="rdList"></div>
+    <div id="selectedHeader"></div>
+    <details id="studentDetails" class="readiness-record" open><summary>达标线明细与登记</summary><div id="rdList"></div></details>
   </div>
 
-  <!-- 转正审批 -->
-  <div class="card">
-    <div class="card-h">
+  <!-- 转正审批，默认收起；学员筛选不改变全站审批范围。 -->
+  <details class="card readiness-fold" id="approvalPanel">
+    <summary class="card-h">
       <h2>转正审批</h2>
       <span class="tag lock" id="certTag">当前 0 人可转正</span>
-    </div>
+    </summary>
     <p class="hint" style="margin-bottom:var(--s4)">
       学习关卡全部完成、4 条达标线全部达标后，才进入审批。
     </p>
     <div id="certBox"></div>
-  </div>
+  </details>
 
-  <!-- 达标线规则配置 -->
-  <div class="card">
-    <div class="card-h">
+  <!-- 规则作为参考折叠展示。 -->
+  <details class="card readiness-fold" id="rulesPanel">
+    <summary class="card-h">
       <h2>达标线规则</h2>
-      <span class="tag ghost">当前阈值</span>
-    </div>
+      <span class="tag ghost">查看标准</span>
+    </summary>
     <div id="ruleTbl"></div>
     <details class="fold">
       <summary>达标线判定规则</summary>
@@ -63,8 +75,9 @@
       <summary>登记与历史数据说明</summary>
       <div class="fold-body">老师只需登记实际数值，系统自动判定。未填写显示「未登记」；历史记录缺少有效数值显示「待补录」。有数值的历史记录按统一标准展示，不再采用旧手动结论。<br>四条线达标表示具备审批条件，正式转正仍需管理员确认。修改为不达标或清除登记会撤销已有认证。</div>
     </details>
+  </details>
   </div>
-
+  </div>
 </main>
 
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
@@ -96,6 +109,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-readiness.html');
   initNav();
   if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
+  initStudentPicker();
   window.__rerender = render;
   render();
 });
@@ -128,11 +142,11 @@ function renderKpis(rows){
   const near=rows.slice().sort((a,b)=>cntMet(b.id)-cntMet(a.id))[0];
   const noMentor=rows.filter(t=>!t.mentorId);
   const parts=[];
-  if(rows.length) parts.push(`目前 ${rows.length} 名学员中 <b>${canCert} 人</b>满足全部 4 条。`);
-  if(near) parts.push(`最接近的是<b>${esc(near.name)}</b>（${LINES.map(l=>lineLabel(near.id,l)).join('、')}）。`);
-  if(noMentor.length) parts.push(`<b>${noMentor.map(t=>esc(t.name)).join('、')}</b>尚未指定带教导师 —— 任务卡没人批、考核没人审，尽快指定或转出。`);
-  document.getElementById('riskNote').innerHTML = `<div class="note ${noMentor.length?'danger':'warn'}" style="margin-bottom:var(--s5)">
-    <b>运营提示：</b>${parts.join(' ')}</div>`;
+  if(rows.length) parts.push(`共 ${rows.length} 名学员，<b>${canCert} 人</b>待审批。`);
+  if(near) parts.push(`当前最多达标 <b>${cntMet(near.id)} / ${LINES.length} 条</b>。`);
+  if(noMentor.length) parts.push(`<b>${noMentor.length} 名学员</b>尚未指定带教导师，可到人员管理分配。`);
+  document.getElementById('riskNote').innerHTML = `<div class="note ${noMentor.length?'warn':''}" style="margin-bottom:var(--s5)">
+    ${parts.length?parts.join(' '):'暂无学员数据'}</div>`;
 }
 function cntMet(tid){ return MOCK.READINESS_LINES.filter(l=>lineMet(tid,l)).length; }
 // 单条线的达标判定 —— 与后端/readinessBadge 同源
@@ -152,25 +166,42 @@ function isReady(tid){
 }
 
 /* ---------- 逐学员明细（走 UI.readinessBadge 唯一口径） ---------- */
+let selectedTid=new URLSearchParams(location.search).get('tid')||'';
+function initStudentPicker(){
+ const update=()=>renderList(MOCKAPI.visibleTrainees(MOCKAPI.S.wid));
+ document.getElementById('studentSearch').addEventListener('input',update);
+ document.getElementById('studentFilter').addEventListener('change',update);
+ document.getElementById('studentSelect').addEventListener('change',e=>chooseStudent(e.target.value));
+ document.getElementById('studentNav').addEventListener('click',e=>{const b=e.target.closest('[data-student]');if(b)chooseStudent(b.dataset.student);});
+ window.addEventListener('popstate',()=>{selectedTid=new URLSearchParams(location.search).get('tid')||'';update();});
+}
+function chooseStudent(tid){
+ if(!tid||tid===selectedTid)return;
+ selectedTid=tid;
+ const url=new URL(location.href);url.searchParams.set('tid',tid);history.pushState(null,'',url);
+ renderList(MOCKAPI.visibleTrainees(MOCKAPI.S.wid));
+}
 function renderList(rows){
-  const box=document.getElementById('rdList');
-  if(!rows.length){ box.innerHTML='<div class="empty"><div class="big"><svg class="ic"><use href="#i-users"/></svg></div><b>没有在训学员</b></div>'; return; }
-  box.innerHTML=rows.map((t,i)=>{
-    const n=cntMet(t.id);
-    const mentor=MOCK.mentorOf(t.mentorId);
-    return `<div style="border-top:${i?'2px solid var(--line)':'0'};padding-top:var(--s5);margin-bottom:var(--s5)" data-tid="${esc(t.id)}">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:var(--s4)">
-        <span class="avatar">${esc((t.name||'?')[0])}</span>
-        <h3 style="font-size:17px">${esc(t.name)} <span class="tag ghost">${esc(t.id)}</span></h3>
-        <span class="tag ${n===4?'ok':'ghost'}">${n} / 4 条达标</span>
-        <span class="tag ghost">${mentor?('带教 '+esc(mentor.id)+' '+esc(mentor.name)):'<span class="tag warn" style="border:0;padding:0">带教未指定</span>'} · 第 ${t.week||1} 周</span>
-        ${isReady(t.id)?'<span style="margin-left:auto" class="tag ok">可转正</span>':'<span style="margin-left:auto" class="tag warn">未达标</span>'}
-      </div>
-      ${MOCK.READINESS_LINES.map((line,li)=>rdRow(t,line,li)).join('')}
-    </div>`;
-  }).join('');
-  // rdRow 里的 data-ic 需要注入（本页每次重绘都会重建 DOM）
-  if(window.injectIcons) injectIcons();
+ const q=document.getElementById('studentSearch').value.trim().toLowerCase(),filter=document.getElementById('studentFilter').value;
+ const filtered=rows.filter(t=>{
+  const mentor=MOCK.mentorOf(t.mentorId),cert=!!(MOCK.DB.readiness[t.id]||{}).certifiedAt;
+  return (!q||[t.name,t.id,mentor&&mentor.name,t.mentorId].join(' ').toLowerCase().includes(q))&&(!filter||(filter==='incomplete'&&!isReady(t.id))||(filter==='ready'&&isReady(t.id)&&!cert)||(filter==='certified'&&cert));
+ });
+ const linkedTid=new URLSearchParams(location.search).get('tid');
+ if(filtered.some(t=>t.id===linkedTid))selectedTid=linkedTid;
+ if(!filtered.some(t=>t.id===selectedTid))selectedTid=filtered[0]?.id||'';
+ document.getElementById('studentCount').textContent='显示 '+filtered.length+' / '+rows.length+' 人';
+ document.getElementById('studentNav').innerHTML=filtered.map(t=>`<button type="button" class="readiness-student${t.id===selectedTid?' is-selected':''}" data-student="${esc(t.id)}" aria-pressed="${t.id===selectedTid}"><span class="avatar">${esc((t.name||'?')[0])}</span><span class="readiness-student-text"><b>${esc(t.name||t.id)}</b><span>${esc(t.id)} · ${cntMet(t.id)}/${MOCK.READINESS_LINES.length} 条达标</span></span></button>`).join('')||'<p class="hint">没有符合条件的学员</p>';
+ const select=document.getElementById('studentSelect');
+ select.innerHTML=filtered.length?filtered.map(t=>`<option value="${esc(t.id)}">${esc(t.name||t.id)} · ${esc(t.id)}（${cntMet(t.id)}/${MOCK.READINESS_LINES.length}）</option>`).join(''):'<option value="">暂无匹配学员</option>';
+ select.value=selectedTid;select.disabled=!filtered.length;
+ const box=document.getElementById('rdList'),header=document.getElementById('selectedHeader'),details=document.getElementById('studentDetails'),t=filtered.find(t=>t.id===selectedTid);
+ details.hidden=!t;
+ if(!t){header.innerHTML=`<div class="empty"><b>${rows.length?'没有符合条件的学员':'暂无学员'}</b><p class="hint">${rows.length?'请调整搜索或达标状态筛选。':'添加学员后可在此登记。'}</p></div>`;box.innerHTML='';return;}
+ const n=cntMet(t.id),mentor=MOCK.mentorOf(t.mentorId),cert=!!(MOCK.DB.readiness[t.id]||{}).certifiedAt;
+ header.innerHTML=`<div class="readiness-selected" data-tid="${esc(t.id)}"><span class="avatar">${esc((t.name||'?')[0])}</span><div class="readiness-selected-name"><h3>${esc(t.name||t.id)} <span class="tag ghost">${esc(t.id)}</span></h3><p class="hint">${mentor?'带教 '+esc(mentor.name):'带教未指定'} · 第 ${t.week||1} 周</p></div><span class="tag ${isReady(t.id)?'ok':'ghost'}">${cert?(isReady(t.id)?'已认证':'历史认证待复核'):(isReady(t.id)?'可转正':n+' / '+MOCK.READINESS_LINES.length+' 条达标')}</span></div>`;
+ box.innerHTML=MOCK.READINESS_LINES.map((line,li)=>rdRow(t,line,li)).join('');
+ if(window.injectIcons)injectIcons();
 }
 function rdRow(t,line,li){ return UI.readinessRow(t.id,line.key,true); }
 
@@ -185,13 +216,13 @@ function renderCert(rows){
   if(!ready.length && !certed.length){
     box.innerHTML=`<div class="empty">
       <div class="big"><svg class='ic'><use href='#i-clipboard'/></svg></div><b>暂无待审批</b>
-      <p style="font-size:13px;margin-top:6px">当前 ${rows.length} 名学员全部未达标。${rows.length?('最接近的 '+esc(rows.slice().sort((a,b)=>cntMet(b.id)-cntMet(a.id))[0].name)+' 还差 '+(4-cntMet(rows.slice().sort((a,b)=>cntMet(b.id)-cntMet(a.id))[0].id))+' 条达标线。'):''}</p>
+      <p class="hint">学员满足全部达标条件后，将自动出现在这里。</p>
     </div>
     `;
     return;
   }
   box.innerHTML=`<div class="tblwrap"><table><thead><tr><th>学员</th><th>达标情况</th><th>状态</th><th>操作</th></tr></thead><tbody>
-    ${rows.map(t=>{
+    ${ready.concat(certed).map(t=>{
       const ok=isReady(t.id), r=MOCK.DB.readiness[t.id]||{};
       return `<tr data-tid="${esc(t.id)}"><td><b>${esc(t.name)}</b> <span class="tag ghost">${esc(t.id)}</span></td>
         <td>${cntMet(t.id)} / 4 条 <span class="hint">学习 ${MOCK.DB.levels.filter(l=>MOCK.levelDone(t.id,l)).length}/${MOCK.DB.levels.length} 关</span></td>
@@ -209,7 +240,7 @@ function renderRules(){
     const eff=MOCK.effectiveThreshold(line.key);
     const isSite=line.source==='site';
     const th = isSite ? (MOCK.DB.levels.length+' 关全通关') : (eff.compare==='lt'?('&lt; '+eff.threshold):('≥ '+eff.threshold))+' '+esc(eff.unit);
-    const srcTag = isSite?'本站':'飞书多维表格';
+    const srcTag = isSite?'本站学习记录':'导师 / 管理员登记';
     const wayTag = isSite?'<span class="tag ok">系统自动</span>':'<span class="tag ok">登记数值 · 自动判定</span>';
     const custom = eff.custom?`<div class="hint" style="font-size:11px">自定义 · ${esc(eff.byName||'')}</div>`:'';
     const act = isSite
