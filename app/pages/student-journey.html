@@ -6,6 +6,7 @@
 <title>我的闯关 · 学员</title>
 <link rel="stylesheet" href="../assets/theme.css?v=1019load1">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
+<link rel="stylesheet" href="../assets/student-readiness.css?v=1019mini1">
 </head>
 <body class="role-student" data-role="student" data-nav-done="1">
 
@@ -254,20 +255,24 @@ function renderFocus(wid){
 function renderReadiness(wid){
   const box=document.getElementById('rdBox');
   const lines=MOCK.READINESS_LINES||[];
-  const doneLv=(MOCK.DB.levels||[]).filter(l=>MOCK.levelDone(wid,l)).length;
-  const allLv=(MOCK.DB.levels||[]).length;
   const metN=lines.filter(l=>readinessMet(l,wid)).length;
-
-  const items=lines.map(line=>UI.readinessRow(wid,line.key,false)).join('');
-
-  const left=lines.length-metN;
-  box.innerHTML=`<div class="card">
+  const detailOpen=!!box.querySelector('.student-readiness-details[open]');
+  const items=lines.map(line=>{
+    const b=UI.readinessBadge(line.key,wid);
+    return `<div class="student-readiness-stat" data-readiness-key="${esc(line.key)}"><span class="student-readiness-name">${esc(b.name)}</span><b class="student-readiness-number">${esc(b.valid||line.source==='site'?b.val:'—')}</b><span class="student-readiness-status ${b.met?'is-met':''}">${esc(b.tag)}</span></div>`;
+  }).join('');
+  const details=lines.map(line=>{
+    const b=UI.readinessBadge(line.key,wid),rec=b.rec;
+    return `<div class="student-readiness-rule"><b>${esc(b.name)}</b><span>标准：${esc(UI.readinessRuleText(line.key))}</span>${rec?`<span class="hint">登记人：${esc(rec.byName||rec.by||'未记录')} · ${esc(UI.readinessTime(rec.at))}${rec.note?`<br>备注：${esc(rec.note)}`:''}</span>`:`<span class="hint">${line.source==='site'?'按学习关卡完成情况自动更新':'由带教老师或管理员登记实际数值'}</span>`}</div>`;
+  }).join('');
+  box.innerHTML=`<section class="card student-readiness">
     <div class="card-h">
       <h2>距离转正</h2>
+      <span class="hint">${metN} / ${lines.length} 条已达标</span>
     </div>
-    <div class="rdlist">${items}</div>
-    <p class="hint" style="margin-top:var(--s3)">${left>0? ('还差 <b>'+left+'</b> 条达标线。') : '达标线全部达成。'}</p>
-  </div>`;
+    <div class="student-readiness-stats">${items||'<p class="hint">暂无达标线配置</p>'}</div>
+    <details class="student-readiness-details"${detailOpen?' open':''}><summary>查看标准与登记详情</summary><div class="student-readiness-rules">${details}</div></details>
+  </section>`;
 }
 
 /* ---- 3. 当前关卡 ---- */
