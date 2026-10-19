@@ -876,13 +876,22 @@ html[data-live-loading="1"] main{visibility:hidden}
 .liveload-box b,.liveerr-box b{font-family:var(--font-display);font-size:16px;color:var(--ink)}
 .liveload-sub{font-size:13px;color:var(--muted);line-height:1.7;opacity:.85}
 .liveerr-msg{font-size:13px;color:var(--text);line-height:1.7}
-.liveload-spin{
-  width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--ink);
-  border-radius:50%;animation:liveload-spin .8s linear infinite;
-}
-@keyframes liveload-spin{to{transform:rotate(360deg)}}
+.liveload-box{display:block;width:min(90vw,580px);max-width:none;padding:32px 12px}
+.liveload-box b{display:block;font-family:"Microsoft YaHei",sans-serif;font-size:26px;letter-spacing:1px;line-height:1.5;margin:0 0 15px}
+.liveload-dots{height:64px;display:flex;align-items:center;justify-content:center;gap:13px;margin-bottom:25px}
+.liveload-dots i{display:block;width:17px;height:17px;border-radius:50%;background:#61d300;animation:liveload-bounce 1.35s ease-in-out infinite}
+.liveload-dots i:nth-child(2){animation-delay:-1.2s;background:#47ba00}
+.liveload-dots i:nth-child(3){animation-delay:-1.05s;background:#07123b}
+.liveload-divider{width:40px;height:3px;border-radius:2px;background:#e4efdb;margin:31px auto 22px}
+.liveload-tips{height:42px;position:relative;font-family:"Microsoft YaHei",sans-serif;font-size:12px;color:#9198a3;line-height:1.8}
+.liveload-tip{position:absolute;inset:0;opacity:0;animation:liveload-tip 9s linear infinite}
+.liveload-tip:nth-child(2){animation-delay:-6s}.liveload-tip:nth-child(3){animation-delay:-3s}
+.liveload-tip em{font-style:normal;color:#60a62a;margin-right:6px}
+@keyframes liveload-bounce{0%,65%,100%{transform:translateY(0) scale(.88);opacity:.55}30%{transform:translateY(-17px) scale(1.08);opacity:1}}
+@keyframes liveload-tip{0%{opacity:0;transform:translateY(6px)}4%,29%{opacity:1;transform:translateY(0)}33%,100%{opacity:0;transform:translateY(-5px)}}
 .liveerr-box .btn{margin-top:6px}
-@media (prefers-reduced-motion:reduce){.liveload-spin{animation:none}}
+@media (max-width:480px){.liveload-box b{font-size:22px}.liveload-tips{font-size:11px}}
+@media (prefers-reduced-motion:reduce){.liveload-dots i{animation:none;opacity:1}.liveload-tip{animation:none;display:none}.liveload-tip:first-child{display:block;opacity:1}}
 @media (max-width:640px){.liveload,.liveerr{top:56px}}
 
 /* ==========================================================================

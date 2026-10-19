@@ -719,10 +719,16 @@ function liveSetLoading(on){
   if(on){
     if(!n && document.body){
       n = document.createElement('div'); n.id = '__liveLoad'; n.className = 'liveload';
+      n.setAttribute('role','status');
+      n.setAttribute('aria-live','polite');
       n.innerHTML = '<div class="liveload-box">'+
-        '<span class="liveload-spin" aria-hidden="true"></span>'+
-        '<b>正在加载真实数据…</b>'+
-        '<span class="liveload-sub">正在读取最新课程和学习记录</span></div>';
+        '<div class="liveload-dots" aria-hidden="true"><i></i><i></i><i></i></div>'+
+        '<b>正在准备你的学习空间</b>'+
+        '<div class="liveload-divider" aria-hidden="true"></div>'+
+        '<div class="liveload-tips" aria-hidden="true">'+
+        '<span class="liveload-tip"><em>学习小贴士</em>每天进步一点，离通关更近一步。</span>'+
+        '<span class="liveload-tip"><em>学习小贴士</em>学完记得练一练，让知识变成能力。</span>'+
+        '<span class="liveload-tip"><em>学习小贴士</em>遇到难题，别忘了向带教老师求助。</span></div></div>';
       document.body.appendChild(n);
     }
   }else if(n){ n.remove(); }
