@@ -185,14 +185,21 @@ function readIdentity(){
    注意： 关键字段映射（见《接线映射表》§1）：
       actionData.levelPhases -> MOCK.DB.phases（改名）；
       actionData.user（单数）-> 会话；
-      **actionData 不下发 users 字典**（已核对后端 L772-775：返回体里没有 users），
-      故管理员单独补一次 adminUserList（见下方 fetchUsersIfAdmin）。
+      新后端为管理员合并下发脱敏 users 列表，旧后端才补调 adminUserList。
    注意：【2026-10-04 二次修正】首版以为"漏映射 users"是 bug，补了 map.users —— 实测证明
       **后端确实不下发**（data.users 恒空）。若不补，`admin-users`「用户表」、
       `admin-dashboard`「带教团队」、`student-me`「带教联系人」在 live 模式下会
       永远显示 **mock 种子的假用户**（admin/M1/M2/S001 恰好同名，极易误判为"对的"）。 */
 async function liveRefresh(){
-  const d = await liveApi('data');
+  const token = LIVE.token;
+  const d = await liveApi('data', {page:livePageName()});
+  if(token !== LIVE.token) throw new Error('登录身份已变化，请重新加载页面');
+  // 新后端合并管理员列表；旧后端仍走下面的兼容请求。
+  const bundledUsers = d.user && d.user.role === 'admin' && Array.isArray(d.users);
+  if(bundledUsers){
+    MOCK.DB.users = {};
+    d.users.forEach(u=>{if(u && u.wid) MOCK.DB.users[u.wid]=u;});
+  }
   // 覆盖式写入：只覆盖后端真正下发的键，未下发的保持（如 seedlogCourses）
   const map = {
     courses:'courses', mentors:'mentors', trainees:'trainees',
@@ -200,7 +207,7 @@ async function liveRefresh(){
     learn:'learn', fav:'fav', qa:'qa', rating:'rating', levels:'levels',
     journey:'journey', readiness:'readiness', courseGate:'courseGate',
     settings:'settings', tasks:'tasks', taskDefs:'taskDefs', readinessLines:'readinessLines'
-    /* users: 不在此处 —— actionData 不下发，改由 fetchUsersIfAdmin 用 adminUserList 补齐 */
+    /* users 单独从数组转换成字典，旧后端由 fetchUsersIfAdmin 补齐。 */
   };
   Object.keys(map).forEach(k=>{ if(d[k] !== undefined) MOCK.DB[map[k]] = d[k]; });
   if(d.levelPhases) MOCK.DB.phases = d.levelPhases;              // <- 唯一改名点
@@ -216,7 +223,7 @@ async function liveRefresh(){
        种子数据「朱子悦 / 带教导师郑丽薪」，而顶栏身份牌是真实登录者「史力丹」
        —— 用户报的「身份是史力丹、数据是朱子悦」就是这么来的。
      注意：① **只补缺失键**，绝不覆盖已存在的记录（管理员权威列表优先）；
-          ② 管理员路径随后会被 adminUserList 整体替换（见下面 fetchUsersIfAdmin），
+          ② 管理员采用合并下发的完整列表，旧后端用 adminUserList 替换，
              故「人员管理 / 数据看板」的账号口径不受影响；
           ③ 桩的 role 用 trainees->student / mentors->mentor，与沙盒种子 DB_USERS 的建模一致
              （种子里 S001 这条学员就同时存在于 users 与 trainees）。 */
@@ -236,7 +243,7 @@ async function liveRefresh(){
   /* 会话同步：注意： MOCKAPI / S 由 mock-api.js 定义，正常都在；但**跳页时序**下
      liveBootstrap 可能在页面脚本完成初始化前跑，故一律防御性赋值，
      绝不让「同步会话」这一步抛错把整个 refresh 打断（数据其实已写好）。 */
-  /* 注意： users 字典：actionData **不下发**（后端已核对）-> 管理员单独补一次全量账号列表。
+  /* 注意：非管理员不下发全量 users，管理员优先使用合并列表。
      【2026-10-10 的错误结论，2026-10-15 实测推翻】**别再相信「非管理员页面不消费 DB.users」**：
        这句话只统计了直接 `Object.values(MOCK.DB.users)` 的三处，漏掉了**间接消费**——
        todoCounts / visibleTrainees / canReview / pendingList 这些公开助手全部是
@@ -256,7 +263,7 @@ async function liveRefresh(){
     if(S){ S.wid = d.user.wid; S.role = d.user.role; S.name = d.user.name; }
     MOCK.DB.users = MOCK.DB.users || {};
     MOCK.DB.users[d.user.wid] = Object.assign({}, MOCK.DB.users[d.user.wid], d.user);
-    if(d.user.role === 'admin') await fetchUsersIfAdmin();
+    if(d.user.role === 'admin' && !bundledUsers) await fetchUsersIfAdmin();
   }
   /* 待办角标：refreshTodoDot 在 ui.js（本文件之后加载），跳页时可能尚未定义 -> 防御。 */
   try{
@@ -268,7 +275,7 @@ async function liveRefresh(){
   return d;
 }
 
-/* 管理员专属：用 adminUserList 补齐 MOCK.DB.users（actionData 不下发 users）。
+/* 旧后端兼容：用 adminUserList 补齐 MOCK.DB.users。
    注意： 必须在「会话已是 admin」后调用；非 admin 会在后端被拒（仅管理员可操作）-> 静默跳过。
    注意：【2026-10-04】不补的话，admin-users「用户表」/ admin-dashboard「带教团队」在 live 模式
       显示的是 mock 种子的假用户（恰好 admin/M1/M2/S001 同名 -> 极易误判为真实数据）。 */
@@ -699,7 +706,7 @@ function liveSetLoading(on){
       n.innerHTML = '<div class="liveload-box">'+
         '<span class="liveload-spin" aria-hidden="true"></span>'+
         '<b>正在加载真实数据…</b>'+
-        '<span class="liveload-sub">首次进入约需 1 秒</span></div>';
+        '<span class="liveload-sub">正在读取最新课程和学习记录</span></div>';
       document.body.appendChild(n);
     }
   }else if(n){ n.remove(); }

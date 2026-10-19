@@ -1,0 +1,88 @@
+const {test}=require('node:test'),assert=require('node:assert/strict');
+const {EventEmitter}=require('node:events');
+const createRuntime=require('../functions/etrain-api/performance-runtime');
+const response=require('../functions/etrain-api/storage-response');
+const view=require('../functions/etrain-api/data-view');
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+
+test('reads coalesce within one request, never across concurrent users or subsequent requests',async()=>{
+  const runtime=createRuntime();let calls=0;
+  const load=async()=>({sequence:++calls});
+  const [a,b]=await Promise.all([runtime.run(async()=>{
+    const [x,y]=await Promise.all([runtime.read('users',load),runtime.read('users',load)]);
+    assert.equal(x,y);return x;
+  }),runtime.run(()=>runtime.read('users',load))]);
+  assert.notEqual(a,b);assert.equal(calls,2);
+  await runtime.run(()=>runtime.read('users',load));assert.equal(calls,3);
+});
+test('writes invalidate cached reads; failed reads and failed initialization can be retried',async()=>{
+  const runtime=createRuntime();let value=1,initializations=0;
+  await runtime.run(async()=>{
+    assert.equal(await runtime.read('settings',async()=>value),1);
+    value=2;runtime.invalidate('settings');
+    assert.equal(await runtime.read('settings',async()=>value),2);
+    await assert.rejects(runtime.read('broken',async()=>{throw Error('offline');}),/offline/);
+    assert.equal(await runtime.read('broken',async()=>3),3);
+  });
+  await assert.rejects(runtime.once('catalog',async()=>{throw Error('offline');}),/offline/);
+  const initialize=async()=>{initializations++;};
+  await Promise.all([runtime.once('catalog',initialize),runtime.once('catalog',initialize)]);
+  await runtime.once('catalog',initialize);assert.equal(initializations,1);
+});
+test('only missing objects use defaults; storage failures cannot silently replace live data with seeds',()=>{
+  assert.deepEqual(response.decodeJSON({status:404}),{missing:true});
+  assert.deepEqual(response.decodeJSON({status:200,body:Buffer.from('{"enforceGate":true}')}),{value:{enforceGate:true}});
+  for(const status of [403,429,500])assert.throws(()=>response.decodeJSON({status}),/读取业务数据失败/);
+  assert.throws(()=>response.decodeJSON({status:200,body:Buffer.from('broken')}),/格式异常/);
+});
+test('storage deadline remains armed through response body and clears on request close',()=>{
+  const req=new EventEmitter();let callback,delay,cleared=false,error;
+  req.destroy=e=>{error=e;req.emit('close');};
+  response.armDeadline(req,'GET',{setTimer:(fn,ms)=>{callback=fn;delay=ms;return 42;},clearTimer:id=>{assert.equal(id,42);cleared=true;}});
+  req.emit('response',{});assert.equal(cleared,false);assert.equal(delay,7000);
+  callback();assert.match(error.message,/超时/);assert.equal(cleared,true);
+  response.armDeadline(new EventEmitter(),'PUT',{setTimer:(_,ms)=>{assert.equal(ms,20000);},clearTimer(){}});
+});
+test('page scopes default to full data and only administrator receives sanitized user profiles',()=>{
+  assert.equal(view.keysFor('student.html'),null);assert.equal(view.keysFor(undefined),null);
+  assert.ok(view.keysFor('admin-courses.html').includes('settings'));
+  const users={S001:{wid:'S001',role:'student',passwordHash:'secret'}};
+  for(const role of ['student','mentor','trainer'])assert.equal(view.publicUsers(role,users),undefined);
+  assert.deepEqual(view.publicUsers('admin',users),[{wid:'S001',role:'student'}]);
+});
+test('administrator refresh uses bundled users in one request, old servers retain compatibility',async()=>{
+  const source=fs.readFileSync(path.join(__dirname,'../app/assets/mock-api-live.js'),'utf8');
+  const chunk=source.slice(source.indexOf('async function liveRefresh(){'),source.indexOf('/* ---------- B. 写路径'));
+  const calls=[];let bundled=true;
+  const ctx=vm.createContext({LIVE:{token:'a'},MOCK:{DB:{users:{deleted:{wid:'deleted'}}}},
+    livePageName:()=> 'admin-dashboard.html',persistIdentity(){},console,
+    liveApi:async(action,body)=>{calls.push({action,body});return action==='data'
+      ?{user:{wid:'A',role:'admin'},users:bundled?[{wid:'A',role:'admin'}]:undefined,trainees:[],mentors:[]}
+      :{ok:true,users:[{wid:'A',role:'admin'}]};}});
+  vm.runInContext(chunk,ctx);await ctx.liveRefresh();
+  assert.deepEqual(calls.map(c=>c.action),['data']);assert.equal(calls[0].body.page,'admin-dashboard.html');
+  assert.equal(ctx.MOCK.DB.users.deleted,undefined);
+  bundled=false;calls.length=0;await ctx.liveRefresh();assert.deepEqual(calls.map(c=>c.action),['data','adminUserList']);
+  ctx.liveApi=async()=>{ctx.LIVE.token='b';return {user:{wid:'wrong',role:'admin'}};};
+  await assert.rejects(ctx.liveRefresh(),/登录身份已变化/);assert.equal(ctx.LIVE.user.wid,'A');
+});
+
+test('prefetch finds a late-rendered navigation and excludes external, query and login URLs',()=>{
+  const source=fs.readFileSync(path.join(__dirname,'../app/assets/app.js'),'utf8');
+  const chunk=source.slice(source.indexOf('function initNavigationPrefetch(){'));
+  let idle,anchors=[];const links=[],listeners={};
+  const ctx=vm.createContext({navigator:{connection:{effectiveType:'4g'}},URL,Set,
+    location:{href:'https://site.test/app/pages/admin-courses.html',origin:'https://site.test',pathname:'/app/pages/admin-courses.html'},
+    window:{requestIdleCallback:fn=>{idle=fn;}},document:{
+      addEventListener:(type,fn)=>{listeners[type]=fn;},querySelectorAll:()=>anchors,
+      createElement:()=>({}),head:{appendChild:link=>links.push(link)}
+    }});
+  vm.runInContext(chunk,ctx);ctx.initNavigationPrefetch();
+  anchors=[{href:'https://site.test/app/pages/admin-dashboard.html'},{href:'https://site.test/app/pages/admin-tracking.html'}];
+  idle();assert.equal(links.length,2);
+  const focus=href=>listeners.focusin({target:{closest:()=>({href})}});
+  for(const href of ['https://elsewhere.test/other.html','https://site.test/other.html?token=private','https://site.test/app/pages/login.html'])focus(href);
+  assert.equal(links.length,2);focus('https://site.test/app/pages/admin-perms.html');assert.equal(links.length,3);
+  assert.ok(links.every(link=>link.rel==='prefetch' && link.as==='document'));
+  links.length=0;ctx.navigator.connection.saveData=true;ctx.initNavigationPrefetch();assert.equal(links.length,0);
+});

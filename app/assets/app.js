@@ -830,6 +830,7 @@ document.addEventListener('DOMContentLoaded',()=>{
      放在 initRole/injectIcons 之前，避免先渲染出别人的界面再跳（会闪一下且浪费）。 */
   if(guardPage()) return;
   injectIcons();initRole();initNav();initScrollSpy();
+  initNavigationPrefetch();
   showGuardNotice();          // 若上一页是被守卫弹回来的，给一句解释
   const m=document.getElementById('mask');if(m)m.addEventListener('click',e=>{if(e.target===m)closeModal();});
   /* 原「点击空白处收起角色菜单」已随菜单移除（#roleMenu 不存在了）。 */
@@ -852,3 +853,27 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('form[data-form]').forEach(f=>
     bindForm(f.id,function(){const msg=f.dataset.ok;if(msg)(new Function('toast',msg)).call(f,toast);}));
 });
+
+/* 只预取本站导航的静态 HTML，不执行脚本或请求业务数据。 */
+function initNavigationPrefetch(){
+  const connection=navigator.connection;
+  if(connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType)))return;
+  const seen=new Set();
+  const prefetch=anchor=>{
+    if(!anchor || seen.size>=4)return;
+    const url=new URL(anchor.href,location.href);
+    if(url.origin!==location.origin || !url.pathname.endsWith('.html') ||
+      url.pathname===location.pathname || url.search || /\/login\.html$/.test(url.pathname))return;
+    url.hash='';
+    if(seen.has(url.href))return;
+    seen.add(url.href);
+    const link=document.createElement('link');
+    link.rel='prefetch';link.as='document';link.href=url.href;
+    document.head.appendChild(link);
+  };
+  // 顶栏由后续 ui.js 初始化，也会在真实数据到达后重绘；委托到 document。
+  for(const event of ['pointerover','focusin'])document.addEventListener(event,e=>prefetch(e.target.closest('.nav2 a[href]')),{passive:true});
+  const idle=()=>Array.from(document.querySelectorAll('.nav2 a[href]')).filter(a=>new URL(a.href,location.href).pathname!==location.pathname).slice(0,2).forEach(prefetch);
+  if(window.requestIdleCallback)window.requestIdleCallback(idle,{timeout:2500});
+  else setTimeout(idle,1500);
+}
