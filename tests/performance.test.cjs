@@ -29,6 +29,28 @@ test('writes invalidate cached reads; failed reads and failed initialization can
   await Promise.all([runtime.once('catalog',initialize),runtime.once('catalog',initialize)]);
   await runtime.once('catalog',initialize);assert.equal(initializations,1);
 });
+test('internal timing is opt-in and measures parallel reads without adding their durations',async()=>{
+  let tick=0,releaseA,releaseB;
+  const runtime=createRuntime({now:()=>tick});
+  await runtime.run(async()=>{
+    await runtime.phase('catalog',()=>runtime.once('catalog',async()=>{tick=5;}));
+    const loaded=runtime.phase('snapshot',()=>Promise.all([
+      runtime.read('data/courses.json',()=>new Promise(resolve=>{releaseA=resolve;})),
+      runtime.read('data/settings.json',()=>new Promise(resolve=>{releaseB=resolve;}))
+    ]));
+    await Promise.resolve();tick=25;releaseA({});await runtime.read('data/courses.json',()=>{throw Error('must coalesce');});
+    tick=45;releaseB({});await loaded;
+    tick=47;const metrics=runtime.snapshot();
+    assert.equal(metrics.handlerMs,47);assert.equal(metrics.catalogMs,5);assert.equal(metrics.loadMs,40);
+    assert.equal(metrics.readCount,2);assert.equal(metrics.initializationStarted,true);
+    assert.deepEqual(metrics.slowestReads.map(r=>r.table),['settings','courses']);
+  },true);
+  await runtime.run(async()=>{
+    await runtime.once('catalog',()=>{throw Error('should reuse initialization');});
+    assert.equal(runtime.snapshot().initializationStarted,false);assert.equal(runtime.snapshot().readCount,0);
+  },true);
+  await runtime.run(()=>assert.equal(runtime.snapshot(),undefined));
+});
 test('only missing objects use defaults; storage failures cannot silently replace live data with seeds',()=>{
   assert.deepEqual(response.decodeJSON({status:404}),{missing:true});
   assert.deepEqual(response.decodeJSON({status:200,body:Buffer.from('{"enforceGate":true}')}),{value:{enforceGate:true}});
@@ -106,10 +128,11 @@ test('navigation timing is opt-in, separates response/body and stops painting wh
   vm.runInContext(chunk,ctx);assert.equal(ctx.window.ETRAIN_TIMING,undefined);assert.equal(panels.length,0);
   ctx.location.search='?perf=1';vm.runInContext(chunk,ctx);
   const timing=ctx.window.ETRAIN_TIMING;
-  tick=100;const sample=timing.start('data');tick=400;timing.headers(sample);tick=450;timing.end(sample,true);tick=470;timing.ready();
+  tick=100;const sample=timing.start('data');tick=400;timing.headers(sample);tick=450;timing.end(sample,true,{handlerMs:200,catalogMs:0,loadMs:199,readCount:10,initializationStarted:false,slowestReads:[{table:'courses',ms:190}]});tick=470;timing.ready();
   assert.equal(panels.length,1);
   const text=panels[0].children.map(e=>e.textContent).join('\n');
   assert.match(text,/本页 470 毫秒/);assert.match(text,/300 毫秒 \/ 50 毫秒/);assert.equal(storage.size,1);
+  assert.match(text,/云函数内部处理：200 毫秒/);assert.match(text,/实际读取文件：10 份/);
   const close=panels[0].children.at(-1);close.listeners.click();assert.equal(storage.size,0);assert.equal(panels[0].removed,true);
   const length=panels[0].children.length;timing.end(sample,false);assert.equal(panels[0].children.length,length);
 });

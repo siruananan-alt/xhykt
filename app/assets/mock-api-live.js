@@ -105,6 +105,7 @@ async function liveApi(action, extra){
   const timing = window.ETRAIN_TIMING;
   const sample = timing ? timing.start(action) : null;
   const body = Object.assign({ action }, extra || {});
+  if(timing && action==='data') body.perf=true;
   if(LIVE.token && body.token === undefined) body.token = LIVE.token;
   /* 【2026-10-05 上线前加固】不可逆操作（删用户/删课程/删章节/撤销任务）服务端要求
      confirm:true 才放行。前端侧的真实来源是 confirmBox 二次确认弹窗 —— 用户点「确认删除」
@@ -157,7 +158,7 @@ async function liveApi(action, extra){
     }
   }finally{
     if(timer){ clearTimeout(timer); }
-    if(timing) timing.end(sample,!!j && !j.error);
+    if(timing) timing.end(sample,!!j && !j.error,j && j.diagnostics);
   }
   if(j && j.error){ const err = new Error(j.error); LIVE.lastError = j.error; throw err; }
   return j;

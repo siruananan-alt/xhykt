@@ -48,6 +48,7 @@ vm.runInContext(fs.readFileSync(filename,'utf8')+`
   assert.equal(full.error,undefined);assert.equal(reads.length,18);assert.equal(new Set(reads).size,18);
   assert.equal(full.users.length,3);assert.equal(full.users[0].passwordHash,undefined);
   assert.equal(full.settings.enforceGate,false);assert.equal(initializations,1);
+  assert.equal(full.diagnostics,undefined);
   reads.length=0;
   const scoped=await invoke({action:'data',token:admin.token,page:'admin-courses.html'});
   assert.equal(scoped.error,undefined);assert.equal(reads.length,9);assert.equal(initializations,1);
@@ -70,6 +71,13 @@ vm.runInContext(fs.readFileSync(filename,'utf8')+`
     assert.equal(scopedMentor.readiness.OTHER,undefined);
     for(const field of ['user','courses','mentors','trainees','levels','journey','learn','settings','tasks','readiness','courseGate'])assert.deepEqual(scopedMentor[field],mentorFull[field],page+': '+field);
   }
+  reads.length=0;
+  const instrumented=await invoke({action:'data',token:mentor.token,page:'mentor.html',perf:true});
+  assert.equal(instrumented.diagnostics.readCount,10);
+  assert.equal(instrumented.diagnostics.initializationStarted,false);
+  assert.ok(instrumented.diagnostics.handlerMs>=instrumented.diagnostics.loadMs);
+  assert.ok(instrumented.diagnostics.slowestReads.every(r=>/^[a-z]+$/.test(r.table)));
+  assert.deepEqual(instrumented.tasks,mentorFull.tasks);assert.deepEqual(instrumented.readiness,mentorFull.readiness);
   ctx.fixtures['data/settings.json'].enforceGate=true;
   const latest=await invoke({action:'data',token:student.token});
   assert.equal(latest.settings.enforceGate,true);assert.equal(initializations,1);

@@ -916,6 +916,13 @@ function initNavigationPrefetch(){
     samples.forEach((sample,i)=>{
       row('接口 '+(i+1)+' · '+sample.action,sample.end===undefined?'进行中':ms(sample.end-sample.start)+(sample.ok?'':'（失败）'));
       if(sample.headers!==undefined)row('等待响应 / 读取解析',ms(sample.headers-sample.start)+' / '+(sample.end===undefined?'进行中':ms(sample.end-sample.headers)));
+      if(sample.server){
+        const s=sample.server;
+        row('云函数内部处理',ms(s.handlerMs));
+        row('目录初始化 / 数据读取',ms(s.catalogMs)+' / '+ms(s.loadMs));
+        row('实际读取文件',s.readCount+' 份 · '+(s.initializationStarted?'本次执行初始化':'本实例无需重新初始化'));
+        for(const r of s.slowestReads)row('存储读取 · '+r.table,ms(r.ms));
+      }
     });
     row('说明','耗时从本页导航开始计算，不能将各行相加。');
     const close=document.createElement('button');close.type='button';close.textContent='关闭诊断';
@@ -927,7 +934,15 @@ function initNavigationPrefetch(){
   window.ETRAIN_TIMING={
     start(action){const sample={action:String(action),start:clock.now()};samples.push(sample);return sample;},
     headers(sample){sample.headers=clock.now();},
-    end(sample,ok){sample.end=clock.now();sample.ok=ok;paint();},
+    end(sample,ok,server){
+      sample.end=clock.now();sample.ok=ok;
+      if(server && ['handlerMs','catalogMs','loadMs','readCount'].every(key=>Number.isFinite(server[key]) && server[key]>=0)){
+        sample.server={handlerMs:server.handlerMs,catalogMs:server.catalogMs,loadMs:server.loadMs,readCount:server.readCount,
+          initializationStarted:server.initializationStarted===true,
+          slowestReads:Array.isArray(server.slowestReads)?server.slowestReads.filter(r=>r && /^[a-z]+$/.test(r.table) && Number.isFinite(r.ms) && r.ms>=0).slice(0,3):[]};
+      }
+      paint();
+    },
     ready(){
       // 两帧让真实数据重绘进入显示流程；后台标签页耗时不能当作前台体验。
       requestAnimationFrame(()=>requestAnimationFrame(()=>{readyMs=clock.now();paint();}));
