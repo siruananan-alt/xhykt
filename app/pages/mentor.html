@@ -6,6 +6,7 @@
 <title>导师工作台</title>
 <link rel="stylesheet" href="../assets/theme.css?v=1019rd2">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
+<link rel="stylesheet" href="../assets/mentor-dashboard.css?v=1019md1">
 </head>
 <body class="role-mentor" data-role="mentor" data-nav-done="1">
 
@@ -22,49 +23,20 @@
   <!-- 1. 待办 KPI：数字即行动指引 -->
   <div class="kpis" id="kpis" style="margin-bottom:var(--s5)"></div>
 
-  <div class="grid g-side">
-
-    <!-- ================= 左栏：待我批改（唯一需要动手的地方） ================= -->
-    <div>
-      <div class="card" id="queueCard" style="border:3px solid var(--warn)">
-        <div class="card-h">
-          <div style="display:flex;align-items:center;gap:10px">
-            <h2>待我批改</h2>
-            <span class="badge" id="queueN">0</span>
-          </div>
-          <span class="tag warn pulse" id="queueTag">需要你动手</span>
-        </div>
-
-        <div id="queue"></div>
-      </div>
-
-      <!-- 已批记录（折叠，避免占主栏空间） -->
-      <div class="card">
-        <details class="plain big" id="doneWrap" open>
-          <summary>
-            我最近批过的（<span id="doneN">0</span> 条）
-          </summary>
-          <div style="margin-top:var(--s4)" id="done"></div>
-        </details>
-      </div>
-    </div>
-
-    <!-- ================= 右栏：我的徒弟（要关心的人） ================= -->
-    <div>
-      <div class="card">
-        <div class="card-h">
-          <h2>我的徒弟</h2>
-          <span class="tag ghost" id="menteeN">—</span>
-        </div>
-        <div id="mentees"></div>
-      </div>
-
-      <!-- 5 周学习地图（带教节奏） -->
-      <div class="card">
-        <div class="card-h">
-          <h2>5 周带教地图</h2>
-          <a href="mentor-coach.html" class="more">完整版 <svg class="ic"><use href="#i-arrow-r"/></svg></a>
-        </div>
+  <div class="mentor-dashboard">
+    <section class="card mentor-queue" id="queueCard">
+      <div class="card-h"><div style="display:flex;align-items:center;gap:10px"><h2>待我批改</h2><span class="badge" id="queueN">0</span></div><span class="tag ghost" id="queueTag">—</span></div>
+      <div id="queue"></div>
+    </section>
+    <section class="card mentor-people">
+      <div class="card-h"><div><h2>我的徒弟</h2><p class="hint" style="margin:6px 0 0">查看每位学员的关卡进度与待处理事项。</p></div><span class="tag ghost" id="menteeN">—</span></div>
+      <div id="mentees"></div>
+    </section>
+    <section class="card mentor-recent">
+      <details class="plain big" id="doneWrap"><summary>我最近批过的（<span id="doneN">0</span> 条）</summary><div style="margin-top:16px" id="done"></div></details>
+    </section>
+    <section class="card mentor-map">
+      <div class="card-h"><div><h2>5 周带教地图</h2><p class="hint" style="margin:6px 0 0">按周核对培养重点。</p></div><a href="mentor-coach.html" class="more">查看完整带教地图 →</a></div>
         <div class="tl">
           <div class="ev"><div class="ts">第 1 周</div>
             <div class="tx">新手期 6 关全通 · 重点：让他跑通一次完整推流</div></div>
@@ -77,14 +49,7 @@
           <div class="ev"><div class="ts">第 5 周</div>
             <div class="tx">转正项目 · 重点：独立操盘，5 周成果验收</div></div>
         </div>
-      </div>
-
-      <!-- 【2026-10-05 收口】原「常用操作」卡三按钮（代录进度/导出报表/答疑群）均为
-           点了只弹「暂未开放」的占位入口，按上线收口规则整体移除。
-           真实的批改与代录入口在上方待批改队列与徒弟详情页。 -->
-
-    </div>
-
+    </section>
   </div>
 </main>
 
@@ -110,7 +75,7 @@
 <script src="../assets/mock-data.js?v=1019rd2"></script>
 <script src="../assets/mock-api.js?v=1019rd2"></script>
 <script src="../assets/mock-api-live.js?v=1019timing3"></script>
-<script src="../assets/ui.js?v=1019mc1"></script>
+<script src="../assets/ui.js?v=1019md1"></script>
 <script>
 /* ============================================================
    导师工作台 · 数据驱动
@@ -262,9 +227,11 @@ function renderQueue(queue){
   document.getElementById('queueN').textContent = queue.length;
   const tag = document.getElementById('queueTag');
 
+  document.getElementById('queueCard').classList.toggle('is-empty',!queue.length);
+  document.getElementById('queueCard').classList.toggle('has-items',!!queue.length);
   if(!queue.length){
-    tag.className = 'tag ok';
-    tag.textContent = '暂时清空';
+    tag.className = 'tag ghost';
+    tag.textContent = '已处理完毕';
     box.innerHTML = `
       <div class="empty-note"><b>暂无待批改</b></div>`;
     return;
@@ -330,6 +297,7 @@ function renderDone(done){
 
 function renderMentees(mentees){
   const box = document.getElementById('mentees');
+  box.style.setProperty('--mentor-columns',Math.max(1,Math.min(3,mentees.length)));
   document.getElementById('menteeN').textContent = `${mentees.length} 人`;
   if(!mentees.length){
     box.innerHTML = `<p class="hint" style="margin:0">暂无带教学员</p>`;
@@ -337,32 +305,22 @@ function renderMentees(mentees){
   }
   box.innerHTML = mentees.map(t=>{
     const u = MOCK.userOf(t.id) || {};
-    const cur = MOCK.currentLevelOf(t.id);
     const doneN = MOCK.DB.levels.filter(l=>MOCK.levelDone(t.id,l)).length;
+    const cur = doneN===MOCK.DB.levels.length && doneN>0 ? null : MOCK.currentLevelOf(t.id);
     const todo = MOCK.todoCounts(t.id);
     const rd = readinessLineMet(t.id);
     const name = u.name || t.name || t.id;
-    // 12 格矩阵（UI.mxCell 是四态唯一来源）
-    const cells = MOCK.DB.levels.map(lv=>UI.mxCell(t.id, lv, {cur: cur && cur.id===lv.id})).join('');
+    // Preserve the shared progress states while keeping all numbered cells on one row.
+    const cells = MOCK.DB.levels.map(lv=>`<span class="mentor-step"><span class="mentor-step-number">${esc(String(lv.no).padStart(2,'0'))}</span>${UI.mxCell(t.id,lv,{cur:cur&&cur.id===lv.id})}</span>`).join('');
     /* 【2026-10-15 修字段名】入职日期真名 = joinDate（见 mentor-coach.html 同处说明）。 */
     const jd = t.joinDate || t.joined;
     const days = jd ? Math.max(0, Math.floor((Date.now()-new Date(jd))/86400000)) : null;
     return `
-    <a class="rowitem" href="mentor-mentee.html?wid=${esc(t.id)}" style="text-decoration:none;display:block">
-      <span class="avatar" style="float:left;margin-right:12px">${esc(String(name).slice(0,1))}</span>
-      <span class="mid" style="display:block;overflow:hidden">
-        <b>${esc(name)} · ${esc(t.id)}</b>
-        <span class="d">${days!==null?`入职 ${days} 天 · `:''}已过 ${doneN}/12 关 · 当前：第 ${cur?cur.no:'—'} 关</span>
-        <span class="mxrow" style="margin-top:8px">${cells}</span>
-      </span>
-    </a>
-    <div class="dl" style="margin:8px 0 16px">
-      <div class="it"><div class="k">待批改</div>
-        <div class="v" style="${todo.total?'color:var(--warn-ink)':''}">${todo.total} 条</div></div>
-      <div class="it"><div class="k">转正达标线</div><div class="v">${rd} / 4 条</div></div>
-      <div class="it"><div class="k">卡在</div>
-        <div class="v">${cur?`第 ${cur.no} 关`:'—'}</div></div>
-    </div>`;
+    <a class="rowitem mentor-student" href="mentor-mentee.html?wid=${esc(t.id)}">
+      <span class="mentor-student-head"><span class="avatar">${esc(String(name).slice(0,1))}</span><span class="mid"><b>${esc(name)} · ${esc(t.id)}</b><span class="d">${days!==null?`入职 ${days} 天 · `:''}已过 ${doneN}/${MOCK.DB.levels.length} 关</span></span><span class="mentor-detail">详情 →</span></span>
+      <div class="mentor-progress" style="--level-count:${Math.max(1,MOCK.DB.levels.length)}"><div class="mentor-progress-label"><span>关卡进度</span><span>${cur?`当前第 ${cur.no} 关`:'已全部通关'}</span></div><span class="mxrow">${cells}</span></div>
+      <div class="mentor-stats"><div class="it"><div class="k">待批改</div><div class="v" style="${todo.total?'color:var(--warn-ink)':''}">${todo.total} 条</div></div><div class="it"><div class="k">转正达标线</div><div class="v">${rd} / ${MOCK.READINESS_LINES.length} 条</div></div><div class="it"><div class="k">当前进度</div><div class="v">${cur?`第 ${cur.no} 关`:'已通关'}</div></div></div>
+    </a>`;
   }).join('');
 }
 

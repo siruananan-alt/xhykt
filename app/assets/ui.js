@@ -206,7 +206,7 @@ function mxCell(wid,lv,opts){
   const unlocked=MOCK.levelUnlocked(wid,lv);
   if(!unlocked) return `<span class="mx lock" title="未解锁（需先通过第 ${lv.no-1} 关）">—</span>`;
   const p=MOCK.levelProgress(wid,lv);
-  const cur = MOCK.currentLevelOf(wid).id===lv.id;
+  const cur = MOCK.currentLevelOf(wid)?.id===lv.id;
   const cls = p.done===p.total ? 'ok' : (p.done>0 ? 'doing' : 'todo');
   const sym = cls==='ok'?'<svg class="ic"><use href="#i-check"/></svg>' : (cls==='doing'? `${p.done}·${p.total}` : '·');
   const detail = MOCK.LV_STAGES
