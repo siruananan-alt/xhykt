@@ -8,7 +8,7 @@
   function link(id,q=keyword){const url=new URL(location.href);url.searchParams.set('lv',id);q?url.searchParams.set('q',q):url.searchParams.delete('q');return url.href;}
   function idsOf(lv){return lv.stages?.study?.courseIds||[];}
   function courseOf(cid){return MOCK.DB.courses.find(c=>c.id===cid);}
-  function tasksOf(lv){return MOCK.TASK_DEFS.filter(task=>task.levelId===lv.id);}
+  function tasksOf(lv){return (MOCK.DB.taskDefs||MOCK.TASK_DEFS||[]).filter(task=>task.levelId===lv.id);}
   function matches(lv){
     const courses=idsOf(lv).map(courseOf).filter(Boolean);
     return text([lv.no,lv.title,lv.phase,...courses.flatMap(c=>[c.title,...(c.chapters||[]).map(ch=>ch.title)]),...tasksOf(lv).map(t=>t.title)].join(' ')).toLocaleLowerCase().includes(keyword.trim().toLocaleLowerCase());
