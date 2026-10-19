@@ -1,0 +1,14 @@
+const fs=require('node:fs'),path=require('node:path');
+const [src,dst]=process.argv.slice(2);
+if(!src||!dst)throw Error('Usage: node prepare-mentor-performance-function.cjs <latest-backup> <staging>');
+const source=path.resolve(src),dest=path.resolve(dst);
+if(source===dest)throw Error('Keep backup separate');
+fs.cpSync(source,dest,{recursive:true});
+const file=path.join(dest,'index.js');let code=fs.readFileSync(file,'utf8');
+const from="const all = await loadAll(me.role==='admin'?dataView.keysFor(d.page):null);";
+if(code.split(from).length!==2)throw Error('Unexpected upstream data handler');
+code=code.replace(from,'const all = await loadAll(dataView.keysFor(d.page,me.role));');
+code=code.replace(/if \(act === "buildTag"\) return \{ tag: "[^"]+" \};/,'if (act === "buildTag") return { tag: "b20261019-mentor-performance-v2" };');
+fs.writeFileSync(file,code);
+fs.copyFileSync(path.resolve(__dirname,'../functions/etrain-api/data-view.js'),path.join(dest,'data-view.js'));
+console.log('Prepared mentor-specific data reads; existing permission checks and other actions preserved.');

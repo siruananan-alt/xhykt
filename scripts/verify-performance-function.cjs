@@ -34,6 +34,7 @@ vm.runInContext(fs.readFileSync(filename,'utf8')+`
     'data/mentors.json':MENTORS,'data/trainees.json':TRAINEES,
     'data/settings.json':{enforceGate:false},'data/users.json':{
       A:{wid:'A',role:'admin',name:'Local Admin',passwordHash:hashPw('local-password')},
+      M1:{wid:'M1',role:'mentor',name:'Local Mentor',passwordHash:hashPw('local-password')},
       S001:{wid:'S001',role:'student',name:'Local Student',passwordHash:hashPw('local-password')}
     }};
   this.runtime=performanceRuntime;this.read=readJSON;this.write=writeJSON;
@@ -45,7 +46,7 @@ vm.runInContext(fs.readFileSync(filename,'utf8')+`
   reads.length=0;
   const full=await invoke({action:'data',token:admin.token,page:'admin-dashboard.html'});
   assert.equal(full.error,undefined);assert.equal(reads.length,18);assert.equal(new Set(reads).size,18);
-  assert.equal(full.users.length,2);assert.equal(full.users[0].passwordHash,undefined);
+  assert.equal(full.users.length,3);assert.equal(full.users[0].passwordHash,undefined);
   assert.equal(full.settings.enforceGate,false);assert.equal(initializations,1);
   reads.length=0;
   const scoped=await invoke({action:'data',token:admin.token,page:'admin-courses.html'});
@@ -58,6 +59,17 @@ vm.runInContext(fs.readFileSync(filename,'utf8')+`
   const learner=await invoke({action:'data',token:student.token,page:'admin-courses.html'});
   assert.equal(learner.error,undefined);assert.equal(reads.length,18);assert.equal(learner.users,undefined);
   assert.ok(learner.trainees.every(t=>t.id==='S001'));
+  ctx.fixtures['data/trainees.json']=[{id:'S001',mentorId:'M1'},{id:'OTHER',mentorId:'M2'}];
+  ctx.fixtures['data/readiness.json']={S001:{traffic:{met:true,value:1000}},OTHER:{traffic:{met:true,value:5000}}};
+  const mentor=await invoke({action:'login',wid:'M1',password:'local-password'});assert.ok(mentor.token);
+  const mentorFull=await invoke({action:'data',token:mentor.token,page:'unknown.html'});
+  for(const page of ['mentor.html','mentor-coach.html','mentor-mentee.html']){
+    reads.length=0;const scopedMentor=await invoke({action:'data',token:mentor.token,page});
+    assert.equal(scopedMentor.error,undefined);assert.equal(reads.length,10);assert.equal(scopedMentor.users,undefined);
+    assert.equal(scopedMentor.trainees.length,1);assert.equal(scopedMentor.trainees[0].id,'S001');
+    assert.equal(scopedMentor.readiness.OTHER,undefined);
+    for(const field of ['user','courses','mentors','trainees','levels','journey','learn','settings','tasks','readiness','courseGate'])assert.deepEqual(scopedMentor[field],mentorFull[field],page+': '+field);
+  }
   ctx.fixtures['data/settings.json'].enforceGate=true;
   const latest=await invoke({action:'data',token:student.token});
   assert.equal(latest.settings.enforceGate,true);assert.equal(initializations,1);
@@ -66,5 +78,5 @@ vm.runInContext(fs.readFileSync(filename,'utf8')+`
     await ctx.write('data/settings.json',{enforceGate:false});
     assert.equal((await ctx.read('data/settings.json',{})).enforceGate,false);
   });
-  console.log('Prepared function integration passed: full=18 reads, course management=9, users=1; latest settings and role isolation preserved.');
+  console.log('Prepared function integration passed: full=18 reads, course management=9, mentor pages=10, users=1; latest settings and role isolation preserved.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

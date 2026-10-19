@@ -40,7 +40,7 @@ if(count!==18)throw new Error('Expected 18 snapshot tables, found '+count);
 code=code.slice(0,begin)+loader+code.slice(end);
 one('async function actionData(me) {\n  await ensureCatalog();\n  const all = await loadAll();'.replaceAll('\n',code.includes('\r\n')?'\r\n':'\n'),`async function actionData(me,d={}) {
   await performanceRuntime.once('catalog',ensureCatalog);
-  const all = await loadAll(me.role==='admin'?dataView.keysFor(d.page):null);`);
+  const all = await loadAll(dataView.keysFor(d.page,me.role));`);
 one('if (act === "data") return await actionData(me);','if (act === "data") return await actionData(me,data);');
 one('return { role: me.role, user: profile, courses: coursesOut,','return { role: me.role, user: profile, users: dataView.publicUsers(me.role,all.users), courses: coursesOut,');
 one('  const all = await loadAll();\n  const list = Object.keys(all.users).map(k => stripPw(all.users[k]));'.replaceAll('\n',code.includes('\r\n')?'\r\n':'\n'),`  const users = await readJSON(PREFIX+'users.json',{});

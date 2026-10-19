@@ -46,6 +46,12 @@ test('storage deadline remains armed through response body and clears on request
 test('page scopes default to full data and only administrator receives sanitized user profiles',()=>{
   assert.equal(view.keysFor('student.html'),null);assert.equal(view.keysFor(undefined),null);
   assert.ok(view.keysFor('admin-courses.html').includes('settings'));
+  assert.equal(view.keysFor('admin-courses.html','mentor'),null);
+  assert.equal(view.keysFor('mentor.html','student'),null);
+  for(const page of ['mentor.html','mentor-coach.html','mentor-mentee.html']){
+    const keys=view.keysFor(page,'mentor');assert.equal(keys.length,10);
+    for(const required of ['courses','users','mentors','trainees','levels','journey','learn','settings','tasks','readiness'])assert.ok(keys.includes(required));
+  }
   const users={S001:{wid:'S001',role:'student',passwordHash:'secret'}};
   for(const role of ['student','mentor','trainer'])assert.equal(view.publicUsers(role,users),undefined);
   assert.deepEqual(view.publicUsers('admin',users),[{wid:'S001',role:'student'}]);
