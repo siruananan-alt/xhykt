@@ -325,6 +325,10 @@ function liveWrite(action, buildBody, opts){
       }
       liveRerender();
     }catch(e){ console.warn('[live] 写后重绘失败（数据已落库）：' + e.message); }
+    if(opts.closeOnSuccess){
+      closeModal();
+      toast('已保存登记', 'ok');
+    }
     return out;
   };
 }
@@ -515,10 +519,12 @@ function wireLiveWrites(){
       const cur = ((MOCK.DB.readiness[tid]||{})[key]) || {};
       const vEl = document.getElementById('rdv-' + key), nEl = document.getElementById('rdn-' + key);
       const raw = vEl ? vEl.value : '';
-      return { tid, key, met: cur.met === true,
+      const verdict = document.getElementById('rdm-' + key);
+      if(raw !== '' && (!Number.isFinite(Number(raw)) || Number(raw)<0)) throw new Error('数值必须为非负数字');
+      return { tid, key, met: verdict ? verdict.value === 'true' : cur.met === true,
                value: raw === '' ? '' : Number(raw),
                note: nEl ? String(nEl.value || '').slice(0,200) : '' };
-    }),
+    }, { closeOnSuccess: true }),
     mockCertify:     liveWrite('adminCertify',     (tid)=>({ tid })),
     mockSetGate:     liveWrite('adminSetSetting',  (on)=>({ key:'enforceGate', value: !!on }),{
       // 用保存响应的真值回填；随后的读取失败不能把已成功的开关画回旧值。

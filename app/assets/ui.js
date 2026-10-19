@@ -723,6 +723,9 @@ function openGateConfirm(){
 function openReadiness(tid, key){
   const t=MOCK.traineeOf(tid);
   const line=MOCK.READINESS_LINES.find(l=>l.key===key);
+  if(!t || !line) return toast('找不到学员或达标线','err');
+  const session=MOCKAPI.S;
+  if(session.role!=='admin' && !(session.role==='mentor' && t.mentorId===session.wid)) return toast('只能登记自己带教学员的转正达标线','err');
   if(line.source==='site'){
     const done=MOCK.DB.levels.filter(l=>MOCK.levelDone(tid,l)).length;
     return openModal(modal('转正达标线登记',
@@ -738,15 +741,10 @@ function openReadiness(tid, key){
        <div class="err">${key==='traffic'?'月引流人数需在 0–99999 之间':'请填大于 0 的数字'}</div><div class="ok">格式正确</div>`,
        line.hint)}
      ${fld('备注',`<input id="rdn-${key}" type="text" value="${esc(rec.note||'')}" placeholder="数据来源、口径说明">`,
-       '这段备注会同步给带教导师，让他知道数据从哪来。')}
-     <div class="acts">
-       <button class="btn sm" onclick="mockSetReadiness('${tid}','${key}',1)">达标</button>
-       <button class="btn sm ghost" onclick="mockSetReadiness('${tid}','${key}',0)">未达标</button>
-       ${rec.at?'<button class="btn sm ghost danger" onclick="mockSetReadiness(\''+tid+'\',\''+key+'\',null)">清除</button>':''}
-     </div>
-     <div class="note warn"><svg class='ic'><use href='#i-alert'/></svg> <b>判定口径未变：</b>是否达标仍是「登记结论」说了算（<code>met</code> 严格 <code>=== true</code>），
-     阈值<b>从不用来自动比较</b>。<br>
-     阈值可在「达标线规则」表里改（写入 <code>settings</code>，全站展示口径同步）——但你改的是<b>给</b><b>人看的数字</b>，不是判定规则。</div>`,
+       '备注会同步给学员、带教老师和管理员。')}
+     ${fld('登记结论',`<select id="rdm-${key}"><option value="false" ${rec.met!==true?'selected':''}>未达标</option><option value="true" ${rec.met===true?'selected':''}>达标</option></select>`)}
+     ${rec.at?'<button class="btn sm ghost danger" onclick="mockSetReadiness(\''+tid+'\',\''+key+'\',null)">清除登记</button>':''}
+     <div class="note">请按实际结果填写数值、备注并选择结论，点击「保存登记」后生效。是否达标以登记结论为准，学习达标由系统自动计算。</div>`,
     `<button class="btn ghost" onclick="closeModal()">取消</button>
      <button class="btn" onclick="mockSaveReadiness('${tid}','${key}')">保存登记</button>`));
 }

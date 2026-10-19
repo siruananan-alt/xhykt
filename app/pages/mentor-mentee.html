@@ -32,6 +32,11 @@
   <!-- 学员速览 -->
   <div class="card" id="heroCard"></div>
 
+  <div class="card" id="readinessCard" hidden>
+    <div class="card-h"><h2>转正达标线登记</h2><p class="hint">登记当前学员的数值和达标结论，学习达标由系统自动计算。</p></div>
+    <div id="readinessLines"></div>
+  </div>
+
   <!-- 12 关 × 环节 详情（逐关） -->
   <div class="card">
     <div class="card-h">
@@ -62,9 +67,9 @@
 
 <script src="../assets/app.js?v=1019a"></script>
 <script src="../assets/mock-data.js?v=1018f"></script>
-<script src="../assets/mock-api.js?v=1018a"></script>
-<script src="../assets/mock-api-live.js?v=1019a"></script>
-<script src="../assets/ui.js?v=1018c"></script>
+<script src="../assets/mock-api.js?v=1019mr1"></script>
+<script src="../assets/mock-api-live.js?v=1019mr1"></script>
+<script src="../assets/ui.js?v=1019mr1"></script>
 <script>
 /* ============================================================
    徒弟详情 · 数据驱动（#36 第二部分）
@@ -81,6 +86,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   WID = qs('wid') || '';   // 回退值由 render() 每次重算（修 live 竞速：旧版一次算死会落到种子默认 admin）
   if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
   document.getElementById('mxLegend').innerHTML = UI.mxLegend();
+  window.__rerender = render;
   render();
 });
 
@@ -120,6 +126,8 @@ function renderSwitcher(mine, activeWid){
 }
 
 function render(){
+  document.getElementById('readinessCard').hidden = true;
+  document.getElementById('readinessLines').innerHTML = '';
   if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
   /* 【2026-10-15 修】WID 竞速 + admin 降级：
      ① 旧版在 DOMContentLoaded 一次算死 WID —— live 模式下页面脚本早于后端数据到达，
@@ -200,6 +208,7 @@ function render(){
   }
 
   renderHero(t, u, name, cur, days, mentor);
+  renderReadiness(t);
   renderLevels(t, u, name);
   if(typeof injectIcons==='function') injectIcons();
   setTimeout(hydrateShotThumbs, 0);
@@ -245,6 +254,29 @@ async function hydrateShotThumbs(){
 }
 
 /* ---------- 学员速览 ---------- */
+function renderReadiness(t){
+  const s=MOCKAPI.S;
+  if(!(s.role==='admin' || (s.role==='mentor' && t.mentorId===s.wid))) return;
+  const box=document.getElementById('readinessLines');
+  document.getElementById('readinessCard').hidden=false;
+  box.innerHTML=MOCK.READINESS_LINES.map(line=>{
+    const badge=UI.readinessBadge(line.key,t.id);
+    const rec=(MOCK.DB.readiness[t.id]||{})[line.key];
+    const button=document.createElement('button');
+    button.className='btn sm'; button.textContent=rec?'修改登记':'登记';
+    const action=line.source==='site'?'系统自动判定':button.outerHTML;
+    return `<div class="rd"><span class="rdbody"><b>${esc(line.name)}</b>
+      <span class="rv"><span class="tag ${badge.cls==='ok'?'ok':'ghost'}">${esc(badge.tag)}</span>
+      ${rec && rec.value!=null?esc(String(rec.value))+' '+esc(badge.eff.unit):''}</span>
+      ${rec?`<span class="rq">登记人：${esc(rec.byName||rec.by||'—')} · ${esc(rec.at||'')}<br>${esc(rec.note||'')}</span>`:''}
+      </span><span class="acts">${action}</span></div>`;
+  }).join('');
+  box.querySelectorAll('.rd').forEach((row,i)=>{
+    const btn=row.querySelector('button');
+    if(btn) btn.addEventListener('click',()=>UI.openReadiness(t.id,MOCK.READINESS_LINES[i].key));
+  });
+}
+
 function renderHero(t, u, name, cur, days, mentor){
   const todo = MOCK.todoCounts(WID);
   const score = MOCK.scoreOf(WID);      // 注意： 返回裸数字（不是 {got}）

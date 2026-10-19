@@ -16,7 +16,7 @@
   <div class="pg-head">
     <span class="eyebrow" id="eyebrow">—</span>
     <h1>我的带教</h1>
-    <p class="sub">先看谁需要你动手，再点进去看细节；5 周地图等通用内容收在页面下方。</p>
+    <p class="sub">查看学员进度，直接登记每位学员的转正达标线；5 周地图等通用内容收在页面下方。</p>
   </div>
 
   <!-- PK 三项指标（带教体系的核心考核口径，全部徒弟合并计算） -->
@@ -118,9 +118,9 @@
 
 <script src="../assets/app.js?v=1019a"></script>
 <script src="../assets/mock-data.js?v=1018f"></script>
-<script src="../assets/mock-api.js?v=1018a"></script>
-<script src="../assets/mock-api-live.js?v=1019a"></script>
-<script src="../assets/ui.js?v=1018c"></script>
+<script src="../assets/mock-api.js?v=1019mr1"></script>
+<script src="../assets/mock-api-live.js?v=1019mr1"></script>
+<script src="../assets/ui.js?v=1019mr1"></script>
 <script>
 /* ============================================================
    我的带教 · 数据驱动（#36 第三部分 / 2026-10-15 多徒弟改版）
@@ -133,6 +133,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
   document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('mentor','mentor-coach.html');
   if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(ME());
+  window.__rerender = render;
   render();
 });
 
@@ -204,8 +205,8 @@ function renderMenteeList(mentees){
 
   const anyRisk = rows.some(x=>x.r.todo>0 || x.r.behindN>0);
   hint.innerHTML = anyRisk
-    ? '排序：<b>待你批改</b> → <b>进度落后</b>（落后越多越靠前）→ 已过关数少的优先。<br>点任意一行进入该徒弟的闯关详情。'
-    : '暂无需要你立刻处理的项；排序：已过关数少的优先。<br>点任意一行进入该徒弟的闯关详情。';
+    ? '排序：<b>待你批改</b> → <b>进度落后</b>（落后越多越靠前）→ 已过关数少的优先。<br>点击「登记转正达标线」填写结果，点击「详情」查看闯关明细。'
+    : '暂无需要你立刻处理的项；排序：已过关数少的优先。<br>点击「登记转正达标线」填写结果，点击「详情」查看闯关明细。';
 
   const totalLv = MOCK.DB.levels.length || 1;
   box.innerHTML = rows.map(({ t, r, nm })=>{
@@ -218,7 +219,8 @@ function renderMenteeList(mentees){
       r.met > 0   ? `<span class="tag ok">达标线 ${r.met}/4</span>` : `<span class="tag ghost">达标线 0/4</span>`,
     ].filter(Boolean).join('');
     const prog = (r.curLvNo===null) ? '已全部通关' : `卡在第 ${r.curLvNo} 关`;
-    return `<a class="mrow ${cls}" href="mentor-mentee.html?wid=${esc(String(t.id))}">
+    return `<div class="mrow ${cls}">
+      <a href="mentor-mentee.html?wid=${esc(String(t.id))}" style="display:block;color:inherit;text-decoration:none">
       <span class="mrow-h">
         <span class="avatar">${esc(String(nm).slice(0,1))}</span>
         <span class="nm">
@@ -229,8 +231,37 @@ function renderMenteeList(mentees){
       </span>
       <div class="bar sm" style="margin-top:var(--s3)"><i style="width:${pct}%"></i></div>
       <span class="mrow-f">${tags}</span>
-    </a>`;
+      </a>
+      <div style="display:flex;justify-content:flex-end;margin-top:var(--s3)">
+        <button class="btn sm" data-register-readiness="${esc(String(t.id))}">登记转正达标线</button>
+      </div>
+    </div>`;
   }).join('');
+  box.querySelectorAll('[data-register-readiness]').forEach(btn=>{
+    btn.addEventListener('click',()=>openMenteeReadiness(btn.dataset.registerReadiness));
+  });
+}
+
+function openMenteeReadiness(tid){
+  const t=MOCK.traineeOf(tid), session=MOCKAPI.S;
+  if(!t || !(session.role==='mentor' && t.mentorId===session.wid)){
+    return toast('只能登记自己带教学员的转正达标线','err');
+  }
+  const name=(MOCK.userOf(tid)||{}).name || t.name || tid;
+  const lines=MOCK.READINESS_LINES.map(line=>{
+    const b=UI.readinessBadge(line.key,tid);
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)">
+      <span style="flex:1;min-width:0"><b>${esc(line.name)}</b><br>
+        <span class="tag ${b.met?'ok':'ghost'}">${esc(b.tag)}</span>
+        <span class="hint">${esc(b.val)}</span></span>
+      ${line.source==='site'?'<span class="hint">系统自动判定</span>':
+        `<button class="btn sm" data-readiness-line="${esc(line.key)}">${b.hasRec?'修改登记':'登记'}</button>`}
+    </div>`;
+  }).join('');
+  UI.openModal(UI.modal('登记转正达标线',`<p><b>${esc(name)} · ${esc(tid)}</b></p>${lines}`));
+  document.querySelectorAll('#modal [data-readiness-line]').forEach(btn=>{
+    btn.addEventListener('click',()=>UI.openReadiness(tid,btn.dataset.readinessLine));
+  });
 }
 
 /* 达标线条数（只认 met === true，阈值从不参与判定）

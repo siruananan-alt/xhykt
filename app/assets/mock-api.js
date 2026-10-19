@@ -172,8 +172,14 @@ function mockSetJourney(tid, levelId, stage, ok){
 }
 
 /* ---------- adminSetReadiness（后端 L1526） ---------- */
+function canRegisterReadiness(tid, key){
+  const t=MOCK.traineeOf(tid), line=MOCK.READINESS_LINES.find(l=>l.key===key);
+  return !!(t && line && line.source!=='site' &&
+    (S.role==='admin' || (S.role==='mentor' && t.mentorId===S.wid)));
+}
+
 function mockSetReadiness(tid, key, met){     // met: 1 / 0 / null(清除)
-  if(S.role!=='admin') return toast('只有管理员能登记','err');
+  if(!canRegisterReadiness(tid,key)) return toast('只能登记自己带教学员的人工达标线','err');
   const R=(MOCK.DB.readiness[tid]=MOCK.DB.readiness[tid]||{});
   const me=MOCK.userOf(S.wid);
   if(met===null){
@@ -191,16 +197,21 @@ function mockSetReadiness(tid, key, met){     // met: 1 / 0 / null(清除)
   rerenderAfterWrite();
 }
 function mockSaveReadiness(tid, key){
+  if(!canRegisterReadiness(tid,key)) return toast('只能登记自己带教学员的人工达标线','err');
   const v=document.getElementById('rdv-'+key), n=document.getElementById('rdn-'+key);
   if(!v) return;
   const line=MOCK.READINESS_LINES.find(l=>l.key===key);
   const val=v.value===''?null:Number(v.value);
+  if(val!==null && (!Number.isFinite(val)||val<0)) return toast('数值必须为非负数字','err');
   // 基线只用 key/name/source 判定，阈值仅下发展示；此处保持同一口径
   // 注意：【2026-10-04】原实现末尾漏了 rerenderAfterWrite()（同函数前半段有、这里没有），
   //   表现为「保存登记 -> toast 弹了但卡片数值不变」，必须手动刷新才更新。补上。
   const R=(MOCK.DB.readiness[tid]=MOCK.DB.readiness[tid]||{}), me=MOCK.userOf(S.wid);
   const old=R[key]||{};
-  R[key]={ value:val, note:n?n.value.slice(0,200):'', by:S.wid, byName:me.name, at:new Date().toISOString(), met:old.met===true };
+  const verdict=document.getElementById('rdm-'+key);
+  const met=verdict ? verdict.value==='true' : old.met===true;
+  if(!met){ delete R.certifiedAt; delete R.certifiedBy; delete R.certifiedByName; }
+  R[key]={ value:val, note:n?n.value.slice(0,200):'', by:S.wid, byName:me.name, at:new Date().toISOString(), met };
   toast('已保存登记 · 学员端达标线卡同步更新');
   closeModal(); rerenderAfterWrite();
 }
