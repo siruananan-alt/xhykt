@@ -54,9 +54,9 @@ test('switch write applies the acknowledged server value without a stale follow-
   assert.equal(ctx.MOCK.DB.settings.enforceGate,true);
 });
 
-test('dashboard warnings reflect the switch instead of claiming all task entries are locked',()=>{
-  const page=fs.readFileSync(path.join(__dirname,'../app/pages/admin-dashboard.html'),'utf8');
-  const code=page.slice(page.indexOf('function renderWarn('),page.indexOf('/* 4. 12 关通过率'));
+test('journey warnings reflect the switch instead of claiming all task entries are locked',()=>{
+  const page=fs.readFileSync(path.join(__dirname,'../app/pages/admin-journey.html'),'utf8');
+  const code=page.slice(page.indexOf('function renderWarn('),page.indexOf('/* ---------- 1. 阶段聚合条'));
   const mock=frontend();
   const nodes={warnNote:{},warnBody:{}};
   const ctx=vm.createContext({MOCK:mock,document:{getElementById:id=>nodes[id]}});

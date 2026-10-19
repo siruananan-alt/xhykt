@@ -22,6 +22,12 @@
   <!-- 阶段聚合条：先给结论，再给明细（由真实数据算，不写死） -->
   <div class="aggbar" id="aggbar"></div>
 
+  <section class="card" id="progressWarnings">
+    <div class="card-h"><h2>关卡与审核提醒</h2><a class="more" href="admin-courses.html">课程缺失与资料维护 →</a></div>
+    <div id="warnNote"></div><div class="tblwrap"><table><thead><tr><th>检查项</th><th>当前情况</th><th>处理说明</th></tr></thead><tbody id="warnBody"></tbody></table></div>
+    <p class="hint">导师审核自己的学员，管理员可平行兜底；谁先审核谁生效。人员和带教关系在<a href="admin-students.html">人员管理</a>维护。</p>
+  </section>
+
   <!-- 筛选工具条 -->
   <div class="card tight">
     <div style="display:flex;gap:var(--s3);align-items:flex-end;flex-wrap:wrap">
@@ -59,7 +65,7 @@
        用在一张普通操作卡上会让它**视觉压过主矩阵**——而这页的主任务是看矩阵。
        现在降回 2px（与 .card 默认一致），**橙色语义保留**（待审核=橙，PRD 已定），
        「需要动手」标签也保留 —— 它仍是全站唯一提示"这里有活要干"的地方。 -->
-  <div class="card" style="border:2px solid var(--warn)">
+  <div class="card" id="reviewQueue" style="border:2px solid var(--warn)">
     <div class="card-h">
       <div style="display:flex;align-items:center;gap:10px">
         <h2>待批改 · 批量通过</h2>
@@ -132,7 +138,7 @@
      批完后弹层自动刷新（若还开着）+ 「批改 n」按钮与角标同步更新，归零则按钮消失。
   5. 「代录」-> openJourney(工号) 代录弹层（选关卡 + 勾环节 -> 写 journey）。运营救急通道。
   6. 批量通过【入口 1.】：卡片里的复选框清单就地勾选 + 一键通过；
-     与看板【入口 2.】共用 mockBulkPass() 同一条链路（逐条过 canReview）。
+     复用 mockBulkPass() 链路（逐条过 canReview）。
   7. 搜索 + 卡点天数 + 阶段：三个筛选同时作用于表格行与卡片（共用 data-kw），计数实时更新。
   8. ≤900px：纯 CSS 切卡片视图（表格 display:none），不靠 JS 判宽度。
 -->
@@ -168,11 +174,22 @@ function render(){
   window.__pendIdx = pendingIndex();          // 1. 先建索引，后续逐行读取
   document.getElementById('eyebrow').textContent = '全站 '+rows.length+' 名在训学员 · '+MOCK.DB.levels.length+' 关';
   renderAgg(rows,wid);
+  renderWarn(rows,MOCK.todoCounts(wid));
   renderMatrix(rows);
   renderBulkEntry(rows);
   renderPhaseCards(rows);
   PracticeVideo.renderAdmin();
   applyFilters();
+}
+
+function renderWarn(rows,todo){
+ const first=MOCK.DB.levels.filter(l=>l.no<=4);
+ const incomplete=first.length?rows.filter(t=>!first.every(l=>MOCK.levelDone(t.id,l))).length:0;
+ const enforce=MOCK.DB.settings.enforceGate===true;
+ const practice=MOCK.DB.levels.find(l=>l.stages&&l.stages.practice);
+ const blocked=enforce&&practice?rows.filter(t=>!MOCK.levelUnlocked(t.id,practice)).length:0;
+ document.getElementById('warnNote').innerHTML=`<div class="note" style="margin-bottom:16px"><b>${enforce?'强制解锁已开启':'强制解锁已关闭'}</b> · ${enforce?'按前置关卡完成情况解锁。':'学员可进入后续关卡，不受前置关卡完成情况限制。'}</div>`;
+ document.getElementById('warnBody').innerHTML=`<tr><td>L01–L04 完成情况</td><td>${incomplete} 人尚未全部完成</td><td>${enforce?blocked+' 人暂不能进入首个练习关卡':'不限制进入后续关卡'}；在下方矩阵查看或代录。</td></tr><tr><td>待批改</td><td>${todo.total} 条（练 ${todo.practice} · 考 ${todo.exam}）</td><td>在待批改区或学员矩阵逐条审核；纯口述类考核可按现有规则批量通过。</td></tr>`;
 }
 
 /* ---------- 1. 阶段聚合条（真实计算） ---------- */

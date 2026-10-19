@@ -1,154 +1,18 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>数据看板 · 教务管理员</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1019load1">
-<link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
-</head>
-<body class="role-admin" data-role="admin" data-nav-done="1">
-
-<div id="topbarSlot"></div>
-
-<main class="wrap wide">
-
-  <div class="pg-head">
-    <span class="eyebrow">星禾云课堂</span>
-    <h1>数据看板</h1>
-    <p class="sub">现在卡在哪一关。</p>
-  </div>
-
-  <!-- 1. 待办优先于指标：需要动手的排最上面（真实数据） -->
-  <div class="kpis" style="margin-bottom:var(--s5)" id="kpis"></div>
-
-  <!-- 2. 待批改卡片（可点，直接去批）+ 批量通过【入口 2.】 -->
-  <div class="card" style="border:3px solid var(--warn)">
-    <div class="card-h">
-      <div style="display:flex;align-items:center;gap:10px">
-        <h2>待批改（全部学员）</h2>
-        <span class="badge" id="pendBadge">0</span>
-      </div>
-      <span class="tag warn pulse">需要你或导师动手</span>
-    </div>
-    <p class="hint" style="margin-bottom:var(--s4)">
-      导师批自己徒弟，管理员<b>平行兜底</b>，谁先审谁生效。实操类请逐条看。
-    </p>
-
-    <div id="pendList"></div>
-
-    <!-- 批量通过（入口 2.，与闯关总览入口 1. 共用 mockBulkPass 同一条链路） -->
-    <div id="pendBulk" style="margin-top:var(--s4);border-top:2px solid var(--line);padding-top:var(--s4)">
-      <label class="check" style="border-bottom:2px solid var(--line);padding-bottom:10px">
-        <input type="checkbox" id="selAll"><span><b>全选当前列表</b>（勾上后批量按钮才可用）</span>
-      </label>
-      <div id="selList" style="margin:var(--s3) 0"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn warn" id="bulkEntryBtn" disabled>批量通过（0）</button>
-        <button class="btn ghost" onclick="openBulkPass()">批量通过面板</button>
-      </div>
-      <p class="hint" style="margin-top:10px" id="bulkHint">未选择时不可批量。</p>
-    </div>
-
-    <a href="admin-journey.html" class="btn ghost block" style="margin-top:var(--s4)">
-      去闯关总览处理（按学员逐行批改）<svg class="ic"><use href="#i-arrow-r"/></svg>
-    </a>
-  </div>
-
-  <!-- 3. 阶段卡点（真实数据：这版最该被看见的问题） -->
-  <div class="card" style="border:3px solid var(--danger)">
-    <div class="card-h">
-      <h2>阶段卡点预警</h2>
-      <span class="tag danger">需要运营动作</span>
-    </div>
-    <div id="warnNote"></div>
-    <div class="tblwrap">
-      <table>
-        <thead><tr><th>预警项</th><th>现状</th><th>影响</th><th>建议动作</th></tr></thead>
-        <tbody id="warnBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- 4. 12 关通过率（核心指标，真实数据） -->
-  <div class="grid g-side">
-    <div class="card">
-      <div class="card-h">
-        <h2>12 关通过率</h2>
-        <span class="tag ghost" id="rateDenom">在训 0 人 · 分母 0</span>
-      </div>
-      <p class="hint" style="margin-bottom:var(--s4)">
-        「通过」= 该关<b>所有环节</b>都通过。
-      </p>
-      <div id="rateList"></div>
-      <div id="rateNote"></div>
-    </div>
-
-    <div>
-      <!-- 学员当前关卡 -->
-      <div class="card">
-        <div class="card-h">
-          <h2>学员当前关卡</h2>
-          <a href="admin-journey.html" class="more">看矩阵 <svg class="ic"><use href="#i-arrow-r"/></svg></a>
-        </div>
-        <div id="curList"></div>
-      </div>
-
-      <!-- 阶段分布（阶段进度条的聚合版） -->
-      <div class="card">
-        <div class="card-h">
-          <h2>3 阶段分布</h2>
-          <span class="tag ghost" id="phaseDenom">0 人</span>
-        </div>
-        <div class="tl" id="phaseList"></div>
-        <div class="note warn" style="margin-top:var(--s4)" id="pkNote"></div>
-      </div>
-
-      <!-- 快捷操作 -->
-      <div class="card">
-        <div class="card-h"><h2>常用操作</h2></div>
-        <button class="btn warn block" style="margin-bottom:8px" onclick="openBulkPass()">批量通过</button>
-        <button class="btn ghost block" style="margin-bottom:8px" onclick="UI.exportLearningReport()">导出学习数据 CSV</button>
-        <button class="btn ghost block" style="margin-bottom:8px" onclick="openAddUser()">新增用户</button>
-        <a class="btn ghost block" href="admin-users.html">去用户管理 <svg class="ic"><use href="#i-arrow-r"/></svg></a>
-      </div>
-    </div>
-  </div>
-
-  <!-- 5. 带教团队（真实账号） -->
-  <div class="card">
-    <div class="card-h">
-      <h2>带教团队</h2>
-      <span class="tag ghost" id="teamDenom">—</span>
-    </div>
-    <div class="tblwrap">
-      <table>
-        <thead><tr><th>姓名</th><th>工号</th><th>角色</th><th>带教学徒</th><th>待批</th><th>状态</th></tr></thead>
-        <tbody id="teamBody"></tbody>
-      </table>
-    </div>
-    <p class="hint" style="margin-top:10px" id="teamNote"></p>
-  </div>
-
-</main>
-
-<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
-<div class="toasts" id="toasts"></div>
-
-<!--
-  本页交互清单：
-  1. 二级导航当前项「数据看板」自动高亮（深墨底白字）。
-  2. 「待批改（全部学员）」卡片：
-     - 角标数 = 全站待批总数（与闯关总览逐行「批改 n」同源，唯一口径）。
-     - 每行「批改」-> 打开兜底批改弹层，规则与导师端完全一致。
-     - 卡片内复选框 + 「批量通过（N）」= 入口 2.，与闯关总览入口 1. 共用 mockBulkPass。
-     - 底部「去闯关总览处理」-> 跳 admin-journey.html。
-  3. 阶段卡点预警表：每行末尾一个动作按钮，点击 -> 吐司或跳对应页。
-  4. 12 关通过率条：纯 CSS 横向条，宽度 = 通过人数/总人数；0% 时条为灰（.zero）、
-     数字转红（--danger-ink），因为"全 0"是要处理的信号，不是缺数据。
-  5. 团队表：角色用标签区分（导师=绿、学员=灰、管理员=绿），一行就能看清组织结构。
--->
-
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数据看板 · 教务管理员</title><link rel="stylesheet" href="../assets/theme.css?v=1019load1"><link rel="stylesheet" href="../assets/sandbox.css?v=1015h"><link rel="stylesheet" href="../assets/admin-dashboard.css?v=1019data1"></head>
+<body class="role-admin dashboard-page" data-role="admin" data-nav-done="1"><div id="topbarSlot"></div>
+<main class="wrap wide data-dashboard">
+ <div class="pg-head dashboard-heading"><div><span class="eyebrow">星禾云课堂</span><h1>数据看板</h1><p class="sub">查看学习进度、转正达标与导师带教情况。</p></div><button class="btn ghost" onclick="UI.exportLearningReport()">导出学习数据 CSV</button></div>
+ <div class="kpis" id="kpis"></div>
+ <div class="dashboard-charts">
+  <section class="card"><div class="card-h"><h2 id="rateTitle">关卡通过率</h2><span class="tag ghost" id="rateDenom">—</span></div><p class="hint">通过人数 / 学员总数；该关已配置的环节全部通过，才计为通过。</p><div id="rateList"></div><p class="hint dashboard-foot" id="rateNote"></p></section>
+  <section class="card"><div class="card-h"><h2>当前关卡分布</h2><span class="tag ghost" id="curDenom">—</span></div><p class="hint">按首个未通过关卡统计，每名学员只计入一组。</p><div id="curList"></div></section>
+ </div>
+ <section class="card"><div class="card-h"><h2>阶段完成情况</h2><span class="tag ghost" id="phaseDenom">—</span></div><div id="phaseList" class="dashboard-phases"></div></section>
+ <section class="card"><div class="card-h"><div><h2>导师带教汇总</h2><p class="hint">按当前带教学员汇总，仅展示学习与达标数据。</p></div><span class="tag ghost" id="teamDenom">—</span></div><div class="tblwrap"><table><thead><tr><th>导师</th><th>带教学员</th><th>平均关卡完成率</th><th>全部通关</th><th>达标线全达标</th><th>已转正</th></tr></thead><tbody id="teamBody"></tbody></table></div><p class="hint dashboard-foot" id="teamNote"></p></section>
+ <details class="fold dashboard-definitions"><summary>统计口径与功能入口</summary><div class="fold-body"><p>学员总数来自当前学员档案；全部通关指所有关卡均已通过；达标线全达标按现有各条标准实时判定；已转正须同时具备转正登记且全部达标线达标。平均关卡完成率为该导师学员已通过关卡数占全部应通过关卡数的比例。暂无数据时显示“—”。</p><div class="dashboard-links"><a href="admin-journey.html#reviewQueue">批改与卡点处理 →</a><a href="admin-courses.html">课程与资料维护 →</a><a href="admin-students.html">人员与带教关系管理 →</a></div></div></details>
+</main><div class="mask" id="mask"><div class="modal" id="modal"></div></div><div class="toasts" id="toasts"></div>
 <script src="../assets/app.js?v=1019mc1"></script>
 <script src="../assets/readiness-rules.js?v=1019rd2"></script>
 <script src="../assets/mock-data.js?v=1019rd2"></script>
@@ -156,220 +20,58 @@
 <script src="../assets/mock-api-live.js?v=1019load1"></script>
 <script src="../assets/ui.js?v=1019md1"></script>
 <script>
-/* 数据看板 · 数据驱动版
-   核心口径（全部来自真实 Mock 数据，不写死）：
-     · 待批改 = MOCK.todoCounts()（唯一口径，与顶栏角标同源）
-     · 通过率 = 该关 levelDone 的人数 / 在训人数
-     · 阶段分布 = 各阶段所有关 levelDone 的人数
-     · 带教团队 = MOCK.DB.users 真实账号（admin/M1/M2/S001） */
-
-
 document.addEventListener('DOMContentLoaded',()=>{
-  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
-  document.getElementById('topbarSlot').innerHTML = UI.topbarHTML('admin','admin-dashboard.html');
-  initNav();
-  if(typeof UI.refreshTodoDot==='function') UI.refreshTodoDot(MOCKAPI.S.wid);
-  window.__rerender = render;
-  render();
+ if(typeof needsLoginGate==='function'&&needsLoginGate())return;
+ document.getElementById('topbarSlot').innerHTML=UI.topbarHTML('admin','admin-dashboard.html');initNav();
+ if(typeof UI.refreshTodoDot==='function')UI.refreshTodoDot(MOCKAPI.S.wid);
+ window.__rerender=render;render();
 });
-
+function allLevelsDone(tid){return MOCK.DB.levels.length>0&&MOCK.DB.levels.every(l=>MOCK.levelDone(tid,l));}
+function allLinesMet(tid){return MOCK.READINESS_LINES.length>0&&MOCK.READINESS_LINES.every(l=>UI.readinessBadge(l.key,tid).met);}
+function certified(tid){return !!(MOCK.DB.readiness[tid]||{}).certifiedAt&&allLinesMet(tid);}
+function pctLabel(n,total){return total?Math.round(n/total*100)+'%':'—';}
 function render(){
-  if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，别再碰 DOM
-  const wid=MOCKAPI.S.wid;
-  const rows=MOCKAPI.visibleTrainees(wid);
-  const todo=MOCK.todoCounts(wid);
-  const list=UI.pendingList(wid);
-  window.__pendIdx=list.reduce((m,p)=>{ (m[p.tid]=m[p.tid]||[]).push(p); return m; },{});
-
-  renderKpis(rows,todo);
-  renderPend(list);
-  renderWarn(rows,todo);
-  renderRates(rows);
-  renderCur(rows);
-  renderPhases(rows);
-  renderTeam();
+ if(typeof needsLoginGate==='function'&&needsLoginGate())return;
+ const rows=MOCKAPI.visibleTrainees(MOCKAPI.S.wid);
+ renderKpis(rows);renderRates(rows);renderCur(rows);renderPhases(rows);renderTeam(rows);
 }
-
-/* 1. KPI */
-function renderKpis(rows,todo){
-  const stuck=rows.filter(t=>stuckDays(t.id)>=3).length;
-  const cert =MOCK.DB.trainees.filter(t=>(MOCK.DB.readiness[t.id]||{}).certifiedAt&&MOCK.READINESS_LINES.every(l=>UI.readinessBadge(l.key,t.id).met)).length;
-  document.getElementById('kpis').innerHTML=`
-    <div class="kpi hot"><b>${todo.total}</b><span>待批改（全站）</span></div>
-    <div class="kpi plain"><b>${stuck}</b><span>卡 3 天以上</span></div>
-    <div class="kpi"><b>${rows.length}</b><span>在训学员</span></div>
-    <div class="kpi plain"><b>${cert}</b><span>已转正</span></div>`;
+function renderKpis(rows){
+ const stats=[['学员总数',rows.length],['全部通关',rows.filter(t=>allLevelsDone(t.id)).length],['达标线全达标',rows.filter(t=>allLinesMet(t.id)).length],['已转正',rows.filter(t=>certified(t.id)).length]];
+ document.getElementById('kpis').innerHTML=stats.map(([label,n])=>`<div class="kpi plain"><b>${n}</b><span>${label}</span></div>`).join('');
 }
-
-/* 2. 待批改列表 + 批量通过入口 2. */
-function renderPend(list){
-  const box=document.getElementById('pendList');
-  const badge=document.getElementById('pendBadge'); if(badge) badge.textContent=list.length;
-  box.innerHTML = list.length ? list.map(p=>`
-    <div class="rowitem wait">
-      <span class="ico" data-ic="i-clock"></span>
-      <span class="mid">
-        <b>${esc(p.traineeName)}（${esc(p.tid)}）· ${esc(p.label)}</b>
-        <span class="d">${p.isExam?'考 环节':'练 环节'} · ${esc(p.by)} 提交${p.at?(' · '+esc(String(p.at).slice(0,16).replace('T',' '))):''}</span>
-      </span>
-      <span class="acts"><button class="btn sm" onclick="openAdminReview('${esc(p.tid)}')">批改</button></span>
-    </div>`).join('')
-    : '<div class="empty"><div class="big"><svg class="ic"><use href="#i-party"/></svg></div><b>全站没有待批改的提交</b></div>';
-  document.querySelectorAll('[data-ic]').forEach(e=>e.innerHTML=ic(e.dataset.ic));
-
-  // 批量区
-  const selList=document.getElementById('selList'), bulk=document.getElementById('pendBulk');
-  if(!list.length){ bulk.style.display='none'; return; }
-  bulk.style.display='';
-  selList.innerHTML=UI.bulkListHTML(list);
-  bindSelectAll('#selAll','.bsel',syncBulk);
-  document.querySelectorAll('.bsel').forEach(c=>c.addEventListener('change',syncBulk));
-  document.getElementById('bulkEntryBtn').onclick=()=>{
-    const sel=[...document.querySelectorAll('.bsel')].filter(c=>c.checked)
-      .map(c=>({tid:c.dataset.tid,lvId:c.dataset.lv,taskId:c.dataset.task}));
-    if(!sel.length) return;
-    window.__bulkSel=sel;
-    confirmBox('确认批量通过？',
-      `将对所选的 <b>${sel.length}</b> 条纯口述类考核一键通过。通过后会立即解锁下一关，学员端马上能看到。<br><br>
-       <b>建议：</b>批量前抽查 1 条，确认答案口径没问题。`,'runBulkPass()','确认批量通过');
-  };
-  syncBulk();
-}
-function syncBulk(){
-  const b=document.getElementById('bulkEntryBtn'); if(!b) return;
-  const n=[...document.querySelectorAll('.bsel')].filter(c=>c.checked).length;
-  b.textContent='批量通过（'+n+'）'; b.disabled=n===0;
-  const h=document.getElementById('bulkHint');
-  if(h) h.innerHTML = n===0?'未选择时不可批量。'
-    :'已选 <b>'+n+'</b> 条。';
-}
-
-/* 3. 阶段卡点预警（真实算） */
-function renderWarn(rows,todo){
-  const first=MOCK.DB.levels.filter(l=>l.no<=4);
-  const incomplete=rows.filter(t=>!first.every(l=>MOCK.levelDone(t.id,l))).length;
-  const enforce=MOCK.DB.settings.enforceGate===true;
-  const practice=MOCK.DB.levels.find(l=>l.stages&&l.stages.practice);
-  const blocked=enforce&&practice?rows.filter(t=>!MOCK.levelUnlocked(t.id,practice)).length:0;
-  document.getElementById('warnNote').innerHTML=`
-    <div class="note ${blocked?'danger':'warn'}" style="margin-bottom:var(--s4)">
-      <b><svg class='ic'><use href='#i-dot'/></svg> L01–L04 全关通过数 = ${rows.length-incomplete} / ${rows.length}</b><br>
-      <b>${enforce?'强制解锁已开启：'+blocked+' 名学员因前置关卡未完成，暂不能进入首个练习关卡。':'强制解锁已关闭：学员可进入后续关卡，不受前置关卡完成情况限制。'}</b>
-    </div>`;
-  const c5=MOCK.courseOf('C5'), c6=MOCK.courseOf('C6');
-  const noVideo=[c5,c6].filter(c=>c&&(c.chapters||[]).some(ch=>ch.type==='video'&&!ch.src));
-  document.getElementById('warnBody').innerHTML=`
-    <tr>
-      <td><b>L01–L04 完成情况</b></td>
-      <td><span class="tag ${blocked?'danger':'ghost'}">${incomplete} 人尚未全部完成</span></td>
-      <td>${enforce?blocked+' 人暂不能进入首个练习关卡':'强制解锁已关闭，不限制进入后续关卡'}</td>
-      <td><a class="btn sm ghost" href="admin-journey.html">去闯关总览代录</a></td>
-    </tr>
-    <tr>
-      <td><b>视频未上传的课程</b></td>
-      <td><span class="tag ${noVideo.length?'warn':'ok'}">${noVideo.length?noVideo.map(c=>c.id).join(' / ')+' 共 '+noVideo.length+' 门':'全部已上传'}</span></td>
-      <td>相关关卡「学」环节无法完成</td>
-      <td><a class="btn sm ghost" href="admin-courses.html">去课程管理</a></td>
-    </tr>
-    <tr>
-      <td><b>待批改积压</b></td>
-      <td><span class="tag ${todo.total?'warn':'ok'}">${todo.total} 条（练 ${todo.practice} · 考 ${todo.exam}）</span></td>
-      <td>${enforce?'待审核任务可能影响下一关解锁':'任务仍需审核，不限制进入后续关卡'}</td>
-      <td><button class="btn sm warn" onclick="openBulkPass()">批量通过</button></td>
-    </tr>
-    <tr>
-      <td><b>考核批改链</b></td>
-      <td><span class="tag ok">导师审 · 管理员平行</span></td>
-      <td>考核由导师审自己徒弟，管理员平行兜底（谁先审谁生效）</td>
-      <td><a class="btn sm ghost" href="admin-users.html">去管理账号</a></td>
-    </tr>`;
-}
-
-/* 4. 12 关通过率 */
 function renderRates(rows){
-  const denom=rows.length;
-  document.getElementById('rateDenom').textContent='在训 '+denom+' 人 · 分母 '+denom;
-  document.getElementById('rateList').innerHTML=MOCK.DB.levels.map(l=>{
-    const n=rows.filter(t=>MOCK.levelDone(t.id,l)).length;
-    const pct=denom?(n/denom*100):0;
-    return `<div class="rate"><span class="rn">${String(l.no).padStart(2,'0')}</span><span class="rl">${esc(l.title)}</span>
-      <span class="rb${n?'':' zero'}"><i style="width:${pct}%"></i></span><span class="rv${n?'':' zero'}">${n}/${denom}</span></div>`;
-  }).join('');
-  document.getElementById('rateNote').innerHTML = denom&&rows.some(t=>MOCK.DB.levels.some(l=>MOCK.levelDone(t.id,l)))
-    ? '<div class="note ok" style="margin-top:var(--s4)">已有通关记录。</div>'
-    : `<div class="note" style="margin-top:var(--s4)"><b>还没有通关记录。</b></div>`;
+ const denom=rows.length;
+ document.getElementById('rateTitle').textContent=MOCK.DB.levels.length+' 关通过率';
+ document.getElementById('rateDenom').textContent='学员 '+denom+' 人';
+ document.getElementById('rateList').innerHTML=MOCK.DB.levels.map(l=>{
+  const n=rows.filter(t=>MOCK.levelDone(t.id,l)).length,pct=denom?n/denom*100:0;
+  return `<div class="dashboard-rate"><span class="dashboard-no">${esc(String(l.no).padStart(2,'0'))}</span><span class="dashboard-label">${esc(l.title)}</span><span class="dashboard-bar"><i style="width:${pct}%"></i></span><span class="dashboard-value">${n}/${denom}<small>${pctLabel(n,denom)}</small></span></div>`;
+ }).join('')||'<p class="hint">暂无关卡配置</p>';
+ document.getElementById('rateNote').textContent=denom?'整体关卡完成率 '+pctLabel(rows.reduce((sum,t)=>sum+MOCK.DB.levels.filter(l=>MOCK.levelDone(t.id,l)).length,0),denom*MOCK.DB.levels.length):'暂无学员数据';
 }
-
-/* 学员当前关卡 */
 function renderCur(rows){
-  document.getElementById('curList').innerHTML=rows.map(t=>{
-    const cur=MOCK.currentLevelOf(t.id);
-    const p=MOCK.levelProgress(t.id,cur);
-    const pend=(window.__pendIdx[t.id]||[]).length;
-    const d=stuckDays(t.id);
-    return `<div class="rowitem"><span class="avatar">${esc(t.name.slice(0,1))}</span>
-      <span class="mid"><b>${esc(t.name)} · ${esc(t.id)}</b>
-        <span class="d">第 ${cur.no} 关 · ${pend?('待批 '+pend+' 条 · '):''}${d?('<b style="color:var(--'+(d>=3?'danger':'warn')+'-ink)">卡 '+d+' 天</b>'):'进度正常'}</span></span>
-      <span class="mx ${p.done===p.total?'ok':(p.done?'doing':'todo')}">${p.done}·${p.total}</span></div>`;
-  }).join('');
+ const groups=MOCK.DB.levels.map(l=>({label:'第 '+l.no+' 关',n:0})),complete={label:'全部通关',n:0};
+ rows.forEach(t=>{const i=MOCK.DB.levels.findIndex(l=>!MOCK.levelDone(t.id,l));if(i>=0)groups[i].n++;else if(MOCK.DB.levels.length)complete.n++;});
+ document.getElementById('curDenom').textContent=rows.length+' 人';
+ document.getElementById('curList').innerHTML=groups.concat(complete).map(g=>`<div class="dashboard-dist"><span>${esc(g.label)}</span><span class="dashboard-bar"><i style="width:${rows.length?g.n/rows.length*100:0}%"></i></span><b>${g.n} 人</b></div>`).join('');
 }
-
-/* 3 阶段分布 */
 function renderPhases(rows){
-  document.getElementById('phaseDenom').textContent=rows.length+' 人';
-  document.getElementById('phaseList').innerHTML=MOCK.LEVEL_PHASES.map(ph=>{
-    const lvs=MOCK.DB.levels.filter(l=>l.no>=ph.from&&l.no<=ph.to);
-    const full=rows.filter(t=>lvs.every(l=>MOCK.levelDone(t.id,l))).length;
-    const partial=rows.filter(t=>lvs.some(l=>MOCK.levelDone(t.id,l))).length;
-    return `<div class="ev"><div class="ts">${ph.name}（${ph.week}）· L${String(ph.from).padStart(2,'0')}–L${String(ph.to).padStart(2,'0')}</div>
-      <div class="tx"><b>${full} 人</b>全通${partial>full?('，<span style="color:var(--muted)">'+partial+' 人已开始</span>'):''}。</div></div>`;
-  }).join('');
-  const denom=rows.length||1;
-  const pct=Math.round(rows.filter(t=>MOCK.DB.levels.every(l=>MOCK.levelDone(t.id,l))).length/denom*100);
-  document.getElementById('pkNote').innerHTML=
-    `<b>PK 指标（带教体系口径）：</b>节点通过率目标 50% <svg class='ic'><use href='#i-arrow-r'/></svg> 当前 ${pct}%；
-     新人转正率目标 30% <svg class='ic'><use href='#i-arrow-r'/></svg> 当前 ${MOCK.DB.trainees.filter(t=>(MOCK.DB.readiness[t.id]||{}).certifiedAt&&MOCK.READINESS_LINES.every(l=>UI.readinessBadge(l.key,t.id).met)).length} 人认证；
-     新人反馈评分目标 4.0 <svg class='ic'><use href='#i-arrow-r'/></svg> 第 5 周才发（暂无数据）。`;
+ document.getElementById('phaseDenom').textContent='学员 '+rows.length+' 人';
+ document.getElementById('phaseList').innerHTML=MOCK.LEVEL_PHASES.map(ph=>{
+  const levels=MOCK.DB.levels.filter(l=>l.no>=ph.from&&l.no<=ph.to);
+  const full=levels.length?rows.filter(t=>levels.every(l=>MOCK.levelDone(t.id,l))).length:0;
+  const partial=levels.length?rows.filter(t=>levels.some(l=>MOCK.levelDone(t.id,l))&&!levels.every(l=>MOCK.levelDone(t.id,l))).length:0;
+  return `<div class="dashboard-phase"><span class="hint">${esc(ph.name)} · ${esc(ph.week)}</span><div class="dashboard-phase-number">${full}<small> / ${rows.length} 人全通</small></div><div class="dashboard-bar"><i style="width:${rows.length?full/rows.length*100:0}%"></i></div><p class="hint">${levels.length?`${partial} 人部分通过 · 完成率 ${pctLabel(full,rows.length)}`:'暂无关卡配置'}</p></div>`;
+ }).join('')||'<p class="hint">暂无阶段配置</p>';
 }
-
-/* 5. 带教团队（真实账号） */
-function renderTeam(){
-  const us=Object.values(MOCK.DB.users);
-  const mentors=us.filter(u=>u.role==='mentor');
-  const admins =us.filter(u=>u.role==='admin');
-  const studs  =us.filter(u=>u.role==='student');
-  document.getElementById('teamDenom').textContent=mentors.length+' 导师 · '+studs.length+' 学员';
-  const rows=[...admins,...mentors,...studs].map(u=>{
-    const mine=MOCK.DB.trainees.filter(t=>t.mentorId===u.wid);
-    const pend=UI.pendingList(u.wid).length;
-    const tag=u.role==='admin'?'<span class="tag ok">教务管理员</span>'
-            :u.role==='mentor'?'<span class="tag link">带教导师</span>'
-            :'<span class="tag ghost">学员</span>';
-    let status='<span class="tag ok">在职</span>';
-    if(u.role==='student'){
-      const d=stuckDays(u.wid);
-      status = d>=3?'<span class="tag danger">卡 '+d+' 天</span>' : d>=1?'<span class="tag warn">卡 '+d+' 天</span>' : '<span class="tag ok">进度正常</span>';
-    }
-    return `<tr><td><b>${esc(u.name)}</b></td><td class="num">${esc(u.wid)}</td><td>${tag}</td>
-      <td>${u.role==='mentor'?(mine.length?mine.map(t=>esc(t.name)).join('、'):'—'):'—'}</td>
-      <td>${u.role==='student'?'—':(pend?`<span class="tag warn">${pend} 条</span>`:'—')}</td>
-      <td>${status}</td></tr>`;
-  }).join('');
-  document.getElementById('teamBody').innerHTML=rows;
-  document.getElementById('teamNote').innerHTML=
-    `<b>说明：</b>管理员与导师是<b>平行可审人</b>（谁先审谁生效），不存在"上级终审"环节。`;
+function renderTeam(rows){
+ const mentors=Object.values(MOCK.DB.users).filter(u=>u.role==='mentor');
+ document.getElementById('teamDenom').textContent=mentors.length+' 位导师';
+ document.getElementById('teamBody').innerHTML=mentors.map(u=>{
+  const mine=rows.filter(t=>t.mentorId===u.wid),done=mine.reduce((sum,t)=>sum+MOCK.DB.levels.filter(l=>MOCK.levelDone(t.id,l)).length,0);
+  return `<tr><td><b>${esc(u.name||u.wid)}</b><div class="hint">${esc(u.wid)}</div></td><td>${mine.length} 人</td><td>${pctLabel(done,mine.length*MOCK.DB.levels.length)}</td><td>${mine.filter(t=>allLevelsDone(t.id)).length} 人</td><td>${mine.filter(t=>allLinesMet(t.id)).length} 人</td><td>${mine.filter(t=>certified(t.id)).length} 人</td></tr>`;
+ }).join('')||'<tr><td colspan="6" class="hint">暂无导师数据</td></tr>';
+ const ids=new Set(mentors.map(u=>u.wid)),unassigned=rows.filter(t=>!ids.has(t.mentorId)).length;
+ document.getElementById('teamNote').textContent=unassigned?unassigned+' 名学员尚未关联有效导师，已计入全站统计，未计入导师汇总。':'所有学员均已关联带教导师。';
 }
-
-function stuckDays(tid){
-  let last=null;
-  const J=MOCK.DB.journey[tid]||{};
-  Object.keys(J).forEach(lv=>Object.keys(J[lv]).forEach(s=>{const at=J[lv][s]&&J[lv][s].at;if(at&&(!last||at>last))last=at;}));
-  const T=MOCK.DB.tasks[tid]||{};
-  Object.keys(T).forEach(lv=>Object.keys(T[lv]).forEach(k=>{const at=T[lv][k]&&T[lv][k].at;if(at&&(!last||at>last))last=at;}));
-  if(!last) return 0;
-  const d=Math.floor((Date.now()-new Date(last).getTime())/86400000);
-  return d>0?d:0;
-}
-</script>
-</body>
-</html>
+</script></body></html>
