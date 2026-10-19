@@ -133,6 +133,16 @@ test('navigation timing is opt-in, separates response/body and stops painting wh
   const text=panels[0].children.map(e=>e.textContent).join('\n');
   assert.match(text,/本页 470 毫秒/);assert.match(text,/300 毫秒 \/ 50 毫秒/);assert.equal(storage.size,1);
   assert.match(text,/云函数内部处理：200 毫秒/);assert.match(text,/实际读取文件：10 份/);
+  timing.ready(false);assert.match(panels[0].children[0].textContent,/页面显示失败/);
   const close=panels[0].children.at(-1);close.listeners.click();assert.equal(storage.size,0);assert.equal(panels[0].removed,true);
   const length=panels[0].children.length;timing.end(sample,false);assert.equal(panels[0].children.length,length);
+});
+
+test('render failures cannot be reported as a successful visual refresh',()=>{
+  const source=fs.readFileSync(path.join(__dirname,'../app/assets/mock-api-live.js'),'utf8');
+  const chunk=source.slice(source.indexOf('function liveRerender(){'),source.indexOf('/* ---------- P0-2'));
+  const warnings=[];
+  const ctx=vm.createContext({window:{render(){throw Error('missing dependency');}},console:{warn:message=>warnings.push(message)}});
+  vm.runInContext(chunk,ctx);assert.equal(ctx.liveRerender(),false);assert.match(warnings[0],/missing dependency/);
+  ctx.window.render=()=>{};assert.equal(ctx.liveRerender(),true);
 });

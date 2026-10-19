@@ -664,11 +664,13 @@ function val(sel){ return rawVal(sel).trim(); }
      实测 12 个页面**全都有** window.render（函数声明绑定到全局），故此回退覆盖面 100%，
      且**无需改任何页面代码**（守住"接线不改页面"的原则）。 */
 function liveRerender(){
+  let rendered=true;
   try{
     if(typeof window.__rerender === 'function'){ window.__rerender(); }
     else if(typeof window.render === 'function'){ window.render(); }
-    else console.warn('[live] 页面未暴露 render/__rerender，无法重绘（数据已就绪）');
+    else{ rendered=false;console.warn('[live] 页面未暴露 render/__rerender，无法重绘（数据已就绪）'); }
   }catch(e){
+    rendered=false;
     console.warn('[live] 重绘失败（数据已就绪，仅 UI 未刷新）：' + e.message);
   }
   /* 【2026-10-18 修】顶栏只在页面 DOMContentLoaded 里渲一次（各页 `slot.innerHTML = topbarHTML()`），
@@ -683,6 +685,7 @@ function liveRerender(){
       UI.syncGateSwitchUI(MOCK.DB.settings.enforceGate===true);
     }
   }catch(e){ /* 公开页/无顶栏页无此开关 -> 忽略 */ }
+  return rendered;
 }
 
 /* ---------- P0-2（2026-10-05）：首屏加载态 / 失败错误条 / token 失效收敛 ----------
@@ -786,8 +789,8 @@ async function liveBootstrap(){
     await liveRefresh();
     liveSetLoading(false);
     liveClearError();
-    liveRerender();
-    if(window.ETRAIN_TIMING) window.ETRAIN_TIMING.ready();
+    const rendered=liveRerender();
+    if(window.ETRAIN_TIMING) window.ETRAIN_TIMING.ready(rendered);
     return true;
   }catch(e){
     console.warn('[live] 拉取真实数据失败：' + e.message);
