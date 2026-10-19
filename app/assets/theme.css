@@ -169,6 +169,11 @@ hr{border:0;border-top:2px solid var(--line);margin:var(--s6) 0}
   border:2px solid var(--ink);display:grid;place-items:center;
   font-weight:800;color:var(--ink);flex:none;font-size:14px;
 }
+/* 同一个小穗星形笑脸，账号角色只通过配色区分。默认列表头像为学员。 */
+.avatar{--avatar-art:url("avatars/student.svg");--avatar-bg:#f1fae8;--avatar-edge:#7eab50;font-size:0!important;line-height:0;position:relative;overflow:hidden;background:var(--avatar-bg)!important;border-color:var(--avatar-edge)!important}
+.avatar[data-avatar-role="mentor"]{--avatar-art:url("avatars/mentor.svg");--avatar-bg:#edf7ff;--avatar-edge:#78afd2}
+.avatar[data-avatar-role="admin"]{--avatar-art:url("avatars/admin.svg");--avatar-bg:#f4effd;--avatar-edge:#a68bcb}
+.avatar::before{content:"";position:absolute;inset:0;background-image:var(--avatar-art);background-size:100% 100%;background-repeat:no-repeat;background-position:center}
 /* 姓名 + 角色的两行排布规则已下沉到 §20，与 .role-chip 一起用选择器分组给出
    （.role-chip 不是 .who，只挂 .who 会漏 —— 见 §20 内的说明）。 */
 

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>转正达标线登记 · 教务管理员</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1019load1">
+<link rel="stylesheet" href="../assets/theme.css?v=1019avatar1">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 <link rel="stylesheet" href="../assets/admin-readiness.css?v=1019compact1">
 </head>
@@ -97,12 +97,12 @@
   5. 空状态写清"为什么空"和"什么时候会有"。
 -->
 
-<script src="../assets/app.js?v=1019mc1"></script>
+<script src="../assets/app.js?v=1019avatar1"></script>
 <script src="../assets/readiness-rules.js?v=1019rd2"></script>
 <script src="../assets/mock-data.js?v=1019rd2"></script>
-<script src="../assets/mock-api.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019avatar1"></script>
 <script src="../assets/mock-api-live.js?v=1019load1"></script>
-<script src="../assets/ui.js?v=1019md1"></script>
+<script src="../assets/ui.js?v=1019avatar1"></script>
 <script>
 document.addEventListener('DOMContentLoaded',()=>{
   if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
@@ -191,7 +191,7 @@ function renderList(rows){
  if(filtered.some(t=>t.id===linkedTid))selectedTid=linkedTid;
  if(!filtered.some(t=>t.id===selectedTid))selectedTid=filtered[0]?.id||'';
  document.getElementById('studentCount').textContent='显示 '+filtered.length+' / '+rows.length+' 人';
- document.getElementById('studentNav').innerHTML=filtered.map(t=>`<button type="button" class="readiness-student${t.id===selectedTid?' is-selected':''}" data-student="${esc(t.id)}" aria-pressed="${t.id===selectedTid}"><span class="avatar">${esc((t.name||'?')[0])}</span><span class="readiness-student-text"><b>${esc(t.name||t.id)}</b><span>${esc(t.id)} · ${cntMet(t.id)}/${MOCK.READINESS_LINES.length} 条达标</span></span></button>`).join('')||'<p class="hint">没有符合条件的学员</p>';
+ document.getElementById('studentNav').innerHTML=filtered.map(t=>`<button type="button" class="readiness-student${t.id===selectedTid?' is-selected':''}" data-student="${esc(t.id)}" aria-pressed="${t.id===selectedTid}"><span class="avatar" data-avatar-role="student" aria-hidden="true">${esc((t.name||'?')[0])}</span><span class="readiness-student-text"><b>${esc(t.name||t.id)}</b><span>${esc(t.id)} · ${cntMet(t.id)}/${MOCK.READINESS_LINES.length} 条达标</span></span></button>`).join('')||'<p class="hint">没有符合条件的学员</p>';
  const select=document.getElementById('studentSelect');
  select.innerHTML=filtered.length?filtered.map(t=>`<option value="${esc(t.id)}">${esc(t.name||t.id)} · ${esc(t.id)}（${cntMet(t.id)}/${MOCK.READINESS_LINES.length}）</option>`).join(''):'<option value="">暂无匹配学员</option>';
  select.value=selectedTid;select.disabled=!filtered.length;
@@ -199,7 +199,7 @@ function renderList(rows){
  details.hidden=!t;
  if(!t){header.innerHTML=`<div class="empty"><b>${rows.length?'没有符合条件的学员':'暂无学员'}</b><p class="hint">${rows.length?'请调整搜索或达标状态筛选。':'添加学员后可在此登记。'}</p></div>`;box.innerHTML='';return;}
  const n=cntMet(t.id),mentor=MOCK.mentorOf(t.mentorId),cert=!!(MOCK.DB.readiness[t.id]||{}).certifiedAt;
- header.innerHTML=`<div class="readiness-selected" data-tid="${esc(t.id)}"><span class="avatar">${esc((t.name||'?')[0])}</span><div class="readiness-selected-name"><h3>${esc(t.name||t.id)} <span class="tag ghost">${esc(t.id)}</span></h3><p class="hint">${mentor?'带教 '+esc(mentor.name):'带教未指定'} · 第 ${t.week||1} 周</p></div><span class="tag ${isReady(t.id)?'ok':'ghost'}">${cert?(isReady(t.id)?'已认证':'历史认证待复核'):(isReady(t.id)?'可转正':n+' / '+MOCK.READINESS_LINES.length+' 条达标')}</span></div>`;
+ header.innerHTML=`<div class="readiness-selected" data-tid="${esc(t.id)}"><span class="avatar" data-avatar-role="student" aria-hidden="true">${esc((t.name||'?')[0])}</span><div class="readiness-selected-name"><h3>${esc(t.name||t.id)} <span class="tag ghost">${esc(t.id)}</span></h3><p class="hint">${mentor?'带教 '+esc(mentor.name):'带教未指定'} · 第 ${t.week||1} 周</p></div><span class="tag ${isReady(t.id)?'ok':'ghost'}">${cert?(isReady(t.id)?'已认证':'历史认证待复核'):(isReady(t.id)?'可转正':n+' / '+MOCK.READINESS_LINES.length+' 条达标')}</span></div>`;
  box.innerHTML=MOCK.READINESS_LINES.map((line,li)=>rdRow(t,line,li)).join('');
  if(window.injectIcons)injectIcons();
 }

@@ -24,7 +24,7 @@ function setSession(wid){
   document.body.className=document.body.className.replace(/role-\w+/g,'').trim()+' role-'+u.role;
   document.querySelectorAll('[data-who-name]').forEach(e=>e.textContent=u.name);
   document.querySelectorAll('[data-who-role]').forEach(e=>e.textContent=UI.roleCN(u.role));
-  document.querySelectorAll('[data-who-av]').forEach(e=>e.textContent=u.name.slice(0,1));
+  document.querySelectorAll('[data-who-av]').forEach(e=>{e.textContent='';e.setAttribute('data-avatar-role',u.role);e.setAttribute('aria-hidden','true');});
   UI.refreshTodoDot(wid);
 }
 

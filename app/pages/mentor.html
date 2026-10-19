@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>导师工作台</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1019load1">
+<link rel="stylesheet" href="../assets/theme.css?v=1019avatar1">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 <link rel="stylesheet" href="../assets/mentor-dashboard.css?v=1019md1">
 </head>
@@ -70,12 +70,12 @@
   数据来源：window.MOCK / window.MOCKAPI（proto/assets/*.js）
 -->
 
-<script src="../assets/app.js?v=1019mc1"></script>
+<script src="../assets/app.js?v=1019avatar1"></script>
 <script src="../assets/readiness-rules.js?v=1019rd2"></script>
 <script src="../assets/mock-data.js?v=1019rd2"></script>
-<script src="../assets/mock-api.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019avatar1"></script>
 <script src="../assets/mock-api-live.js?v=1019load1"></script>
-<script src="../assets/ui.js?v=1019md1"></script>
+<script src="../assets/ui.js?v=1019avatar1"></script>
 <script>
 /* ============================================================
    导师工作台 · 数据驱动
@@ -317,7 +317,7 @@ function renderMentees(mentees){
     const days = jd ? Math.max(0, Math.floor((Date.now()-new Date(jd))/86400000)) : null;
     return `
     <a class="rowitem mentor-student" href="mentor-mentee.html?wid=${esc(t.id)}">
-      <span class="mentor-student-head"><span class="avatar">${esc(String(name).slice(0,1))}</span><span class="mid"><b>${esc(name)} · ${esc(t.id)}</b><span class="d">${days!==null?`入职 ${days} 天 · `:''}已过 ${doneN}/${MOCK.DB.levels.length} 关</span></span><span class="mentor-detail">详情 →</span></span>
+      <span class="mentor-student-head"><span class="avatar" data-avatar-role="student" aria-hidden="true">${esc(String(name).slice(0,1))}</span><span class="mid"><b>${esc(name)} · ${esc(t.id)}</b><span class="d">${days!==null?`入职 ${days} 天 · `:''}已过 ${doneN}/${MOCK.DB.levels.length} 关</span></span><span class="mentor-detail">详情 →</span></span>
       <div class="mentor-progress" style="--level-count:${Math.max(1,MOCK.DB.levels.length)}"><div class="mentor-progress-label"><span>关卡进度</span><span>${cur?`当前第 ${cur.no} 关`:'已全部通关'}</span></div><span class="mxrow">${cells}</span></div>
       <div class="mentor-stats"><div class="it"><div class="k">待批改</div><div class="v" style="${todo.total?'color:var(--warn-ink)':''}">${todo.total} 条</div></div><div class="it"><div class="k">转正达标线</div><div class="v">${rd} / ${MOCK.READINESS_LINES.length} 条</div></div><div class="it"><div class="k">当前进度</div><div class="v">${cur?`第 ${cur.no} 关`:'已通关'}</div></div></div>
     </a>`;

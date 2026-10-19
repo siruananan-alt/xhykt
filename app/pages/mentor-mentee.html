@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>徒弟详情 · 导师</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1019load1">
+<link rel="stylesheet" href="../assets/theme.css?v=1019avatar1">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 </head>
 <body class="role-mentor" data-role="mentor" data-nav-done="1">
@@ -65,12 +65,12 @@
   数据来源：window.MOCK / window.MOCKAPI / window.UI（proto/assets/*.js）
 -->
 
-<script src="../assets/app.js?v=1019mc1"></script>
+<script src="../assets/app.js?v=1019avatar1"></script>
 <script src="../assets/readiness-rules.js?v=1019rd2"></script>
 <script src="../assets/mock-data.js?v=1019rd2"></script>
-<script src="../assets/mock-api.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019avatar1"></script>
 <script src="../assets/mock-api-live.js?v=1019load1"></script>
-<script src="../assets/ui.js?v=1019md1"></script>
+<script src="../assets/ui.js?v=1019avatar1"></script>
 <script>
 /* ============================================================
    徒弟详情 · 数据驱动（#36 第二部分）
@@ -229,7 +229,7 @@ function renderPickList(){
     const nm = uu.name || t.name || t.id;
     const mn = (MOCK.userOf(t.mentorId)||{}).name || t.mentorId || '—';
     return `<a class="rowitem" href="mentor-mentee.html?wid=${esc(String(t.id))}" style="text-decoration:none">
-      <span class="avatar" aria-hidden="true">${esc(String(nm).slice(0,1))}</span>
+      <span class="avatar" aria-hidden="true" data-avatar-role="student">${esc(String(nm).slice(0,1))}</span>
       <span class="mid"><b>${esc(String(nm))}</b>
         <span class="d">${esc(String(t.id))} · 带教导师：${esc(String(mn))}</span></span>
       <span class="ico" aria-hidden="true"><svg class="ic"><use href="#i-arrow-r"/></svg></span>
@@ -270,7 +270,7 @@ function renderHero(t, u, name, cur, days, mentor){
 
   document.getElementById('heroCard').innerHTML = `
   <div class="hero-flex">
-    <span class="avatar av-lg">${esc(String(name).slice(0,1))}</span>
+    <span class="avatar av-lg" data-avatar-role="student" aria-hidden="true">${esc(String(name).slice(0,1))}</span>
     <div class="hero-main">
       <h2>${esc(name)} <span class="tag ghost" style="vertical-align:middle">${esc(WID)}</span></h2>
       <p class="hint" style="margin-top:6px">

@@ -91,7 +91,7 @@ function topbarHTML(role,page,opts){
     <div class="acct-wrap" id="acctWrap">
       <button type="button" class="role-chip" id="acctBtn" aria-haspopup="menu" aria-expanded="false"
               aria-controls="acctMenu" title="切换账号">
-        <span class="avatar" data-who-av>范</span>
+        <span class="avatar" data-avatar-role="${role}" data-who-av aria-hidden="true"></span>
         <span class="who-txt"><span data-who-name>范文淼</span><span data-who-role>教务管理员</span></span>
         <span class="acct-caret" aria-hidden="true"></span>
       </button>

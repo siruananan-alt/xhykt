@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>闯关总览 · 教务管理员</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1019load1">
+<link rel="stylesheet" href="../assets/theme.css?v=1019avatar1">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 </head>
 <body class="role-admin" data-role="admin" data-nav-done="1">
@@ -143,12 +143,12 @@
   8. ≤900px：纯 CSS 切卡片视图（表格 display:none），不靠 JS 判宽度。
 -->
 
-<script src="../assets/app.js?v=1019mc1"></script>
+<script src="../assets/app.js?v=1019avatar1"></script>
 <script src="../assets/readiness-rules.js?v=1019rd2"></script>
 <script src="../assets/mock-data.js?v=1019rd2"></script>
-<script src="../assets/mock-api.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019avatar1"></script>
 <script src="../assets/mock-api-live.js?v=1019load1"></script>
-<script src="../assets/ui.js?v=1019md1"></script>
+<script src="../assets/ui.js?v=1019avatar1"></script>
 <script src="../assets/practice-video.js?v=1018e"></script>
 <script>
 /* 闯关总览 · 数据驱动版
@@ -248,7 +248,7 @@ function renderMatrix(rows){
     const days = stuckDays(t.id);
     const kw = (t.name+' '+t.id).toLowerCase();
     return `<div class="mxcard" data-kw="${esc(kw)}" data-id="${esc(t.id)}">
-      <div class="h"><span class="avatar">${esc(t.name.slice(0,1))}</span>
+      <div class="h"><span class="avatar" data-avatar-role="student" aria-hidden="true">${esc(t.name.slice(0,1))}</span>
         <span><span class="nm">${esc(t.name)}</span> <span class="id">${esc(t.id)} · 带教 ${esc((MOCK.mentorOf(t.mentorId)||{}).name||'未指定')}</span></span>
         ${days>=1?`<span class="tag ${days>=3?'danger':'warn'}" style="margin-left:auto">卡 ${days} 天</span>`
                  :'<span class="mx doing" style="margin-left:auto">第 '+cur.no+' 关</span>'}

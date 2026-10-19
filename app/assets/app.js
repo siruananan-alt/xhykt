@@ -639,7 +639,7 @@ function renderRoleMenu(){
     list.map(a=>{
       const cur=a.wid===me.wid;
       return `<button type="button" class="acct-i${cur?' cur':''}" data-acct-wid="${esc(a.wid)}" role="menuitem">
-        <span class="avatar" aria-hidden="true">${esc(String(a.name).slice(0,1))}</span>
+        <span class="avatar" data-avatar-role="${esc(a.role)}" aria-hidden="true"></span>
         <span class="acct-n"><b>${esc(a.name)}</b><span>${esc(a.wid)} · ${esc(UI.roleCN(a.role))}</span></span>
         ${cur?'<span class="acct-cur" aria-hidden="true">当前</span>':''}
       </button>`;
@@ -735,7 +735,7 @@ function setRoleSilently(k){
   const nm=(live&&live.name)||r.name, rl=r.role, av=(nm||'?').slice(0,1);
   document.querySelectorAll('[data-who-name]').forEach(e=>e.textContent=nm);
   document.querySelectorAll('[data-who-role]').forEach(e=>e.textContent=rl);
-  document.querySelectorAll('[data-who-av]').forEach(e=>e.textContent=av);
+  document.querySelectorAll('[data-who-av]').forEach(e=>{e.textContent='';e.setAttribute('data-avatar-role',k);e.setAttribute('aria-hidden','true');});
   document.body.className=document.body.className.replace(/role-\w+/g,'').trim()+' role-'+k;
   /* 会话同步（S.wid/role/name）三档，判据 = 「live 下有没有真实身份来源」：
      ① 有真实身份（etrainWho 可用 / LIVE.user）-> 直接写会话；不走 syncMockSession
