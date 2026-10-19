@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>我的闯关 · 学员</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015h">
+<link rel="stylesheet" href="../assets/theme.css?v=1019rd2">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 </head>
 <body class="role-student" data-role="student" data-nav-done="1">
@@ -73,10 +73,11 @@
 -->
 
 <script src="../assets/app.js?v=1019timing1"></script>
-<script src="../assets/mock-data.js?v=1018f"></script>
-<script src="../assets/mock-api.js?v=1019mr1"></script>
-<script src="../assets/mock-api-live.js?v=1019timing1"></script>
-<script src="../assets/ui.js?v=1019mr1"></script>
+<script src="../assets/readiness-rules.js?v=1019rd2"></script>
+<script src="../assets/mock-data.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019rd2"></script>
+<script src="../assets/mock-api-live.js?v=1019rd2"></script>
+<script src="../assets/ui.js?v=1019rd2"></script>
 <script>
 document.addEventListener('DOMContentLoaded',()=>{
   if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
@@ -117,12 +118,8 @@ function render(){
   renderLvList(wid,lvAll,curNo);
 }
 
-/* 单条达标线是否达成 —— 与 readinessBadge 同源（site 走关卡全通，其余走 met===true） */
-function readinessMet(line,wid){
-  if(line.source==='site') return lvAllDone(wid);
-  const r=(MOCK.DB.readiness[wid]||{})[line.key];
-  return !!(r&&r.met===true);
-}
+/* 单条达标线是否达成 —— 与 readinessBadge 同源（学习按关卡全通，其余按实际数值） */
+function readinessMet(line,wid){ return UI.readinessBadge(line.key,wid).met; }
 function lvAllDone(wid){
   return MOCK.DB.levels.length>0 && MOCK.DB.levels.every(l=>MOCK.levelDone(wid,l));
 }
@@ -232,7 +229,7 @@ function renderFocus(wid){
     box.innerHTML=`<div class="card focus-done">
       <div class="focus-tag"><svg class="ic"><use href="#i-award"/></svg>今日聚焦</div>
       <h2 class="focus-h">学习阶段已全部完成</h2>
-      <p class="focus-t">${leftRd>0? ('还差 <b>'+leftRd+'</b> 条达标线即可转正。') : '达标线全部达成，可转正。'}</p>
+      <p class="focus-t">${leftRd>0? ('还差 <b>'+leftRd+'</b> 条达标线即可转正。') : '达标线全部达成，待管理员确认转正。'}</p>
       <a class="btn lg focus-btn" href="student-courses.html">回看课程</a>
     </div>`;
     return;
@@ -261,29 +258,7 @@ function renderReadiness(wid){
   const allLv=(MOCK.DB.levels||[]).length;
   const metN=lines.filter(l=>readinessMet(l,wid)).length;
 
-  const items=lines.map(line=>{
-    // 「学习达标」是系统按关卡算的（source:'site'），不读 readiness 表
-    if(line.source==='site'){
-      return `<div class="rdrow">
-        <span class="rdname">${esc(line.name)}</span>
-        <span class="rdval ${doneLv>=allLv?'ok':''}">${doneLv} / ${allLv} 关</span>
-      </div>`;
-    }
-    const r=(MOCK.DB.readiness[wid]||{})[line.key];
-    //  关键：管理员还没登记时 value 为 null/缺失 —— 必须说「待更新」，
-    //    绝不能显示 0（会让学员误以为自己真的是 0）。
-    if(!r||r.value===null||r.value===undefined||r.value===''){
-      return `<div class="rdrow">
-        <span class="rdname">${esc(line.name)}</span>
-        <span class="rdval wait">待带教老师 / 管理员更新</span>
-      </div>`;
-    }
-    const ok=readinessMet(line,wid);
-    return `<div class="rdrow">
-      <span class="rdname">${esc(line.name)}</span>
-      <span class="rdval ${ok?'ok':''}">${ok?'已达标':(esc(String(r.value))+' / '+esc(String(line.threshold))+(line.unit?esc(line.unit):''))}</span>
-    </div>`;
-  }).join('');
+  const items=lines.map(line=>UI.readinessRow(wid,line.key,false)).join('');
 
   const left=lines.length-metN;
   box.innerHTML=`<div class="card">

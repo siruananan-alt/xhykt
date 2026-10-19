@@ -183,13 +183,17 @@ function mockSetReadiness(tid, key, met){     // met: 1 / 0 / null(清除)
   const R=(MOCK.DB.readiness[tid]=MOCK.DB.readiness[tid]||{});
   const me=MOCK.userOf(S.wid);
   if(met===null){
+    const had=!!R[key];
     delete R[key];
-    delete R.certifiedAt; delete R.certifiedBy; delete R.certifiedByName;   // L1543 联动撤销
-    toast('已清除登记 · 转正认证同时被撤销','warn');
+    if(had){ delete R.certifiedAt; delete R.certifiedBy; delete R.certifiedByName; }
+    closeModal();
+    toast('已清除登记','warn');
   }else{
     const cur=R[key]||{};
-    R[key]={ ...cur, value:cur.value??null, met:met===1, by:S.wid, byName:me.name, at:new Date().toISOString() };
-    if(met!==1){                          // L1558：登记为未达标 -> 连带撤销认证
+    const result=ReadinessRules.evaluate(key,cur.value);
+    if(!result.valid)return toast(result.error,'err');
+    R[key]={ ...cur, value:cur.value??null, met:result.met, by:S.wid, byName:me.name, at:new Date().toISOString() };
+    if(!result.met){                          // L1558：登记为未达标 -> 连带撤销认证
       delete R.certifiedAt; delete R.certifiedBy; delete R.certifiedByName;
       toast('已登记为未达标 · 转正认证同时被撤销','warn');
     }else toast('已登记为达标','ok');
@@ -201,15 +205,12 @@ function mockSaveReadiness(tid, key){
   const v=document.getElementById('rdv-'+key), n=document.getElementById('rdn-'+key);
   if(!v) return;
   const line=MOCK.READINESS_LINES.find(l=>l.key===key);
-  const val=v.value===''?null:Number(v.value);
-  if(val!==null && (!Number.isFinite(val)||val<0)) return toast('数值必须为非负数字','err');
-  // 基线只用 key/name/source 判定，阈值仅下发展示；此处保持同一口径
-  // 注意：【2026-10-04】原实现末尾漏了 rerenderAfterWrite()（同函数前半段有、这里没有），
-  //   表现为「保存登记 -> toast 弹了但卡片数值不变」，必须手动刷新才更新。补上。
+  const result=ReadinessRules.evaluate(key,v.value);
+  if(!result.valid)return toast(result.error,'err');
+  const val=result.value;
   const R=(MOCK.DB.readiness[tid]=MOCK.DB.readiness[tid]||{}), me=MOCK.userOf(S.wid);
   const old=R[key]||{};
-  const verdict=document.getElementById('rdm-'+key);
-  const met=verdict ? verdict.value==='true' : old.met===true;
+  const met=result.met;
   if(!met){ delete R.certifiedAt; delete R.certifiedBy; delete R.certifiedByName; }
   R[key]={ value:val, note:n?n.value.slice(0,200):'', by:S.wid, byName:me.name, at:new Date().toISOString(), met };
   toast('已保存登记 · 学员端达标线卡同步更新');
@@ -223,7 +224,7 @@ function mockCertify(tid){
   if(!t) return toast('找不到该学员','err');
   const studyDone=MOCK.DB.levels.length>0 && MOCK.DB.levels.every(l=>MOCK.levelDone(tid,l));
   const R=MOCK.DB.readiness[tid]||{};
-  const others=['traffic','editing','accounts'].filter(k=>!(R[k]&&R[k].met===true));
+  const others=['traffic','editing','accounts'].filter(k=>!MOCK.readinessStatus(k,tid).met);
   if(!studyDone||others.length){
     const miss=[];
     if(!studyDone) miss.push('学习达标');
@@ -352,10 +353,12 @@ function mockEditStudent(wid, fields){
   }
   if(fields.name !== undefined)   u.name = fields.name;
   if(fields.dept)                 u.dept = fields.dept;
-  if(fields.mentorId !== undefined) u.mentorId = fields.mentorId;  if(t){
+  if(fields.mentorId !== undefined) u.mentorId = fields.mentorId;
+  if(t){
     if(fields.name !== undefined)   t.name = fields.name;
     if(fields.dept)                 t.dept = fields.dept;
-    if(fields.mentorId !== undefined) t.mentorId = fields.mentorId;  }
+    if(fields.mentorId !== undefined) t.mentorId = fields.mentorId;
+  }
   return { ok:true, wid };
 }
 /* 【2026-10-15 · 账号管理并入人员管理】导师资料编辑（沙盒版）。

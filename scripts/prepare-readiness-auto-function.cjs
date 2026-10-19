@@ -1,0 +1,31 @@
+const fs=require('node:fs'),path=require('node:path');
+const [src,dst]=process.argv.slice(2);
+if(!src||!dst)throw Error('Usage: node prepare-readiness-auto-function.cjs <latest-backup> <staging>');
+if(path.resolve(src)===path.resolve(dst))throw Error('Keep backup separate');
+fs.cpSync(src,dst,{recursive:true});
+const file=path.resolve(dst,'index.js');let code=fs.readFileSync(file,'utf8');
+const start=code.indexOf('async function actionAdminSetReadiness(me, data) {');
+const a=code.indexOf('  const raw = data.value;',start),b=code.indexOf('  if (!rd[tid])',a);
+if(start<0||a<0||b<0||!code.includes('t.mentorId !== me.wid'))throw Error('Unexpected upstream readiness implementation');
+code=code.slice(0,a)+`  const result = require('./readiness-rules.js').evaluate(key, data.value);
+  if (!result.valid) return { error: result.error };
+  const value = result.value, met = result.met;
+`+code.slice(b);
+code=code.replace('met: data.met === true, note:','met, note:').replace('if (data.met !== true && rd[tid].certifiedAt)','if (!met && rd[tid].certifiedAt)');
+const cert='if (!(r && r.met)) miss.push(l.name);';
+if(!code.includes(cert))throw Error('Unexpected upstream certification rule');
+code=code.replace(cert,"if (!require('./readiness-rules.js').evaluate(l.key,r&&r.value).met) miss.push(l.name);");
+const projection='myWids.forEach(w => { if (all.readiness[w]) readiness[w] = all.readiness[w]; });';
+if(!code.includes(projection))throw Error('Unexpected upstream readiness projection');
+code=code.replace(projection,`myWids.forEach(w => {
+    if (!all.readiness[w]) return;
+    readiness[w] = Object.assign({}, all.readiness[w]);
+    READINESS_LINES.forEach(line => {
+      const rec = readiness[w][line.key];
+      if (line.source !== 'site' && rec) readiness[w][line.key] = Object.assign({}, rec, { met: require('./readiness-rules.js').evaluate(line.key, rec.value).met });
+    });
+  });`);
+code=code.replace(/if \(act === "buildTag"\) return \{ tag: "[^"]+" \};/,'if (act === "buildTag") return { tag: "b20261019-readiness-auto-v2" };');
+fs.writeFileSync(file,code);
+fs.copyFileSync(path.resolve(__dirname,'../app/assets/readiness-rules.js'),path.resolve(dst,'readiness-rules.js'));
+console.log('Prepared numeric readiness and certification rules, preserving all existing modules and permissions');

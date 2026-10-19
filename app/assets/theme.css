@@ -1042,3 +1042,11 @@ a.shotthumb:hover{border-color:var(--link)}
 .shotver h4{margin:0 0 6px;font-size:13px;color:var(--ink)}
 .shotver .meta{font-size:12px;color:var(--muted)}
 .tag.shotreq{background:var(--warn-bg);color:var(--warn-ink);border-color:var(--warn)}
+
+/* Readiness: standards, values, conclusions and audit details have distinct rows. */
+.readiness-item{border:2px solid var(--line);border-radius:16px;padding:18px;margin:12px 0;overflow-wrap:anywhere}
+.readiness-main{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.readiness-main .hint{margin-top:5px}.readiness-value{font-size:20px;font-weight:800;margin-top:12px}
+.readiness-audit{font-size:12px;color:var(--muted);line-height:1.7;margin-top:12px}
+.readiness-actions{display:flex;justify-content:flex-end;margin-top:12px}
+@media(max-width:640px){.readiness-item{padding:14px}.readiness-main{flex-wrap:wrap}}

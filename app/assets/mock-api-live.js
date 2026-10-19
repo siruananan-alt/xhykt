@@ -302,6 +302,12 @@ async function fetchUsersIfAdmin(){
       live 层初版**漏了调重绘** -> 写操作虽落库，但页面不重绘，用户看不到变化。
       现统一走 `liveRerender()`：优先 window.__rerender，缺失则回退 window.render()。
       同时**读路径**（liveBootstrap 拉完数据后）也走同一入口 —— 否则首屏停在 mock 那一帧。 */
+function applyReadinessResult(out){
+  if(!out||!out.ok)return;
+  const r=(MOCK.DB.readiness[out.tid]=MOCK.DB.readiness[out.tid]||{});
+  if(out.rec)r[out.key]=out.rec;else delete r[out.key];
+  if(out.certRevoked){delete r.certifiedAt;delete r.certifiedBy;delete r.certifiedByName;}
+}
 function liveWrite(action, buildBody, opts){
   opts = opts || {};
   return async function(){
@@ -513,22 +519,18 @@ function wireLiveWrites(){
     // adminSetReadiness(tid, key, met)：met 1/0/null(清除)。
     // 注意： 后端 adminSetReadiness：met===null 的语义是 data.clear===true（删记录）；
     //    非清除时必须带上当前 value，否则后端会把已登记的数值写成 null（后端 raw==="" -> value=null）。
-    mockSetReadiness: liveWrite('adminSetReadiness', (tid, key, met)=>{
-      if(met === null || met === undefined) return { tid, key, clear: true };
-      const cur = ((MOCK.DB.readiness[tid]||{})[key]) || {};
-      return { tid, key, met: met === 1 || met === true, value: (cur.value==null ? '' : cur.value) };
-    }),
-    // 保存登记：读弹层里的数值/备注（id 规则 rdv-<key> / rdn-<key>，见 ui.js openReadiness）
-    mockSaveReadiness: liveWrite('adminSetReadiness', (tid, key)=>{
-      const cur = ((MOCK.DB.readiness[tid]||{})[key]) || {};
-      const vEl = document.getElementById('rdv-' + key), nEl = document.getElementById('rdn-' + key);
-      const raw = vEl ? vEl.value : '';
-      const verdict = document.getElementById('rdm-' + key);
-      if(raw !== '' && (!Number.isFinite(Number(raw)) || Number(raw)<0)) throw new Error('数值必须为非负数字');
-      return { tid, key, met: verdict ? verdict.value === 'true' : cur.met === true,
-               value: raw === '' ? '' : Number(raw),
-               note: nEl ? String(nEl.value || '').slice(0,200) : '' };
-    }, { closeOnSuccess: true }),
+    mockSetReadiness: liveWrite('adminSetReadiness',(tid,key,met)=>{
+      if(met===null)return {tid,key,clear:true};
+      const rec=(MOCK.DB.readiness[tid]||{})[key]||{},r=ReadinessRules.evaluate(key,rec.value);
+      if(!r.valid)throw new Error(r.error);
+      return {tid,key,value:r.value,note:rec.note||''};
+    },{noRefresh:true,applyResult:applyReadinessResult}),
+    mockSaveReadiness: liveWrite('adminSetReadiness',(tid,key)=>{
+      const input=document.getElementById('rdv-'+key),note=document.getElementById('rdn-'+key);
+      const r=ReadinessRules.evaluate(key,input&&input.value);
+      if(!r.valid)throw new Error(r.error);
+      return {tid,key,value:r.value,note:note?note.value.slice(0,200):''};
+    },{noRefresh:true,applyResult:applyReadinessResult,closeOnSuccess:true}),
     mockCertify:     liveWrite('adminCertify',     (tid)=>({ tid })),
     mockSetGate:     liveWrite('adminSetSetting',  (on)=>({ key:'enforceGate', value: !!on }),{
       // 用保存响应的真值回填；随后的读取失败不能把已成功的开关画回旧值。

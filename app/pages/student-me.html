@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>我的 · 学员</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015h">
+<link rel="stylesheet" href="../assets/theme.css?v=1019rd2">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 </head>
 <body class="role-student" data-role="student" data-nav-done="1">
@@ -35,7 +35,7 @@
   <div class="card">
     <div class="card-h">
       <h2>闯关积分</h2>
-      <span class="tag ghost">达标线 <span id="scoreLine">—</span> 分</span>
+      <span class="tag ghost">积分参考 <span id="scoreLine">—</span> 分</span>
     </div>
     <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:var(--s3)">
       <span id="scoreNum" style="font-family:var(--font-display);font-size:40px;font-weight:800;color:var(--ink);line-height:1">—</span>
@@ -97,10 +97,11 @@
 -->
 
 <script src="../assets/app.js?v=1019timing1"></script>
-<script src="../assets/mock-data.js?v=1018f"></script>
-<script src="../assets/mock-api.js?v=1019mr1"></script>
-<script src="../assets/mock-api-live.js?v=1019timing1"></script>
-<script src="../assets/ui.js?v=1019mr1"></script>
+<script src="../assets/readiness-rules.js?v=1019rd2"></script>
+<script src="../assets/mock-data.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019rd2"></script>
+<script src="../assets/mock-api-live.js?v=1019rd2"></script>
+<script src="../assets/ui.js?v=1019rd2"></script>
 <script>
 document.addEventListener('DOMContentLoaded',()=>{
   if(typeof needsLoginGate==='function'&&needsLoginGate())return; // 未登录收敛：<main> 已被占位替换，监听器里不要再碰 DOM
@@ -144,12 +145,7 @@ function renderReadiness(wid){
 }
 
 /* 单条达标线是否达成 —— 与 readinessBadge 同源 */
-function readinessMet(line,wid){
-  if(line.source==='site')
-    return MOCK.DB.levels.length>0 && MOCK.DB.levels.every(l=>MOCK.levelDone(wid,l));
-  const r=(MOCK.DB.readiness[wid]||{})[line.key];
-  return !!(r&&r.met===true);
-}
+function readinessMet(line,wid){ return UI.readinessBadge(line.key,wid).met; }
 
 /* 2. 积分（真实 scoreOf + 分环节明细）
    注意：【2026-10-04 修正】明细口径必须与 MOCK.scoreOf 完全一致 ——

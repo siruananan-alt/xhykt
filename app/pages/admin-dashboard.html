@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>数据看板 · 教务管理员</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015h">
+<link rel="stylesheet" href="../assets/theme.css?v=1019rd2">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 </head>
 <body class="role-admin" data-role="admin" data-nav-done="1">
@@ -150,10 +150,11 @@
 -->
 
 <script src="../assets/app.js?v=1019timing1"></script>
-<script src="../assets/mock-data.js?v=1018f"></script>
-<script src="../assets/mock-api.js?v=1019mr1"></script>
-<script src="../assets/mock-api-live.js?v=1019timing1"></script>
-<script src="../assets/ui.js?v=1019mr1"></script>
+<script src="../assets/readiness-rules.js?v=1019rd2"></script>
+<script src="../assets/mock-data.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019rd2"></script>
+<script src="../assets/mock-api-live.js?v=1019rd2"></script>
+<script src="../assets/ui.js?v=1019rd2"></script>
 <script>
 /* 数据看板 · 数据驱动版
    核心口径（全部来自真实 Mock 数据，不写死）：
@@ -192,7 +193,7 @@ function render(){
 /* 1. KPI */
 function renderKpis(rows,todo){
   const stuck=rows.filter(t=>stuckDays(t.id)>=3).length;
-  const cert =MOCK.DB.trainees.filter(t=>(MOCK.DB.readiness[t.id]||{}).certifiedAt).length;
+  const cert =MOCK.DB.trainees.filter(t=>(MOCK.DB.readiness[t.id]||{}).certifiedAt&&MOCK.READINESS_LINES.every(l=>UI.readinessBadge(l.key,t.id).met)).length;
   document.getElementById('kpis').innerHTML=`
     <div class="kpi hot"><b>${todo.total}</b><span>待批改（全站）</span></div>
     <div class="kpi plain"><b>${stuck}</b><span>卡 3 天以上</span></div>
@@ -327,7 +328,7 @@ function renderPhases(rows){
   const pct=Math.round(rows.filter(t=>MOCK.DB.levels.every(l=>MOCK.levelDone(t.id,l))).length/denom*100);
   document.getElementById('pkNote').innerHTML=
     `<b>PK 指标（带教体系口径）：</b>节点通过率目标 50% <svg class='ic'><use href='#i-arrow-r'/></svg> 当前 ${pct}%；
-     新人转正率目标 30% <svg class='ic'><use href='#i-arrow-r'/></svg> 当前 ${MOCK.DB.trainees.filter(t=>(MOCK.DB.readiness[t.id]||{}).certifiedAt).length} 人认证；
+     新人转正率目标 30% <svg class='ic'><use href='#i-arrow-r'/></svg> 当前 ${MOCK.DB.trainees.filter(t=>(MOCK.DB.readiness[t.id]||{}).certifiedAt&&MOCK.READINESS_LINES.every(l=>UI.readinessBadge(l.key,t.id).met)).length} 人认证；
      新人反馈评分目标 4.0 <svg class='ic'><use href='#i-arrow-r'/></svg> 第 5 周才发（暂无数据）。`;
 }
 

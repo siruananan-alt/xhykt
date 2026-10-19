@@ -142,24 +142,21 @@ const READINESS_LINES = [
   { key:'accounts',name:'账号运营',  rule:'运营 4 个账号',source:'feishu',unit:'个', threshold:4,    compare:'gte', hint:'口径以飞书为准' }
 ];
 
-/* ---------- 8b. 有效阈值解析（唯一口径，所有展示方都必须走这里） ----------
-   背景：阈值是"后端常量 + 本地覆盖"两层。任何地方直接用 line.threshold 都会
-        在管理端改过阈值后显示旧数值 —— 所以**禁止**再直接读 line.threshold。
-   规则：
-     · source==='site' 的线（学习达标）：阈值 = 关卡总数，**天然不可改**（改它没有意义）
-     · 其余线：effectiveThreshold = settings 覆盖值 ?? 后端常量
-   返回 { threshold, compare, unit, custom, by, byName, at }
-     custom=true 表示当前用的是本地覆盖值（UI 要标出来，否则管理员会忘了自己改过）
-   注意： 本函数**只服务展示**。判定一律走 rec.met === true（基线口径），不比较数值。 */
+/* 统一标准：展示与判定共用 ReadinessRules，不使用旧浏览器阈值覆盖。 */
 function effectiveThreshold(key){
   const line=READINESS_LINES.find(l=>l.key===key);
   if(!line) return null;
-  if(line.source==='site')
-    return { threshold:DB_LEVELS.length, compare:'gte', unit:'关', custom:false, by:null, byName:null, at:null };
-  const ov=(DB_SETTINGS.readinessThresholds||{})[key];
-  const custom=!!(ov&&typeof ov.value==='number'&&isFinite(ov.value));
-  return { threshold: custom?ov.value:line.threshold, compare:line.compare, unit:line.unit,
-           custom, by:custom?ov.by:null, byName:custom?ov.byName:null, at:custom?ov.at:null };
+  if(line.source==='site')return {threshold:DB.levels.length,compare:'gte',unit:'关',custom:false};
+  return {...ReadinessRules.definitions[key],custom:false};
+}
+function readinessStatus(key,wid){
+  const line=READINESS_LINES.find(l=>l.key===key);
+  const rec=(DB.readiness[wid]||{})[key];
+  if(line && line.source==='site'){
+    const done=DB.levels.filter(l=>levelDone(wid,l)).length,total=DB.levels.length;
+    return {valid:true,met:total>0&&done===total,hasRec:true,value:done,rule:total+' 关全部通关',gap:total>0&&done===total?'学习关卡已全部完成':'还差 '+(total-done)+' 关',total};
+  }
+  return {...ReadinessRules.evaluate(key,rec&&rec.value),hasRec:!!rec,rec};
 }
 
 // 后端 L490-504，13 张，全部指向 L05–L12（L01–L04 无任务卡）
@@ -449,7 +446,7 @@ function todoCounts(wid){
 /* ---------- 导出给页面用 ---------- */
 window.MOCK = {
   DB, LV_STAGES, LV_STAGE_CN, EXAM_TASK, TASK_ST_CN, TASK_DEFS, READINESS_LINES,
-  LEVEL_PHASES, SCORE_TOTAL, DB_SEEDLOG_COURSES, effectiveThreshold,
+  LEVEL_PHASES, SCORE_TOTAL, DB_SEEDLOG_COURSES, effectiveThreshold, readinessStatus,
   courseOf, levelOf, userOf, traineeOf, mentorOf, levelOfCourseIn,
   studyAutoPass, lvStageOf, lvStageOk, practiceDone, levelDone,
   levelUnlocked, currentLevelOf, levelProgress, stageCountOf, scoreOf,

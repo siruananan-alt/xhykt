@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>徒弟详情 · 导师</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015h">
+<link rel="stylesheet" href="../assets/theme.css?v=1019rd2">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 </head>
 <body class="role-mentor" data-role="mentor" data-nav-done="1">
@@ -33,7 +33,7 @@
   <div class="card" id="heroCard"></div>
 
   <div class="card" id="readinessCard" hidden>
-    <div class="card-h"><h2>转正达标线登记</h2><p class="hint">登记当前学员的数值和达标结论，学习达标由系统自动计算。</p></div>
+    <div class="card-h"><h2>转正达标线登记</h2><p class="hint">登记实际数值，系统按标准自动判定；学习达标随关卡进度自动更新。</p></div>
     <div id="readinessLines"></div>
   </div>
 
@@ -66,10 +66,11 @@
 -->
 
 <script src="../assets/app.js?v=1019timing1"></script>
-<script src="../assets/mock-data.js?v=1018f"></script>
-<script src="../assets/mock-api.js?v=1019mr1"></script>
-<script src="../assets/mock-api-live.js?v=1019timing1"></script>
-<script src="../assets/ui.js?v=1019mr1"></script>
+<script src="../assets/readiness-rules.js?v=1019rd2"></script>
+<script src="../assets/mock-data.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019rd2"></script>
+<script src="../assets/mock-api-live.js?v=1019rd2"></script>
+<script src="../assets/ui.js?v=1019rd2"></script>
 <script>
 /* ============================================================
    徒弟详情 · 数据驱动（#36 第二部分）
@@ -256,25 +257,9 @@ async function hydrateShotThumbs(){
 /* ---------- 学员速览 ---------- */
 function renderReadiness(t){
   const s=MOCKAPI.S;
-  if(!(s.role==='admin' || (s.role==='mentor' && t.mentorId===s.wid))) return;
-  const box=document.getElementById('readinessLines');
+  if(!(s.role==='admin'||(s.role==='mentor'&&t.mentorId===s.wid)))return;
   document.getElementById('readinessCard').hidden=false;
-  box.innerHTML=MOCK.READINESS_LINES.map(line=>{
-    const badge=UI.readinessBadge(line.key,t.id);
-    const rec=(MOCK.DB.readiness[t.id]||{})[line.key];
-    const button=document.createElement('button');
-    button.className='btn sm'; button.textContent=rec?'修改登记':'登记';
-    const action=line.source==='site'?'系统自动判定':button.outerHTML;
-    return `<div class="rd"><span class="rdbody"><b>${esc(line.name)}</b>
-      <span class="rv"><span class="tag ${badge.cls==='ok'?'ok':'ghost'}">${esc(badge.tag)}</span>
-      ${rec && rec.value!=null?esc(String(rec.value))+' '+esc(badge.eff.unit):''}</span>
-      ${rec?`<span class="rq">登记人：${esc(rec.byName||rec.by||'—')} · ${esc(rec.at||'')}<br>${esc(rec.note||'')}</span>`:''}
-      </span><span class="acts">${action}</span></div>`;
-  }).join('');
-  box.querySelectorAll('.rd').forEach((row,i)=>{
-    const btn=row.querySelector('button');
-    if(btn) btn.addEventListener('click',()=>UI.openReadiness(t.id,MOCK.READINESS_LINES[i].key));
-  });
+  document.getElementById('readinessLines').innerHTML=MOCK.READINESS_LINES.map(line=>UI.readinessRow(t.id,line.key,true)).join('');
 }
 
 function renderHero(t, u, name, cur, days, mentor){
@@ -489,7 +474,7 @@ function unlockedBody(lv){
   </details>` : '');
 }
 
-/* 达标线条数（只认 met === true；阈值从不参与判定）
+/* 达标线条数（统一按实际数值与标准计算）
    注意： readinessBadge 挂在 window.UI 上（也挂了全局），不在 MOCK 上 */
 function readinessLineMet(wid){
   const fn = (typeof readinessBadge==='function') ? readinessBadge

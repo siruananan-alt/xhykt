@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>导师工作台</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015h">
+<link rel="stylesheet" href="../assets/theme.css?v=1019rd2">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 </head>
 <body class="role-mentor" data-role="mentor" data-nav-done="1">
@@ -106,10 +106,11 @@
 -->
 
 <script src="../assets/app.js?v=1019timing1"></script>
-<script src="../assets/mock-data.js?v=1018f"></script>
-<script src="../assets/mock-api.js?v=1019mr1"></script>
-<script src="../assets/mock-api-live.js?v=1019timing1"></script>
-<script src="../assets/ui.js?v=1019mr1"></script>
+<script src="../assets/readiness-rules.js?v=1019rd2"></script>
+<script src="../assets/mock-data.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019rd2"></script>
+<script src="../assets/mock-api-live.js?v=1019rd2"></script>
+<script src="../assets/ui.js?v=1019rd2"></script>
 <script>
 /* ============================================================
    导师工作台 · 数据驱动
@@ -339,7 +340,7 @@ function renderMentees(mentees){
     const cur = MOCK.currentLevelOf(t.id);
     const doneN = MOCK.DB.levels.filter(l=>MOCK.levelDone(t.id,l)).length;
     const todo = MOCK.todoCounts(t.id);
-    const rd = MOCK.readinessBadge ? readinessLineMet(t.id) : 0;
+    const rd = readinessLineMet(t.id);
     const name = u.name || t.name || t.id;
     // 12 格矩阵（UI.mxCell 是四态唯一来源）
     const cells = MOCK.DB.levels.map(lv=>UI.mxCell(t.id, lv, {cur: cur && cur.id===lv.id})).join('');
@@ -365,7 +366,7 @@ function renderMentees(mentees){
   }).join('');
 }
 
-/* 达标线条数（只认 met === true，阈值从不参与判定）
+/* 达标线条数（统一按实际数值与标准计算）
    注意： readinessBadge 挂在 window.UI 上（也挂了全局），不在 MOCK 上 */
 function readinessLineMet(wid){
   const fn = (typeof readinessBadge==='function') ? readinessBadge

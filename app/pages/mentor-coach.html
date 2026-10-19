@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>我的带教 · 导师</title>
-<link rel="stylesheet" href="../assets/theme.css?v=1015h">
+<link rel="stylesheet" href="../assets/theme.css?v=1019rd2">
 <link rel="stylesheet" href="../assets/sandbox.css?v=1015h">
 </head>
 <body class="role-mentor" data-role="mentor" data-nav-done="1">
@@ -117,10 +117,11 @@
 -->
 
 <script src="../assets/app.js?v=1019timing1"></script>
-<script src="../assets/mock-data.js?v=1018f"></script>
-<script src="../assets/mock-api.js?v=1019mr1"></script>
-<script src="../assets/mock-api-live.js?v=1019timing1"></script>
-<script src="../assets/ui.js?v=1019mr1"></script>
+<script src="../assets/readiness-rules.js?v=1019rd2"></script>
+<script src="../assets/mock-data.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019rd2"></script>
+<script src="../assets/mock-api-live.js?v=1019rd2"></script>
+<script src="../assets/ui.js?v=1019rd2"></script>
 <script>
 /* ============================================================
    我的带教 · 数据驱动（#36 第三部分 / 2026-10-15 多徒弟改版）
@@ -248,23 +249,11 @@ function openMenteeReadiness(tid){
     return toast('只能登记自己带教学员的转正达标线','err');
   }
   const name=(MOCK.userOf(tid)||{}).name || t.name || tid;
-  const lines=MOCK.READINESS_LINES.map(line=>{
-    const b=UI.readinessBadge(line.key,tid);
-    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)">
-      <span style="flex:1;min-width:0"><b>${esc(line.name)}</b><br>
-        <span class="tag ${b.met?'ok':'ghost'}">${esc(b.tag)}</span>
-        <span class="hint">${esc(b.val)}</span></span>
-      ${line.source==='site'?'<span class="hint">系统自动判定</span>':
-        `<button class="btn sm" data-readiness-line="${esc(line.key)}">${b.hasRec?'修改登记':'登记'}</button>`}
-    </div>`;
-  }).join('');
+  const lines=MOCK.READINESS_LINES.map(line=>UI.readinessRow(tid,line.key,true)).join('');
   UI.openModal(UI.modal('登记转正达标线',`<p><b>${esc(name)} · ${esc(tid)}</b></p>${lines}`));
-  document.querySelectorAll('#modal [data-readiness-line]').forEach(btn=>{
-    btn.addEventListener('click',()=>UI.openReadiness(tid,btn.dataset.readinessLine));
-  });
 }
 
-/* 达标线条数（只认 met === true，阈值从不参与判定）
+/* 达标线条数（统一按实际数值与标准计算）
    注意： readinessBadge 挂在 window.UI 上（也挂了全局），不在 MOCK 上 */
 function readinessLineMet(wid){
   const fn = (typeof readinessBadge==='function') ? readinessBadge
@@ -292,7 +281,7 @@ function renderKpis(mentees){
   const certified = mentees.filter(t=>{
     const fn = (typeof readinessBadge==='function') ? readinessBadge : (window.UI&&window.UI.readinessBadge);
     if(typeof fn!=='function') return false;
-    return MOCK.READINESS_LINES.every(l=>{ const b = fn(l.key, t.id); return b && b.met; });
+    return !!(MOCK.DB.readiness[t.id]||{}).certifiedAt && MOCK.READINESS_LINES.every(l=>{ const b = fn(l.key, t.id); return b && b.met; });
   }).length;
   const certRate = mentees.length ? Math.round(certified / mentees.length * 100) : 0;
 

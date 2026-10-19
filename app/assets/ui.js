@@ -292,7 +292,7 @@ function rdBadgeGrid(wid){
       <span class="rb-ic" data-ic="${icon}"></span>
       <b>${esc(line.name)}</b>
       <span class="rb-val">${esc(b.val)}</span>
-      <span class="rb-src">${isSite?'系统自动':'以飞书为准'}</span>
+      <span class="tag ${b.met?'ok':'ghost'}">${esc(b.tag)}</span><span class="rb-src">标准：${esc(readinessRuleText(line.key))}</span><span class="rb-src">${esc(b.valid?b.gap:(b.hasRec?'请联系带教老师补录':'待带教老师登记'))}</span>
     </div>`;
   }).join('');
   return `<div class="rd-badges">${cells}</div>`;
@@ -406,29 +406,37 @@ function tr(cells,attrs){ return `<tr ${attrs||''}>${cells.map(c=>`<td>${c}</td>
      · hasRec = 是否有登记记录（study 恒 true；其余看 value/met 是否有值）
        -> 三态渲染 = met?'ok' : (hasRec?'no':'todo')，由消费方按此式得出，不另立规则 */
 function readinessBadge(lineKey, wid){
-  const line=MOCK.READINESS_LINES.find(l=>l.key===lineKey);
-  const eff =MOCK.effectiveThreshold(lineKey);
-  const rec=MOCK.DB.readiness[wid]||{};
-  const r=rec[lineKey];
-  if(lineKey==='study'){
-    const done=MOCK.DB.levels.filter(l=>MOCK.levelDone(wid,l)).length;
-    const ok=MOCK.DB.levels.length>0 && done===MOCK.DB.levels.length;   // 空关卡不判通关
-    return { cls:ok?'ok':'no', met:ok, hasRec:true, name:line.name,
-             val:`${done} / ${MOCK.DB.levels.length} 关`,
-             tag:ok?'已通关':'进行中', src:'系统自动', eff };
-  }
-  const v=r?r.value:null, ok=!!(r&&r.met===true);   // 基线：met 严格 === true
-  const hasRec=!!(r&&(r.value!=null||r.met!=null));
-  return { cls:ok?'ok':'no', met:ok, hasRec, name:line.name,
-           val: v===null?'—':`${v} / ${eff.threshold} ${eff.unit}`,
-           tag: ok?'已达标':(hasRec?'未达标':'未登记'), src:'飞书', rec:r, line, eff };
+  const line=MOCK.READINESS_LINES.find(l=>l.key===lineKey),eff=MOCK.effectiveThreshold(lineKey);
+  const r=MOCK.readinessStatus(lineKey,wid),site=line.source==='site';
+  const tag=r.met?'已达标':site?'进行中':!r.hasRec?'未登记':!r.valid?'待补录':'未达标';
+  const val=site?`${r.value} / ${r.total} 关`:r.valid?`${r.value} ${eff.unit}`:r.hasRec?'请补录有效数值':'暂无登记';
+  return {...r,cls:r.met?'ok':r.valid?'no':'todo',name:line.name,tag,val,src:site?'系统自动':'老师登记 · 系统判定',eff,line};
 }
+function readinessRuleText(key){
+  return key==='study'?MOCK.DB.levels.length+' 关全部通关':ReadinessRules.definitions[key].rule;
+}
+function readinessTime(at){
+  const d=new Date(at);
+  return at&&Number.isFinite(d.getTime())?d.toLocaleString('zh-CN',{hour12:false}):'时间未记录';
+}
+function readinessRow(tid,key,editable){
+  const b=readinessBadge(key,tid),r=b.rec,site=key==='study';
+  const pct=site?(b.total?100*b.value/b.total:0):!b.valid?0:b.met?100:key==='editing'?Math.min(99,100*b.eff.threshold/b.value):Math.min(99,100*b.value/b.eff.threshold);
+  return `<div class="readiness-item" data-readiness-key="${esc(key)}">
+    <div class="readiness-main"><div><b>${esc(b.name)}</b><div class="hint">标准：${esc(readinessRuleText(key))}</div></div>
+    <span class="tag ${b.met?'ok':b.valid&& !site?'warn':'ghost'}">${esc(b.tag)}</span></div>
+    <div class="readiness-value">${esc(b.val)}</div>
+    <p class="hint">${site?(b.met?'学习关卡已全部完成':'按学习关卡完成情况自动更新'):!b.valid?(b.hasRec?'历史记录缺少有效数值，请带教老师补录':'等待带教老师或管理员登记实际数值'):esc(b.gap)}</p>
+    ${b.valid?`<div class="bar sm" aria-label="达标进度"><i style="width:${Math.max(0,Math.min(100,pct))}%"></i></div>`:''}
+    ${r?`<div class="readiness-audit">登记人：${esc(r.byName||r.by||'未记录')} · ${esc(readinessTime(r.at))}${r.note?`<div>备注：${esc(r.note)}</div>`:''}</div>`:''}
+    ${editable&&!site?`<div class="readiness-actions"><button class="btn sm" data-readiness-edit="${esc(key)}" data-readiness-tid="${esc(tid)}">${b.hasRec?'修改登记':'登记'}</button></div>`:''}
+  </div>`;
+}
+document.addEventListener('click',event=>{
+  const button=event.target.closest('[data-readiness-edit]');
+  if(button)openReadiness(button.dataset.readinessTid,button.dataset.readinessEdit);
+});
 
-/* ---------- 待批改清单（唯一口径，批量通过两入口共用） ----------
-   返回该角色可见范围内的所有 submitted 条目，带可读标签。
-   与 todoCounts() 同源同规则：admin 全站 / mentor 只自己徒弟 / 学员只自己。
-   注意： 批量通过**必须**逐条过 canReview —— 本函数只负责"列出候选"，
-      不负责"是否可批"（后者由 mockBulkPass 逐条判定）。 */
 function pendingList(wid){
   const role=MOCK.userOf(wid).role;
   let wids=[];
@@ -720,33 +728,40 @@ function openGateConfirm(){
      <button class="btn" onclick="doSetGate(${on?0:1})">${on?'关闭强制解锁':'确认开启'}</button>`));
 }
 // 4. 转正达标线登记 openReadiness（L1922）—— 按 source 分支
-function openReadiness(tid, key){
-  const t=MOCK.traineeOf(tid);
-  const line=MOCK.READINESS_LINES.find(l=>l.key===key);
-  if(!t || !line) return toast('找不到学员或达标线','err');
-  const session=MOCKAPI.S;
-  if(session.role!=='admin' && !(session.role==='mentor' && t.mentorId===session.wid)) return toast('只能登记自己带教学员的转正达标线','err');
-  if(line.source==='site'){
-    const done=MOCK.DB.levels.filter(l=>MOCK.levelDone(tid,l)).length;
-    return openModal(modal('转正达标线登记',
-      `<div class="note ok"><b>学习达标</b> 由系统自动判定，<b>不需要人工登记</b>。<br>
-       当前：${done} / ${MOCK.DB.levels.length} 关全通。</div>`));
+function openReadiness(tid,key){
+  const t=MOCK.traineeOf(tid),line=MOCK.READINESS_LINES.find(l=>l.key===key),session=MOCKAPI.S;
+  if(!t||!line)return toast('找不到学员或达标线','err');
+  if(session.role!=='admin'&&!(session.role==='mentor'&&t.mentorId===session.wid))return toast('只能登记自己带教学员的转正达标线','err');
+  if(line.source==='site')return openModal(modal('学习达标',readinessRow(tid,key,false)));
+  const rec=(MOCK.DB.readiness[tid]||{})[key]||{},definition=ReadinessRules.definitions[key];
+  openModal(modal('登记 · '+line.name,
+    `<div class="note"><b>${esc(t.name)} · ${esc(tid)}</b><br>标准：${esc(definition.rule)}</div>
+     ${fld('实际'+(key==='traffic'?'月引流人数':key==='editing'?'剪辑耗时':'运营账号数')+'（'+definition.unit+'）',`<input id="rdv-${key}" aria-label="实际数值" type="number" step="${definition.integer?'1':'any'}" min="0" value="${rec.value==null?'':esc(rec.value)}" placeholder="${key==='editing'?'例如 1.2；1.5 小时不达标':key==='traffic'?'例如 800':'例如 4'}">`,key==='editing'?'填写完成长视频剪辑的实际小时数，必须大于 0。':'填写非负整数，0 表示已登记但尚未达到标准。')}
+     <div id="readinessPreview" class="note" aria-live="polite"></div>
+     ${fld('备注（选填）',`<textarea id="rdn-${key}" maxlength="200" rows="2" placeholder="如统计月份、数据来源或核对说明">${esc(rec.note||'')}</textarea>`,'最多 200 字；备注会同步给学员、带教老师和管理员。')}
+     ${rec.at?`<p class="hint">上次登记：${esc(rec.byName||rec.by||'未记录')} · ${esc(readinessTime(rec.at))}</p>`:''}
+     ${Object.keys(rec).length?'<button class="btn sm ghost danger" id="clearReadiness">清除登记</button>':''}`,
+    `<button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" id="saveReadiness">保存登记</button>`));
+  const input=document.getElementById('rdv-'+key),preview=document.getElementById('readinessPreview'),save=document.getElementById('saveReadiness');
+  function update(){
+    const r=ReadinessRules.evaluate(key,input.value);
+    preview.className='note '+(r.valid?(r.met?'ok':'warn'):'');
+    preview.textContent=r.valid?`${r.met?'已达标':'未达标'} · ${r.gap}（保存后生效）`:r.error;
+    save.disabled=!r.valid;
   }
-  const rec=(MOCK.DB.readiness[tid]||{})[key]||{};
-  const eff=MOCK.effectiveThreshold(key);
-  const cmpTxt=eff.compare==='lt'?`<  ${eff.threshold} ${eff.unit}`:`≥ ${eff.threshold} ${eff.unit}`;
-  openModal(modal('转正达标线登记',
-    `<div class="note"><b>${esc(t.name)}（${t.id}）</b> · ${esc(line.name)} ·达标线：${cmpTxt} · <span class="tag ghost">口径以飞书为准</span></div>
-     ${fld('数值 * '+esc(line.name),`<input id="rdv-${key}" type="number" step="any" min="0" value="${rec.value??''}" data-rule="${key==='traffic'?'traffic':'num'}">
-       <div class="err">${key==='traffic'?'月引流人数需在 0–99999 之间':'请填大于 0 的数字'}</div><div class="ok">格式正确</div>`,
-       line.hint)}
-     ${fld('备注',`<input id="rdn-${key}" type="text" value="${esc(rec.note||'')}" placeholder="数据来源、口径说明">`,
-       '备注会同步给学员、带教老师和管理员。')}
-     ${fld('登记结论',`<select id="rdm-${key}"><option value="false" ${rec.met!==true?'selected':''}>未达标</option><option value="true" ${rec.met===true?'selected':''}>达标</option></select>`)}
-     ${rec.at?'<button class="btn sm ghost danger" onclick="mockSetReadiness(\''+tid+'\',\''+key+'\',null)">清除登记</button>':''}
-     <div class="note">请按实际结果填写数值、备注并选择结论，点击「保存登记」后生效。是否达标以登记结论为准，学习达标由系统自动计算。</div>`,
-    `<button class="btn ghost" onclick="closeModal()">取消</button>
-     <button class="btn" onclick="mockSaveReadiness('${tid}','${key}')">保存登记</button>`));
+  input.addEventListener('input',update);update();
+  save.addEventListener('click',async()=>{
+    if(save.disabled)return;save.disabled=true;
+    try{await window.mockSaveReadiness(tid,key);}catch(e){save.disabled=false;}
+  });
+  const clear=document.getElementById('clearReadiness');
+  if(clear)clear.addEventListener('click',()=>{
+    const draftValue=input.value,draftNote=document.getElementById('rdn-'+key).value;
+    openModal(modal('确认清除登记',`<p>将清除 ${esc(t.name)} 的「${esc(line.name)}」数值及备注，状态恢复为未登记。</p><p class="hint">若已认证转正，清除后会同时撤销认证。</p>`,
+      '<button class="btn ghost" id="cancelReadinessClear">取消</button><button class="btn danger" id="confirmReadinessClear">确认清除</button>'));
+    document.getElementById('cancelReadinessClear').onclick=()=>{openReadiness(tid,key);document.getElementById('rdv-'+key).value=draftValue;document.getElementById('rdn-'+key).value=draftNote;document.getElementById('rdv-'+key).dispatchEvent(new Event('input'));};
+    document.getElementById('confirmReadinessClear').onclick=async event=>{event.target.disabled=true;try{await window.mockSetReadiness(tid,key,null);closeModal();}catch(e){event.target.disabled=false;}};
+  });
 }
 
 /* ---------- 改达标线阈值：已移除（2026-10-04 用户决策 C） ----------
@@ -1115,16 +1130,16 @@ function exportCertCSV(){
     ['工号','姓名','导师','学习达标','月引流','剪辑效率','账号运营','已达标','认证状态','认证时间','认证操作人'],
     MOCK.DB.trainees.map(t=>{
       const r=MOCK.DB.readiness[t.id]||{};
-      const studyOk=MOCK.DB.levels.every(l=>MOCK.levelDone(t.id,l));
-      const n=['traffic','editing','accounts'].filter(k=>r[k]&&r[k].met===true).length;
+      const studyOk=readinessBadge('study',t.id).met;
+      const n=['traffic','editing','accounts'].filter(k=>readinessBadge(k,t.id).met).length;
       const done=studyOk&&n===3;
       return [t.id,t.name,(MOCK.mentorOf(t.mentorId)||{}).name||t.mentorId,
               studyOk?'已达标':'未达标',
-              r.traffic&&r.traffic.met===true?'已达标':'未达标',
-              r.editing&&r.editing.met===true?'已达标':'未达标',
-              r.accounts&&r.accounts.met===true?'已达标':'未达标',
+              readinessBadge('traffic',t.id).tag,
+              readinessBadge('editing',t.id).tag,
+              readinessBadge('accounts',t.id).tag,
               (studyOk?1:0)+n+'/4',
-              r.certifiedAt?'已认证':'未认证', r.certifiedAt||'', r.certifiedByName||''];
+              r.certifiedAt?(done?'已认证':'待复核'):'未认证', r.certifiedAt||'', r.certifiedByName||''];
     }));
 }
 
@@ -1134,7 +1149,7 @@ function roleCN(r){ return {student:'学员',mentor:'带教导师',admin:'教务
 // roleCN 保留 trainer 映射：后端 adminUserUpsert 仍支持该角色，仅沙盒演示不再提供入口
 // 切角色时统一落点（app.js 的 ROLE_HOME 用它）
 window.UI={topbarHTML,initTopbar,refreshTodoDot,mxCell,mxLegend,stagebar,rdBadgeGrid,readinessMeta,taskCardClass,taskTagHTML,tbl,tr,
-  readinessBadge,openModal:window.openModal,modal,fld,openJourney,openAdminReview,openGateConfirm,syncGateSwitchUI,doSetGate,
+  readinessRow,readinessRuleText,readinessTime,readinessBadge,openModal:window.openModal,modal,fld,openJourney,openAdminReview,openGateConfirm,syncGateSwitchUI,doSetGate,
   openReadiness,openAddUser,onRoleChange,openResetPw,openTransfer,openDeleteCourse,openTimeline,
   openAddPerson,
   openPlayer,openSync,openQuiz,gradeQuiz,
