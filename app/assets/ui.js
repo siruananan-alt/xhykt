@@ -13,8 +13,8 @@
    规则出处：《原网站功能基线》/《差异矩阵》
    ============================================================ */
 
-const __siteBrandLogo=new URL('brand-logo.svg?v=1020brand2',document.currentScript.src).href;
-const __siteBrandSymbol=new URL('brand-symbol.svg?v=1020brand2',document.currentScript.src).href;
+const __siteBrandLogo=new URL('brand-logo.svg?v=1020green1',document.currentScript.src).href;
+const __siteBrandSymbol=new URL('brand-symbol.svg?v=1020green1',document.currentScript.src).href;
 /* ---------- 顶栏 ---------- */
 // 管理端导航：带教计划模块已移除，保留课程、人员和闯关管理。
 /* 【2026-10-15 · 账号管理并入人员管理】原第 9 项「用户管理」(admin-users.html) 已下线：
