@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<link rel="icon" href="favicon.ico?v=1020logo1" sizes="16x16 32x32 48x48">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1020logo1">
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=1020logo1" sizes="any">
+<link rel="icon" href="favicon.ico?v=1020brand2" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1020brand2">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=1020brand2" sizes="any">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>企业内部学习站 · 5 周 12 关，4 条线达标就转正</title>
+<title>星禾云课堂 · 5 周 12 关，4 条线达标就转正</title>
 <meta name="description" content="星禾云课堂 · 5 周 12 关闯关路径、9 门课、13 张任务卡、4 条转正达标线。">
-<link rel="stylesheet" href="app/assets/theme.css?v=1015d">
+<link rel="stylesheet" href="app/assets/theme.css?v=1020brand2">
 <link rel="stylesheet" href="app/assets/sandbox.css?v=1015d">
-<link rel="stylesheet" href="app/assets/landing.css?v=1015d">
+<link rel="stylesheet" href="app/assets/landing.css?v=1020brand2">
 </head>
 <!-- data-public="1"：这是给所有访客看的公开页，未登录也能完整浏览。
      app.js 见到它会跳过身份注入（不显示任何人的姓名/角色），右上角只给「登录」入口。 -->
@@ -23,9 +23,8 @@
          相对链接在沙箱(proto/index.html)与线上(/training-courses/index.html)都解析到自身。
          注意： 不要改成 app.js 的 homeUrl()：本页 data-public="1"，不加载任何工作页逻辑，
          且落地页自己就是首页，链接指向自己即可。 -->
-    <a class="brand" href="index.html" aria-label="返回首页：企业内部学习站">
-      <span class="logo">学</span>
-      <span class="bn">企业内部学习站<span class="bn2">星禾云课堂</span></span>
+    <a class="brand" href="index.html" aria-label="返回首页：星禾云课堂">
+      <picture class="site-brand"><source media="(max-width:640px)" srcset="app/assets/brand-symbol.svg?v=1020brand2"><img src="app/assets/brand-logo.svg?v=1020brand2" alt="星禾云课堂" width="160" height="40"></picture>
     </a>
     <!-- data-spy：chip 指向页内区块，由 initScrollSpy() 做滚动联动高亮 -->
     <nav class="nav2" data-spy aria-label="主导航">
@@ -385,11 +384,7 @@
 <footer class="lp-foot">
   <div class="lp-foot-c">
     <div class="lp-foot-b">
-      <span class="logo">学</span>
-      <div>
-        <b>企业内部学习站</b>
-        <span>星禾云课堂 · 新人培养体系</span>
-      </div>
+      <div><img class="site-brand-footer" src="app/assets/brand-logo.svg?v=1020brand2" alt="星禾云课堂" width="180" height="45"><span>新人培养体系</span></div>
     </div>
     <nav class="lp-foot-nav" aria-label="页脚导航">
       <a href="#feat">闯关</a>

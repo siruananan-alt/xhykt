@@ -13,6 +13,8 @@
    规则出处：《原网站功能基线》/《差异矩阵》
    ============================================================ */
 
+const __siteBrandLogo=new URL('brand-logo.svg?v=1020brand2',document.currentScript.src).href;
+const __siteBrandSymbol=new URL('brand-symbol.svg?v=1020brand2',document.currentScript.src).href;
 /* ---------- 顶栏 ---------- */
 // 管理端导航：带教计划模块已移除，保留课程、人员和闯关管理。
 /* 【2026-10-15 · 账号管理并入人员管理】原第 9 项「用户管理」(admin-users.html) 已下线：
@@ -82,9 +84,8 @@ function topbarHTML(role,page,opts){
         覆盖出一个和两行文字打架的原生提示框。 */
   return `<header class="topbar">
   <div class="tb-in">
-    <a class="brand" href="${homeUrl()}" aria-label="返回首页：企业内部学习站">
-      <span class="logo">学</span>
-      <span class="bn">企业内部学习站${brand2?`<span class="bn2">${brand2}</span>`:''}</span>
+    <a class="brand" href="${homeUrl()}" aria-label="返回首页：星禾云课堂">
+      <picture class="site-brand"><source media="(max-width:640px)" srcset="${__siteBrandSymbol}"><img src="${__siteBrandLogo}" alt="星禾云课堂" width="160" height="40"></picture>
     </a>
     ${opts.noNav?'':`<nav class="nav2" aria-label="分类导航">${chips}</nav>`}
     ${todo}${gate}

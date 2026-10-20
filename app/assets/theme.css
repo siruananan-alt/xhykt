@@ -107,6 +107,12 @@ hr{border:0;border-top:2px solid var(--line);margin:var(--s6) 0}
   border:2px solid var(--ink);color:var(--ink);display:grid;place-items:center;
   font-size:15px;font-weight:800;flex:none;
 }
+.brand .site-brand{display:block;flex:none;width:160px;height:40px;line-height:0}
+.brand .site-brand img{display:block;width:100%;height:100%;object-fit:contain}
+.site-brand-footer{display:block;width:180px;height:45px;object-fit:contain;margin-bottom:8px}
+.auth-brand{display:inline-block;align-self:flex-start;max-width:100%;padding:10px 14px;background:#fff;border-radius:12px;line-height:0}
+.auth-brand img{display:block;width:240px;max-width:100%;height:auto}
+@media(max-width:640px){.brand .site-brand{width:32px;height:32px}.auth-brand img{width:200px}}
 /* 品牌区：主名 + 副名**两行**排布。
    【2026-10-05】此前两行规则只写在 landing.css（公开落地页），工作页的
    UI.topbarHTML 模板没有 -> 主名 7 字 + 副名 5 字（教务管理端/带教工作台）
