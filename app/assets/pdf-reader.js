@@ -80,7 +80,7 @@
       $('backToCourse').href=back.href;
       $('backToCourse').textContent=mentorContext?'返回关卡内容':'返回课程';
       $('documentTitle').textContent=doc.name || '课程资料';
-      document.title=(doc.name || '课程资料')+' · PDF 阅读';
+      document.title=(doc.name || '课程资料')+' · PDF 阅读 · 云课堂内部学习站';
       if(openedUrl===url && !force) return;
       serial=++loadSerial;
       openedUrl=url;

@@ -84,7 +84,7 @@ function topbarHTML(role,page,opts){
         覆盖出一个和两行文字打架的原生提示框。 */
   return `<header class="topbar">
   <div class="tb-in">
-    <a class="brand" href="${homeUrl()}" aria-label="返回首页：星禾云课堂">
+    <a class="brand" href="${homeUrl()}" aria-label="返回首页：云课堂内部学习站">
       <picture class="site-brand"><source media="(max-width:640px)" srcset="${__siteBrandSymbol}"><img src="${__siteBrandLogo}" alt="星禾云课堂" width="160" height="40"></picture>
     </a>
     ${opts.noNav?'':`<nav class="nav2" aria-label="分类导航">${chips}</nav>`}

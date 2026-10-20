@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-CN"><head>
+<meta name="application-name" content="云课堂内部学习站">
 <link rel="icon" href="../../favicon.ico?v=1020brand2" sizes="16x16 32x32 48x48">
 <link rel="apple-touch-icon" href="../../apple-touch-icon.png?v=1020brand2">
 <link rel="icon" type="image/svg+xml" href="../../favicon.svg?v=1020brand2" sizes="any"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>数据看板 · 教务管理员</title><link rel="stylesheet" href="../assets/theme.css?v=1020brand2"><link rel="stylesheet" href="../assets/sandbox.css?v=1015h"><link rel="stylesheet" href="../assets/admin-dashboard.css?v=1019data1"></head>
+<title>数据看板 · 教务管理员 · 云课堂内部学习站</title><link rel="stylesheet" href="../assets/theme.css?v=1020brand2"><link rel="stylesheet" href="../assets/sandbox.css?v=1015h"><link rel="stylesheet" href="../assets/admin-dashboard.css?v=1019data1"></head>
 <body class="role-admin dashboard-page" data-role="admin" data-nav-done="1"><div id="topbarSlot"></div>
 <main class="wrap wide data-dashboard">
- <div class="pg-head dashboard-heading"><div><span class="eyebrow">星禾云课堂</span><h1>数据看板</h1><p class="sub">查看学习进度、转正达标与导师带教情况。</p></div><button class="btn ghost" onclick="UI.exportLearningReport()">导出学习数据 CSV</button></div>
+ <div class="pg-head dashboard-heading"><div><span class="eyebrow">云课堂内部学习站</span><h1>数据看板</h1><p class="sub">查看学习进度、转正达标与导师带教情况。</p></div><button class="btn ghost" onclick="UI.exportLearningReport()">导出学习数据 CSV</button></div>
  <div class="kpis" id="kpis"></div>
  <div class="dashboard-charts">
   <section class="card"><div class="card-h"><h2 id="rateTitle">关卡通过率</h2><span class="tag ghost" id="rateDenom">—</span></div><p class="hint">通过人数 / 学员总数；该关已配置的环节全部通过，才计为通过。</p><div id="rateList"></div><p class="hint dashboard-foot" id="rateNote"></p></section>
@@ -21,7 +22,7 @@
 <script src="../assets/mock-data.js?v=1019rd2"></script>
 <script src="../assets/mock-api.js?v=1019avatar1"></script>
 <script src="../assets/mock-api-live.js?v=1019load1"></script>
-<script src="../assets/ui.js?v=1020brand2"></script>
+<script src="../assets/ui.js?v=1020name1"></script>
 <script>
 document.addEventListener('DOMContentLoaded',()=>{
  if(typeof needsLoginGate==='function'&&needsLoginGate())return;
