@@ -188,34 +188,23 @@ function renderScore(wid){
 
 /* 4. 带教：真实导师 + 教务 */
 function renderMentor(wid){
-  const me=MOCK.userOf(wid);
   const t=MOCK.traineeOf(wid);
-  const m=t&&t.mentorId?MOCK.userOf(t.mentorId):null;
+  const assigned=t&&t.mentorId?MOCK.userOf(t.mentorId):null;
+  const m=assigned&&assigned.role==='mentor'?assigned:null;
   const rows=[];
   if(m){
     rows.push(`<div class="rowitem">
       <span class="avatar" data-avatar-role="mentor" aria-hidden="true" style="width:44px;height:44px">${esc(av(m.name))}</span>
       <span class="mid">
-        <b>${esc(m.name)}（${esc(m.id)}）· 带教导师</b>
+        <b>${esc(m.name||t.mentorId)}（${esc(m.wid||t.mentorId)}）· 带教导师</b>
         <span class="d">${esc(m.dept||'—')}</span>
       </span>
     </div>`);
   }
-  // 其他导师（M2）：真实角色是 mentor，不是培训师
-  // 注意：【2026-10-04 修正】users 表主键字段是 **wid**（不是 id）——
-  //    原写法 `uid===m.id` 因 `m.id===undefined` 永远不成立 -> 带教导师被渲染两遍。
-  Object.keys(MOCK.DB.users).forEach(uid=>{
-    const u=MOCK.DB.users[uid];
-    if(u.role!=='mentor') return;
-    if(m && uid===m.wid) return;
-    rows.push(`<div class="rowitem">
-      <span class="avatar" data-avatar-role="mentor" aria-hidden="true" style="width:44px;height:44px">${esc(av(u.name))}</span>
-      <span class="mid">
-        <b>${esc(u.name)}（${esc(uid)}）· 带教导师</b>
-        <span class="d">${esc(u.dept||'—')} · 跨区带教</span>
-      </span>
-    </div>`);
-  });
+  if(!m){
+    rows.push('<p class="hint">尚未分配有效的带教老师，请联系管理员。</p>');
+  }
+  // 学员只展示当前分配的导师；管理员作为教务联系人保留。
   Object.keys(MOCK.DB.users).forEach(uid=>{
     const u=MOCK.DB.users[uid];
     if(u.role!=='admin') return;
