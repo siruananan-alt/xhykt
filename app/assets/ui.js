@@ -85,7 +85,7 @@ function topbarHTML(role,page,opts){
      href 由 app.js 的 homeUrl() 算（站点挂两层，首页不在 SITE_BASE 里，见 app.js §6b）。
      注意： 用 aria-label 而不是 title：品牌区两行排布下 title 会在鼠标停留时
         覆盖出一个和两行文字打架的原生提示框。 */
-  return `<header class="topbar">
+  return `<header class="topbar${role==='admin'?' topbar--admin':''}">
   <div class="tb-in">
     <a class="brand" href="${homeUrl()}" aria-label="返回首页：云课堂内部学习站">
       <picture class="site-brand"><source media="(max-width:640px)" srcset="${__siteBrandSymbol}"><img src="${__siteBrandLogo}" alt="星禾云课堂" width="160" height="40"></picture>

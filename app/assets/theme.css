@@ -1070,3 +1070,23 @@ a.shotthumb:hover{border-color:var(--link)}
 .readiness-audit{font-size:12px;color:var(--muted);line-height:1.7;margin-top:12px}
 .readiness-actions{display:flex;justify-content:flex-end;margin-top:12px}
 @media(max-width:640px){.readiness-item{padding:14px}.readiness-main{flex-wrap:wrap}}
+/* Admin navigation gets its own row so every destination stays visible. */
+.topbar--admin{height:auto;padding:8px var(--s4);align-items:stretch}
+.topbar--admin .tb-in{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;grid-template-areas:"brand todo gate account" "nav nav nav nav";height:auto;gap:6px 16px;padding:6px 14px;overflow:visible}
+.topbar--admin .brand{grid-area:brand;justify-self:start;margin:0;padding:0}
+.topbar--admin .todo-btn{grid-area:todo}
+.topbar--admin .gatesw{grid-area:gate;margin:0}
+.topbar--admin .acct-wrap{grid-area:account;justify-self:end}
+.topbar--admin .nav2{grid-area:nav;display:flex;flex-wrap:wrap;gap:4px;width:100%;overflow:visible;padding:6px 0 2px;border-top:1px solid var(--line);mask-image:none!important;-webkit-mask-image:none!important}
+.topbar--admin .nav2 i{display:none}
+.topbar--admin .nav2 a{flex:0 0 auto;white-space:nowrap;padding:9px 16px;min-height:40px}
+@media(max-width:720px){
+ .topbar--admin{padding:6px 8px}
+ .topbar--admin .tb-in{gap:6px 10px;padding:6px 10px}
+ .topbar--admin .nav2{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+ .topbar--admin .nav2 a{font-size:12px;padding:8px 2px;justify-content:center;text-align:center;min-width:0}
+}
+@media(max-width:600px){
+ .topbar--admin .tb-in{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"brand todo account" "gate gate gate" "nav nav nav"}
+ .topbar--admin .gatesw{justify-self:end}
+}
