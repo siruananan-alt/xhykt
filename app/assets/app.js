@@ -322,6 +322,7 @@ function doLogout(){
 }
 
 const PAGE_ROLE={  // 文件名 -> 该页本该属于的角色（首页 index.html 是所有角色共用，故不列入）
+  'community.html':'shared',
   'login.html':'student','student-journey.html':'student','student-level.html':'student',
   'student-courses.html':'student','student-me.html':'student',
   'mentor.html':'mentor','mentor-mentee.html':'mentor','mentor-coach.html':'mentor','mentor-courses.html':'mentor',
@@ -376,6 +377,7 @@ function guardPage(){
   // admin 是"全站可见"的管理视角：允许看管理端 + 学员端/导师端（要检查学员的视图）。
   // 反向不成立：学员/导师绝不进管理端。
   if(me===need) return false;
+  if(need==='shared' && ['student','mentor','admin'].includes(me)) return false;
   if(me==='admin' && need!=='admin') return false;
   // 不符 -> 送回自己的落地页
   const home=pageUrl('pages/'+ROLE_HOME[me]);
@@ -434,6 +436,7 @@ function currentRole(){
 /* 被守卫弹回来时给一句解释，别让人以为"点错了"。 */
 /* 页面中文名（仅用于守卫提示语；未登记的页回落到文件名，不报错） */
 const PAGE_CN={
+  'community.html':'学习便签墙',
   'student-journey.html':'我的闯关','student-courses.html':'课程库','student-me.html':'我的档案',
   'student-course.html':'课程详情','student-learn.html':'章节学习','student-level.html':'关卡详情',
   'mentor.html':'带教工作台','mentor-coach.html':'我的带教','mentor-mentee.html':'徒弟详情','mentor-courses.html':'课程中心',

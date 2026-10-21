@@ -28,18 +28,21 @@ const NAV_ADMIN = [
   ['admin-readiness.html', '转正达标线'],
   ['admin-courses.html',   '课程管理'],
   ['admin-students.html',  '人员管理'],
-  ['admin-perms.html',     '权限矩阵']
+  ['admin-perms.html',     '权限矩阵'],
+  ['community.html',      '便签墙']
 ];
 const NAV_MENTOR = [
   ['mentor.html','工作台'],
   ['mentor-courses.html','课程中心'],
   ['mentor-coach.html','我的带教'],
-  ['mentor-mentee.html','徒弟详情']
+  ['mentor-mentee.html','徒弟详情'],
+  ['community.html','便签墙']
 ];
 const NAV_STUDENT = [
   ['student-journey.html','我的闯关'],
   ['student-courses.html','课程库'],
-  ['student-me.html','我的档案']
+  ['student-me.html','我的档案'],
+  ['community.html','便签墙']
 ];
 
 // enforceGate 开关：基线默认 false、**开启**需 confirm「开启闯关强制解锁？」

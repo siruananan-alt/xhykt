@@ -1,0 +1,28 @@
+const fs=require('node:fs'),path=require('node:path');
+const [src,dst]=process.argv.slice(2);
+if(!src||!dst)throw Error('Usage: node prepare-community-function.cjs <fresh-cloud-backup-folder> <staging-folder>');
+const source=path.resolve(src),dest=path.resolve(dst);
+if(source===dest||dest.startsWith(source+path.sep))throw Error('Keep the backup separate from staging');
+let code=fs.readFileSync(path.join(source,'index.js'),'utf8');
+if(!code.includes('async function handle(')||!code.includes('function verifyToken('))throw Error('Unexpected function source');
+if(code.includes("require('./community.js')"))throw Error('Community is already installed; review the current version first');
+const tag=/if \(act === "buildTag"\) return \{ tag: "[^"]+" \};/;
+if(!tag.test(code))throw Error('Build tag anchor missing');
+const anchor="const practiceVideos = require('./practice-video.js')";
+if(!code.includes(anchor))throw Error('Runtime anchor missing');
+code=code.replace(anchor,"const community = require('./community.js')({readJSON,writeJSON,cosRequest,PREFIX,crypto});\n"+anchor);
+code=code.replace(tag,`if (act === "buildTag") return { tag: "b20261020-community-v1" };
+  if (['communityList','communityCreate','communityEdit','communityDelete','communityLike','communityPin'].includes(act)) {
+    const me=verifyToken(data.token);
+    if(!me)return {error:'登录已失效，请重新登录'};
+    return community(me,data);
+  }`);
+let views=fs.readFileSync(path.join(source,'data-view.js'),'utf8');
+const scope="keysFor(page,role='admin'){";
+if(!views.includes(scope))throw Error('Page scope anchor missing');
+views=views.replace(scope,scope+"\n    if(page==='community.html')return ['users','settings'];");
+fs.cpSync(source,dest,{recursive:true});
+fs.writeFileSync(path.join(dest,'index.js'),code);
+fs.writeFileSync(path.join(dest,'data-view.js'),views);
+fs.copyFileSync(path.resolve(__dirname,'../functions/etrain-api/community.js'),path.join(dest,'community.js'));
+console.log('Community staged. All unrelated cloud files and environment configuration preserved.');

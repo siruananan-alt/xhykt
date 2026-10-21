@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="application-name" content="云课堂内部学习站">
+<title>学习便签墙 · 云课堂内部学习站</title>
+<link rel="icon" href="../../favicon.svg?v=1020green1" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/theme.css?v=1020brand2">
+<link rel="stylesheet" href="../assets/community.css?v=1020wall5">
+</head>
+<body data-nav-done="1">
+<div id="topbarSlot"></div>
+<main class="wall-main">
+  <header class="wall-heading"><h1>学习便签墙</h1><span id="wallCount">正在加载…</span><span id="wallSync" class="sr-only" role="status" aria-live="polite">站内所有人可见</span></header>
+  <div id="wallError" role="alert" hidden></div>
+  <div id="wallViewport" class="wall-viewport" tabindex="0" aria-label="便签画布"><div id="wallPlane" class="wall-plane"><section id="noteWall" class="note-wall" aria-label="共享便签"></section><nav id="wallPager" class="wall-pager" aria-label="便签翻页"></nav></div></div>
+  <span id="panStatus" class="sr-only" role="status" aria-live="polite"></span>
+  <section class="wall-toolbar" aria-label="便签工具栏">
+    <label class="wall-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="sr-only">搜索内容或姓名</span><input type="search" id="wallSearch" placeholder="搜索便签…" maxlength="100"></label>
+    <details class="wall-filter" id="wallFilters"><summary aria-label="筛选便签" title="筛选便签"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2.5"/><circle cx="15" cy="17" r="2.5"/></svg></summary><div class="wall-filter-panel">
+      <strong>查看便签</strong><div class="wall-tabs" role="group" aria-label="查看范围"><button type="button" data-mine="false" aria-pressed="true">全部便签</button><button type="button" data-mine="true" aria-pressed="false">我的便签</button></div>
+      <label>分类<select id="wallTag"><option value="">所有分类</option><option>心得</option><option>提问</option><option>分享</option><option>加油</option></select></label>
+      <label>排序<select id="wallSort"><option value="latest">最新发布</option><option value="popular">最多点赞</option></select></label>
+      <div class="filter-buttons"><button type="button" id="wallReset">清空筛选</button><button type="button" id="refreshWall">刷新便签</button></div>
+    </div></details>
+    <button id="wallHand" class="wall-hand" type="button" aria-pressed="false" aria-label="拖动画布" title="小手掌：开启后按住拖动画布"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12V6a1.5 1.5 0 0 1 3 0v5-7a1.5 1.5 0 0 1 3 0v7-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v6c0 4-2.5 7-6 7h-1c-2 0-3.3-.8-4.5-2.5L4 13a1.5 1.5 0 0 1 2.4-1.8L8 13"/></svg></button>
+    <button class="wall-home" id="wallHome" type="button" aria-label="画布归位并清空筛选" title="画布归位并清空筛选"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+    <button class="wall-new" id="newNote" type="button" aria-label="写一张便签" title="写一张便签">＋</button>
+  </section>
+</main>
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div><div class="toasts" id="toasts"></div>
+<script src="../assets/app.js?v=1020wall1"></script>
+<script src="../assets/readiness-rules.js?v=1019rd2"></script>
+<script src="../assets/mock-data.js?v=1019rd2"></script>
+<script src="../assets/mock-api.js?v=1019avatar1"></script>
+<script src="../assets/mock-api-live.js?v=1019load1"></script>
+<script src="../assets/ui.js?v=1020wall1"></script>
+<script src="../assets/community.js?v=1020wall4"></script>
+</body></html>

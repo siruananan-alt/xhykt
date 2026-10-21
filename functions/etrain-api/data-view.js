@@ -9,6 +9,7 @@ const mentorPages=new Set(['mentor.html','mentor-coach.html','mentor-mentee.html
 const mentorKeys=['courses','users','mentors','trainees','levels','journey','learn','settings','tasks','readiness'];
 module.exports={
   keysFor(page,role='admin'){
+    if(page==='community.html')return ['users','settings'];
     if(role==='mentor' && mentorPages.has(page))return mentorKeys;
     return role==='admin' && typeof page==='string' && Object.hasOwn(views,page)?views[page]:null;
   },
