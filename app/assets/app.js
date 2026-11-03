@@ -138,11 +138,13 @@ function confirmBox(title,body,onOk,okLabel){
      改为 DOM 事件绑定 + new Function 在全局作用域执行字符串（与内联 onclick
      等价语义），调用方签名与用法完全不变，全站 3 页 4 个调用点一并修复。 */
   const ok=document.getElementById('cbOk');
-  if(ok) ok.onclick=function(){
+  if(ok) ok.onclick=async function(){
+    if(ok.disabled) return;
+    ok.disabled=true;
     closeModal();
     try{
-      if(typeof onOk==='function'){ onOk(); return; }
-      (new Function(onOk))();
+      if(typeof onOk==='function'){ await onOk(); return; }
+      await (new Function('return ('+onOk+');'))();
     }catch(e){
       console.error('[confirmBox] 回调执行失败：',e);
       toast('操作失败：'+(e&&e.message?e.message:e),'err');

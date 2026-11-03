@@ -641,11 +641,24 @@ function doBulkPass(){
     <b>建议：</b>批量前抽查 1 条，确认答案口径没问题。`;
   confirmBox('确认批量通过？', body, 'runBulkPass()', '确认批量通过');
 }
-function runBulkPass(){
-  const list=window.__bulkSel||[]; window.__bulkSel=null;
-  const res=MOCKAPI.mockBulkPass(list);
+async function runBulkPass(){
+  if(window.__bulkRunning) return;
+  const list=window.__bulkSel||[];
+  if(!list.length) return;
+  window.__bulkSel=null;
+  window.__bulkRunning=true;
   closeModal();
-  if(res.skip.length) setTimeout(()=>toast('已跳过 '+res.skip.length+' 条（权限/状态已变）','warn'),300);
+  toast('正在批改 '+list.length+' 条，请稍候','warn');
+  try{
+    const res=await MOCKAPI.mockBulkPass(list);
+    if(!res || !Array.isArray(res.skip) || !Number.isInteger(res.ok)) throw new Error('批改结果异常，请刷新后核对作业状态');
+    const skipped=res.skip.length;
+    toast('已通过 '+res.ok+' 条'+(skipped?' · 未通过 '+skipped+' 条，请刷新查看待批改记录':''),skipped?'warn':'ok');
+  }catch(e){
+    toast('批改未完成：'+(e&&e.message?e.message:e)+'；请刷新核对后再试','err');
+  }finally{
+    window.__bulkRunning=false;
+  }
 }
 
 /* 1. 代录闯关结果 openJourney（L1786）*/
