@@ -215,6 +215,7 @@ async function liveRefresh(){
     /* users 单独从数组转换成字典，旧后端由 fetchUsersIfAdmin 补齐。 */
   };
   Object.keys(map).forEach(k=>{ if(d[k] !== undefined) MOCK.DB[map[k]] = d[k]; });
+  if(Array.isArray(d.taskDefs)) MOCK.TASK_DEFS.splice(0,MOCK.TASK_DEFS.length,...d.taskDefs);
   if(d.levelPhases) MOCK.DB.phases = d.levelPhases;              // <- 唯一改名点
   /* 【2026-10-15 修】users 镜像补齐：把 trainees / mentors 补成**只增不改**的用户桩。
      为什么必须补（线上实测的完整根因链）：

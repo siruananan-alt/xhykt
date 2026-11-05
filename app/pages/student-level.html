@@ -72,9 +72,9 @@
 
 <script src="../assets/app.js?v=1103bulk1"></script>
 <script src="../assets/readiness-rules.js?v=1019rd2"></script>
-<script src="../assets/mock-data.js?v=1019rd2"></script>
+<script src="../assets/mock-data.js?v=1105curriculum1"></script>
 <script src="../assets/mock-api.js?v=1019avatar1"></script>
-<script src="../assets/mock-api-live.js?v=1019load1"></script>
+<script src="../assets/mock-api-live.js?v=1105curriculum1"></script>
 <script src="../assets/ui.js?v=1103bulk1"></script>
 <script src="../assets/practice-video.js?v=1018e"></script>
 <script>
@@ -362,6 +362,7 @@ function shotPickerHTML(cardId, required){
 /* 环节 3：考（人工批改） */
 function examBlock(wid, lv, no){
   const ok = MOCK.lvStageOk(wid,lv.id,'exam');
+  if(lv.stages.exam.external)return '<div class="card"><h2>考 · 在线答题</h2><p>'+esc(lv.stages.exam.req)+'</p><a class="btn" target="_blank" rel="noopener noreferrer" href="'+esc(lv.stages.exam.url)+'">前往飞书答题</a><p>'+ (ok?'已通过':'答题完成后，请联系自己的带教老师确认通过')+'</p></div>';
   const raw = ((MOCK.DB.tasks[wid]||{})[lv.id]||{})[MOCK.EXAM_TASK];
   const rec = UI.normalizeTaskRecFE(raw);
   const cur = rec ? UI.currentVersion(rec) : null;
@@ -388,7 +389,7 @@ function examBlock(wid, lv, no){
     </div>`;
   }else{
     body=`<div class="note" style="margin-bottom:var(--s4)">
-      <b>考核要求：</b>按本关产出做一次实操，提交结果数据（截图）。
+      <b>考核要求：</b>${esc(lv.stages.exam.req||"按本关要求完成考核")}
     </div>
     <form data-card="${MOCK.EXAM_TASK}" style="margin-top:var(--s3)">
       <div class="fld">

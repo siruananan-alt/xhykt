@@ -68,7 +68,7 @@
   }
   function exam(lv){
     const config=lv.stages.exam;
-    return section('考','考核要求','核对考核方式与提交材料。',`<article class="mc-task"><h3>考核内容</h3><p>${esc(config.req||config.requirement||'按本关产出做一次实操，提交结果数据（截图）。')}</p>${lv.stages.practice?'<p class="hint">学员需先通过本关练习任务，再提交考核。</p>':''}<span class="tag ghost">${esc(shotText(MOCK.EXAM_TASK))}</span></article>${!lv.stages.practice?tutorial(lv):''}`);
+    return section('考','考核要求','核对考核方式与提交材料。',`<article class="mc-task"><h3>考核内容</h3><p>${esc(config.req||config.requirement||'按本关产出做一次实操，提交结果数据（截图）。')}</p>${config.external?'<p><a target="_blank" rel="noopener noreferrer" href="'+esc(config.url)+'">打开飞书试卷</a> · 带教老师确认通过，无需上传截图</p>':''}${lv.stages.practice?'<p class="hint">学员需先通过本关练习任务，再提交考核。</p>':''}<span class="tag ghost">${esc(shotText(MOCK.EXAM_TASK))}</span></article>${!lv.stages.practice?tutorial(lv):''}`);
   }
   function render(){
     if(typeof needsLoginGate==='function'&&needsLoginGate())return;

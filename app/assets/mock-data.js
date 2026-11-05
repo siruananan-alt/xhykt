@@ -164,19 +164,54 @@ function readinessStatus(key,wid){
 // 注意：【2026-10-04 补】原沙盒漏了后端的 `req` 字段（任务要求原文）-> 页面只能显示兜底文案。
 //    这里照抄后端 L491-503 的 req，保持沙盒与后端字段一致（接入时页面代码不用动）。
 const TASK_DEFS = [
-  { id:'T-N1', levelId:'L05', title:'账号准备',   req:'按账号规范完成头像/昵称/简介设置，截图提交' },
-  { id:'T-N2', levelId:'L05', title:'标准起号',   req:'完成新账号冷启动设置与首条内容发布，附截图或链接' },
-  { id:'T-N3', levelId:'L05', title:'发布规范',   req:'按发布规范完成一次标准发布，附截图' },
-  { id:'T-N4', levelId:'L06', title:'对标爆款',   req:'拆解 3 个对标爆款（结构/钩子/转化点），提交拆解笔记' },
-  { id:'T-G1', levelId:'L07', title:'体裁剪辑',   req:'剪辑 3 条不同体裁作品，附成片链接' },
-  { id:'T-G3', levelId:'L07', title:'封面开头',   req:'完成 1 条作品的封面与开头 3 秒优化，附前后对比' },
-  { id:'T-G2', levelId:'L08', title:'导流',       req:'发 20 条私信导流并记录回复情况，附记录' },
-  { id:'T-G4', levelId:'L09', title:'矩阵发布',   req:'完成 1 次矩阵分发发布，附各平台链接' },
-  { id:'T-M1', levelId:'L10', title:'剪辑效率',   req:'长视频剪辑耗时 < 1.5 小时，附剪辑工程与耗时记录' },
-  { id:'T-M2', levelId:'L10', title:'多账号运营', req:'同时运营 4 个账号并保持更新，附账号清单' },
-  { id:'T-M3', levelId:'L11', title:'数据复盘',   req:'完成 1 次数据复盘（播放/加粉/转化），提交复盘文档' },
-  { id:'T-M4', levelId:'L11', title:'诊断优化',   req:'诊断 1 个数据问题并提出优化方案，附诊断记录' },
-  { id:'T-M5', levelId:'L12', title:'转正项目',   req:'从 0 起一个新号到稳定产出导流，提交完整项目总结' }
+  {
+    "id": "T-N1",
+    "levelId": "L05",
+    "title": "账号资料设置",
+    "req": "账号的基本资料设置好，截图上传"
+  },
+  {
+    "id": "T-N4",
+    "levelId": "L06",
+    "title": "课程笔记",
+    "req": "笔记上传截图"
+  },
+  {
+    "id": "T-G1",
+    "levelId": "L07",
+    "title": "素材库",
+    "req": "自己的素材库截图上传"
+  },
+  {
+    "id": "T-G2",
+    "levelId": "L08",
+    "title": "私信导流",
+    "req": "发 20 条私信导流并记录回复"
+  },
+  {
+    "id": "T-G4",
+    "levelId": "L09",
+    "title": "矩阵发布",
+    "req": "完成 1 次矩阵发布，附链接"
+  },
+  {
+    "id": "T-M1",
+    "levelId": "L10",
+    "title": "账号分配方案",
+    "req": "出账号分配方案（M1 剪辑效率 + M2 多账号运营）"
+  },
+  {
+    "id": "T-M3",
+    "levelId": "L11",
+    "title": "复盘文档",
+    "req": "提交复盘文档"
+  },
+  {
+    "id": "T-M5",
+    "levelId": "L12",
+    "title": "转正项目",
+    "req": "转正项目：从 0 起一个新号到稳定产出导流，提交个人 SOP"
+  }
 ];
 
 // 后端 L330-381，12 关。
@@ -208,6 +243,10 @@ const DB_LEVELS = [
   { no:12, id:'L12', title:'转正项目',       phase:'成熟期',week:'第4-5周',
     stages:{ study:{courseIds:[]},    practice:{tasks:['M5 转正项目'],by:'带教'}, exam:{} } }
 ];
+(function apply(all){
+ all.levels=(all.levels||[]).map(l=>{const r=[{"no":1,"study":"新人启动课堂","practice":null,"exam":null},{"no":2,"study":"剪辑基础课 + 剪映提效","practice":null,"exam":"自己做一个标准的长视频发给带教，带教通过后，同时把剪映的基础设置和快捷键设置截图上传到网站"},{"no":3,"study":"飞书高效实战","practice":null,"exam":"搭建自己的飞书知识库并且存入文档"},{"no":4,"study":"流量一站式入门","practice":null,"exam":"点击链接跳转答题，由自己的带教老师在网站确认通过，无需提交截图","examUrl":"https://jcnau8fbjuns.feishu.cn/share/base/form/shrcnJurAvVPnQNk9GfnM0nDePg?from=navigation","confirmation":"assigned-mentor"},{"no":5,"study":"账号冷启动","practice":"账号的基本资料设置好，截图上传","exam":"上传一个养号作品截图"},{"no":6,"study":"行业内部爆款讲解","practice":"笔记上传截图","exam":null},{"no":7,"study":"百万爆款之剪辑工作流","practice":"自己的素材库截图上传","exam":"上传一个视频链接"},{"no":8,"study":"高导粉获客秘籍","practice":"发 20 条私信导流并记录回复","exam":"导流全过程录屏发给带教，网站上传带教确认通过的截图"},{"no":9,"study":"矩阵分发","practice":"完成 1 次矩阵发布，附链接","exam":"完成 1 次矩阵发布，附链接及数据截图"},{"no":10,"study":null,"practice":"出账号分配方案（M1 剪辑效率 + M2 多账号运营）","exam":"限时剪辑长视频，耗时小于 1.5 小时，截图上传"},{"no":11,"study":null,"practice":"提交复盘文档","exam":null},{"no":12,"study":"全部课程回顾","practice":"转正项目：从 0 起一个新号到稳定产出导流，提交个人 SOP","exam":"转正终考 + 达标 4 条 → 大会认证"}].find(r=>r.no===l.no);if(!r)return l;const stages={...l.stages};if(stages.practice)stages.practice={...stages.practice,tasks:TASK_DEFS.filter(t=>t.levelId===l.id).map(t=>t.title)};stages.exam=r.exam?{...(stages.exam||{}),req:r.exam,...(r.examUrl?{url:r.examUrl,external:true}:{})}:null;return {...l,stages};});
+ DB_LEVELS.splice(0,DB_LEVELS.length,...all.levels); return all;
+})({levels:DB_LEVELS});
 const LEVEL_PHASES = [
   { name:'新手期', from:1, to:6,  week:'第 1 周' },
   { name:'成长期', from:7, to:9,  week:'第 2–3 周' },
@@ -342,6 +381,8 @@ function studyAutoPass(lv, wid){
 
 // 后端 L639-644 lvStageOf：人工代录优先 -> 「学」系统自动 -> 其余 null
 function lvStageOf(j, levelId, stage, wid){
+  const old=j&&j[levelId]&&j[levelId].practice;
+  if(levelId==='L10' && stage==='exam' && old && old.ok && old.at && old.at < '2026-11-05T08:28:38.144Z') return old;
   const r=(j&&j[levelId]&&j[levelId][stage])||null;
   if(r&&r.ok) return r;
   const lv=levelOf(levelId); if(!lv) return null;
@@ -353,6 +394,7 @@ function lvStageOk(wid, levelId, stage){
 }
 // 后端 L1504-1508：「练」= 该关全部卡都 passed 才写 journey.practice
 function practiceDone(wid,levelId){
+  if(lvStageOk(wid,levelId,"practice")) return true;
   const defs=TASK_DEFS.filter(t=>t.levelId===levelId);
   if(!defs.length) return lvStageOk(wid,levelId,'practice');
   return defs.every(t=>(DB.tasks[wid]&&DB.tasks[wid][levelId]&&DB.tasks[wid][levelId][t.id]||{}).status==='passed');
