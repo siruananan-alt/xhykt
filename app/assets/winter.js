@@ -69,7 +69,7 @@
       title.textContent = '第 ' + (index + 1) + ' 堂 · ' + lesson.title;
       const detail = document.createElement('p');
       let label = '可观看';
-      if (!lesson.playlist.length) label = unavailable ? '视频列表加载失败' : loading ? '正在读取视频' : '视频待上线';
+      if (!lesson.playlist.length && !lesson.externalUrl) label = unavailable ? '视频列表加载失败' : loading ? '正在读取视频' : '视频待上线';
       else if (completed.has(index)) label = '已完成';
       detail.textContent = '培训师：' + lesson.trainer + ' · ' + label +
         (lesson.playlist.length > 1 ? ' · 共 ' + lesson.playlist.length + ' 段' : '');
@@ -98,6 +98,14 @@
           playSegment(index, position);
         });
         item.append(button);
+      } else if (lesson.externalUrl) {
+        const link = document.createElement('a');
+        link.className = 'btn ghost winter-external-link';
+        link.href = lesson.externalUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = '前往腾讯会议观看';
+        item.append(link);
       }
       list.append(item);
     });

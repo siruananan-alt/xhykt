@@ -3,7 +3,7 @@
   const lessons = [
     {title: '平台通识与基础账号运营', trainer: '慧欣'},
     {title: '账号起号', trainer: '力丹'},
-    {title: '图文爆款 + 截流系统打法', trainer: '孝莺'},
+    {title: '图文爆款 + 截流系统打法', trainer: '孝莺', externalUrl: 'https://meeting.tencent.com/crm/2ZjV31Ydfb'},
     {title: '抖音百万引流爆款视频', trainer: '璐瑶'},
     {title: '导流', trainer: '孝莺'},
   ];

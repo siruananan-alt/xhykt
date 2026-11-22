@@ -41,7 +41,8 @@
         update(record, failed) {
           published = Boolean(record);
           status.textContent = failed ? '暂时无法核对视频状态，请刷新重试。' :
-            published ? (record.source ? '已发布 · 复用 ' + record.source + ' · ' + record.playlist.length + ' 段' : '已发布') : '未上传';
+            published ? (record.source ? '已发布 · 复用 ' + record.source + ' · ' + record.playlist.length + ' 段' : '已发布') :
+              lesson.externalUrl ? '已提供腾讯会议观看入口' : '未上传';
           button.textContent = published ? '替换并发布' : '上传并发布';
           button.disabled = failed;
         },
