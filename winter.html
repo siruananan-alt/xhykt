@@ -25,8 +25,14 @@
     .winter-hero p { margin: 0; line-height: 1.65; }
     .winter-courses { margin: 2rem 0 3rem; }
     .winter-courses h2 { margin-bottom: .75rem; }
-    .winter-empty { padding: 1.5rem; border: 1px solid #dee9e2; border-radius: 1rem; background: #fff; }
-    .winter-empty p { margin: 0; color: #42594e; }
+    .winter-list { display: grid; gap: .75rem; margin: 1rem 0; padding: 0; list-style: none; }
+    .winter-lesson { padding: 1rem; border: 1px solid #dee9e2; border-radius: 1rem; background: #fff; }
+    .winter-lesson[data-state="locked"] { background: #f3f6f4; color: #40584c; }
+    .winter-lesson h3 { margin: 0; font-size: 1.1rem; }
+    .winter-lesson p, .winter-progress { margin: .4rem 0 0; color: #42594e; }
+    .winter-lesson button { margin-top: .75rem; }
+    .winter-player { padding: 1rem; border: 1px solid #dee9e2; border-radius: 1rem; background: #fff; }
+    .winter-player video { display: block; width: 100%; max-height: 65vh; margin-top: .75rem; background: #111; border-radius: .5rem; }
   </style>
 </head>
 <body data-public="1">
@@ -38,12 +44,20 @@
     <section class="winter-hero" aria-labelledby="winter-title">
       <p class="winter-access">公开课程 · 免登录</p>
       <h1 id="winter-title">寒假特辑</h1>
-      <p>寒假课程发布后，所有访客都可以在这里直接观看。</p>
+      <p>从第一堂开始，看完上一堂后解锁下一堂。</p>
     </section>
     <section class="winter-courses" aria-labelledby="winter-courses-title">
       <h2 id="winter-courses-title">寒假课程</h2>
-      <div class="winter-empty"><p>课程准备中，敬请期待。</p></div>
+      <p class="winter-progress" id="winter-progress" role="status"></p>
+      <ol class="winter-list" id="winter-list"></ol>
+      <section class="winter-player" id="winter-player" aria-labelledby="winter-playing" hidden>
+        <h3 id="winter-playing" tabindex="-1"></h3>
+        <video id="winter-video" controls playsinline preload="metadata"></video>
+        <p id="winter-status" role="status"></p>
+      </section>
+      <noscript>请启用 JavaScript 以查看课程目录和记录观看进度。</noscript>
     </section>
   </main>
+  <script src="app/assets/winter.js?v=1122lessons1" defer></script>
 </body>
 </html>
