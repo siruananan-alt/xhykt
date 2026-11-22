@@ -104,7 +104,7 @@
         link.href = lesson.externalUrl;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        link.textContent = '前往腾讯会议观看';
+        link.textContent = '观看课程';
         item.append(link);
       }
       list.append(item);
