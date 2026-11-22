@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="星禾云课堂寒假特辑，面向所有访客开放。">
+  <title>寒假特辑 · 星禾云课堂</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app/assets/theme.css?v=1020brand2">
+  <style>
+    body { min-height: 100vh; margin: 0; background: #fbfdfb; color: #183329; }
+    .winter-wrap { width: min(920px, calc(100% - 2rem)); margin-inline: auto; }
+    .winter-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 72px; }
+    .winter-header img { display: block; width: min(150px, 38vw); height: auto; }
+    .winter-header > a:last-child { padding: .65rem 0; color: #235642; }
+    .winter-hero {
+      padding: clamp(2rem, 7vw, 5rem);
+      border: 1px solid #daeae0;
+      border-radius: 1.5rem;
+      background: radial-gradient(ellipse at top right, #cfecf5, transparent 65%),
+        linear-gradient(120deg, #ecfaef, #f4fbfc);
+    }
+    .winter-access { width: fit-content; padding: .3rem .75rem; border-radius: 2rem; background: #fff; color: #245b44; }
+    .winter-hero h1 { margin: .6rem 0 .5rem; font-size: clamp(2.5rem, 8vw, 5rem); line-height: 1.1; }
+    .winter-hero p { margin: 0; line-height: 1.65; }
+    .winter-courses { margin: 2rem 0 3rem; }
+    .winter-courses h2 { margin-bottom: .75rem; }
+    .winter-empty { padding: 1.5rem; border: 1px solid #dee9e2; border-radius: 1rem; background: #fff; }
+    .winter-empty p { margin: 0; color: #42594e; }
+  </style>
+</head>
+<body data-public="1">
+  <header class="winter-header winter-wrap">
+    <a href="index.html"><img src="app/assets/brand-logo.svg?v=1020green1" alt="星禾云课堂首页" width="160" height="40"></a>
+    <a href="index.html">返回首页</a>
+  </header>
+  <main class="winter-wrap">
+    <section class="winter-hero" aria-labelledby="winter-title">
+      <p class="winter-access">公开课程 · 免登录</p>
+      <h1 id="winter-title">寒假特辑</h1>
+      <p>寒假课程发布后，所有访客都可以在这里直接观看。</p>
+    </section>
+    <section class="winter-courses" aria-labelledby="winter-courses-title">
+      <h2 id="winter-courses-title">寒假课程</h2>
+      <div class="winter-empty"><p>课程准备中，敬请期待。</p></div>
+    </section>
+  </main>
+</body>
+</html>
