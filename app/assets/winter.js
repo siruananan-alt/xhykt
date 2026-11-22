@@ -7,7 +7,10 @@
   const legacyKey = 'xinghe:winter:2026:completed';
   const storageKey = 'xinghe:winter:2026:finished-lessons';
   const segmentKey = legacyKey + ':segments';
+  const guideProgressKey = storageKey + ':guide-videos';
+  const guideIndex = 4;
   const completed = new Set();
+  let guideProgress = null;
   let savedSegments = null;
   try {
     const previousCount = Number(localStorage.getItem(legacyKey));
@@ -20,8 +23,9 @@
         .forEach(index => completed.add(index));
     }
     savedSegments = JSON.parse(localStorage.getItem(segmentKey));
+    guideProgress = JSON.parse(localStorage.getItem(guideProgressKey));
   } catch {
-    // Playback and unlocking still work for the current page without storage.
+    // Playback still works for the current page without storage.
   }
   let active = -1;
   let segment = 0;
@@ -70,7 +74,19 @@
       detail.textContent = '培训师：' + lesson.trainer + ' · ' + label +
         (lesson.playlist.length > 1 ? ' · 共 ' + lesson.playlist.length + ' 段' : '');
       item.append(title, detail);
-      if (lesson.playlist.length) {
+      if (index === guideIndex && lesson.playlist.length > 1) {
+        const buttons = document.createElement('div');
+        buttons.className = 'winter-video-buttons';
+        lesson.playlist.forEach((clip, position) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'btn ghost';
+          button.textContent = '观看' + (clip.title || '视频 ' + (position + 1));
+          button.addEventListener('click', () => playSegment(index, position));
+          buttons.append(button);
+        });
+        item.append(buttons);
+      } else if (lesson.playlist.length) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'btn ghost';
@@ -93,6 +109,22 @@
   video.addEventListener('ended', () => {
     if (active < 0 || !video.ended || !Number.isFinite(video.duration) || video.duration <= 0) return;
     const lesson = lessons[active];
+    if (active === guideIndex && lesson.playlist.length > 1) {
+      const playlist = playlistKey(lesson);
+      const played = guideProgress?.playlist === playlist && Array.isArray(guideProgress.played)
+        ? new Set(guideProgress.played.filter(index => Number.isInteger(index) && index >= 0 && index < lesson.playlist.length))
+        : new Set();
+      played.add(segment);
+      guideProgress = {playlist, played: [...played]};
+      if (played.size === lesson.playlist.length) completed.add(active);
+      try {
+        localStorage.setItem(guideProgressKey, JSON.stringify(guideProgress));
+        localStorage.setItem(storageKey, JSON.stringify([...completed]));
+      } catch {}
+      status.textContent = '本段播放结束。';
+      render();
+      return;
+    }
     if (segment + 1 < lesson.playlist.length) {
       if (!completed.has(active)) {
         savedSegments = {lesson: active, playlist: playlistKey(lesson), next: segment + 1};
