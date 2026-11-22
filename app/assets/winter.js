@@ -4,13 +4,21 @@
   const lessons = WinterCatalog.lessons.map(lesson => ({...lesson, playlist: []}));
   let loading = true;
   let unavailable = false;
-  const storageKey = 'xinghe:winter:2026:completed';
-  const segmentKey = storageKey + ':segments';
-  let completed = 0;
+  const legacyKey = 'xinghe:winter:2026:completed';
+  const storageKey = 'xinghe:winter:2026:finished-lessons';
+  const segmentKey = legacyKey + ':segments';
+  const completed = new Set();
   let savedSegments = null;
   try {
-    const saved = Number(localStorage.getItem(storageKey));
-    if (Number.isInteger(saved) && saved >= 0 && saved <= lessons.length) completed = saved;
+    const previousCount = Number(localStorage.getItem(legacyKey));
+    if (Number.isInteger(previousCount) && previousCount >= 0 && previousCount <= lessons.length) {
+      for (let index = 0; index < previousCount; index++) completed.add(index);
+    }
+    const saved = JSON.parse(localStorage.getItem(storageKey));
+    if (Array.isArray(saved)) {
+      saved.filter(index => Number.isInteger(index) && index >= 0 && index < lessons.length)
+        .forEach(index => completed.add(index));
+    }
     savedSegments = JSON.parse(localStorage.getItem(segmentKey));
   } catch {
     // Playback and unlocking still work for the current page without storage.
@@ -48,31 +56,27 @@
   }
 
   function render() {
-    progress.textContent = '已完成 ' + completed + ' / ' + lessons.length + ' 堂';
+    progress.textContent = '已完成 ' + completed.size + ' / ' + lessons.length + ' 堂';
     list.replaceChildren();
     lessons.forEach((lesson, index) => {
-      const locked = index > completed;
       const item = document.createElement('li');
       item.className = 'winter-lesson';
-      item.dataset.state = locked ? 'locked' : 'open';
       const title = document.createElement('h3');
       title.textContent = '第 ' + (index + 1) + ' 堂 · ' + lesson.title;
       const detail = document.createElement('p');
       let label = '可观看';
-      if (locked) label = '待解锁 · 看完上一堂后开放';
-      else if (index < completed) label = '已完成';
-      else if (!lesson.playlist.length) label = unavailable ? '视频列表加载失败' : loading ? '正在读取视频' : '视频待上线';
+      if (!lesson.playlist.length) label = unavailable ? '视频列表加载失败' : loading ? '正在读取视频' : '视频待上线';
+      else if (completed.has(index)) label = '已完成';
       detail.textContent = '培训师：' + lesson.trainer + ' · ' + label +
         (lesson.playlist.length > 1 ? ' · 共 ' + lesson.playlist.length + ' 段' : '');
       item.append(title, detail);
-      if (!locked && lesson.playlist.length) {
+      if (lesson.playlist.length) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'btn ghost';
-        button.textContent = index < completed ? '重看' : '观看课程';
+        button.textContent = completed.has(index) ? '重看' : '观看课程';
         button.addEventListener('click', () => {
-          if (index > completed) return;
-          const position = index === completed && savedSegments?.lesson === index &&
+          const position = !completed.has(index) && savedSegments?.lesson === index &&
             savedSegments.playlist === playlistKey(lesson) && Number.isInteger(savedSegments.next) &&
             savedSegments.next > 0 && savedSegments.next < lesson.playlist.length ? savedSegments.next : 0;
           playSegment(index, position);
@@ -88,30 +92,24 @@
   });
   video.addEventListener('ended', () => {
     if (active < 0 || !video.ended || !Number.isFinite(video.duration) || video.duration <= 0) return;
-    let watched = 0;
-    for (let i = 0; i < video.played.length; i++) watched += video.played.end(i) - video.played.start(i);
-    const tolerance = Math.min(0.75, video.duration * 0.02);
-    if (watched < video.duration - tolerance) {
-      status.textContent = '请补看跳过的片段，再播放到结尾解锁下一堂。';
-      return;
-    }
     const lesson = lessons[active];
     if (segment + 1 < lesson.playlist.length) {
-      if (active === completed) {
+      if (!completed.has(active)) {
         savedSegments = {lesson: active, playlist: playlistKey(lesson), next: segment + 1};
         try { localStorage.setItem(segmentKey, JSON.stringify(savedSegments)); } catch {}
       }
       playSegment(active, segment + 1);
       return;
     }
-    if (active < completed) { status.textContent = '本堂重看结束。'; return; }
-    completed++;
-    savedSegments = null;
+    completed.add(active);
     try {
-      localStorage.setItem(storageKey, String(completed));
-      localStorage.removeItem(segmentKey);
+      localStorage.setItem(storageKey, JSON.stringify([...completed]));
+      if (savedSegments?.lesson === active) {
+        savedSegments = null;
+        localStorage.removeItem(segmentKey);
+      }
     } catch { /* In-memory progress still applies. */ }
-    status.textContent = completed === lessons.length ? '5 堂课已全部完成。' : '本堂已完成，下一堂已解锁。';
+    status.textContent = '本堂播放结束。';
     render();
   });
 
