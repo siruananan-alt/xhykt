@@ -2,13 +2,15 @@
 const crypto=require('node:crypto');
 module.exports=function createPracticeVideos(deps){
   const {loadAll,writeJSON,PREFIX,getStaticBucket,getVerifiedCreds,cosRequest,presign,presignTokenHeader,videoUrl,REGION}=deps;
+  const objectDirectory = deps.objectDirectory || 'assets/practice-videos/';
+  const loadForLevel = deps.loadForLevel || (() => loadAll());
   function checkResponse(r,label){
     if(r.status<200||r.status>=300||/<Error>/.test(String(r.body))) throw new Error(label+'失败，请重试');
   }
   function videosOf(value){return Array.isArray(value)?value:(value&&value.url?[value]:[]);}
   function supported(lv){return lv&&(lv.id==='L04'||lv.stages&&lv.stages.practice);}
   function session(d,slot){
-    const prefix='^assets/practice-videos/'+d.levelId+'-';
+    const prefix='^'+objectDirectory+d.levelId+'-';
     const current=new RegExp(prefix+'s'+(slot+1)+'-[a-f0-9]{24}\\.mp4$');
     const legacy=new RegExp(prefix+'[a-f0-9]{24}\\.mp4$');
     if(!current.test(d.key||'')&&!(slot===0&&legacy.test(d.key||'')))throw new Error('视频上传标识无效');
@@ -18,7 +20,7 @@ module.exports=function createPracticeVideos(deps){
     if(!me||me.role!=='admin')return {error:'仅管理员可管理练习教学视频'};
     try{
       if(!/^L\d{2}$/.test(d.levelId||''))return {error:'关卡编号无效'};
-      const all=await loadAll();
+      const all=await loadForLevel(d.levelId);
       const lv=all.levels.find(x=>x.id===d.levelId);
       if(!supported(lv))return {error:'该关卡未开放教学视频'};
       const slot=d.slot==null?0:d.slot;
@@ -31,13 +33,13 @@ module.exports=function createPracticeVideos(deps){
         videos[slot]=null;
         if(videos.some(v=>v&&v.url))st.practiceVideos[lv.id]=videos;
         else delete st.practiceVideos[lv.id];
-        await writeJSON(PREFIX+'settings.json',st);
+        await writeJSON(PREFIX+'settings.json',st,lv.id);
         return {ok:true};
       }
       const bucket=await getStaticBucket();
       if(action==='practiceVideoInit'){
         if(!/\.mp4$/i.test(d.name||'')||!Number.isSafeInteger(d.size)||d.size<=0||d.size>2*1024**3)return {error:'请选择不超过 2GB 的 MP4 视频'};
-        const key='assets/practice-videos/'+lv.id+'-s'+(slot+1)+'-'+crypto.randomBytes(12).toString('hex')+'.mp4';
+        const key=objectDirectory+lv.id+'-s'+(slot+1)+'-'+crypto.randomBytes(12).toString('hex')+'.mp4';
         const cred=await getVerifiedCreds();
         const r=await cosRequest('POST',key,Buffer.alloc(0),{'content-type':'video/mp4','x-cos-acl':'public-read'},{uploads:''},bucket,cred);
         checkResponse(r,'初始化上传');
@@ -57,6 +59,7 @@ module.exports=function createPracticeVideos(deps){
         return {ok:true};
       }
       if(action!=='practiceVideoComplete')return {error:'未知的视频操作'};
+      if(deps.objectDirectory && (!Number.isSafeInteger(d.size)||d.size<=0||d.size>2*1024**3))throw new Error('视频不能超过 2GB');
       if(!Array.isArray(d.parts)||!d.parts.length||d.parts.length>10000)throw new Error('分片列表无效');
       const parts=d.parts.slice().sort((a,b)=>a.partNumber-b.partNumber);
       if(parts.some((p,i)=>p.partNumber!==i+1||!/^"?[a-zA-Z0-9-]{1,100}"?$/.test(p.etag||'')))throw new Error('分片编号或校验值无效');
@@ -68,13 +71,13 @@ module.exports=function createPracticeVideos(deps){
       const size=Number(head.headers['content-length']);
       if(size!==d.size||size<=0)throw new Error('视频大小校验失败，请重新上传');
       // 合并、HEAD 全部成功后才发布新地址；失败时现有视频继续可用。
-      const latest=await loadAll();
+      const latest=await loadForLevel(lv.id);
       const st=latest.settings||{};
       const video={title:lv.title+' · 教学视频'+(capacity>1?' '+(slot+1):''),url:videoUrl(bucket,d.key),size,updatedAt:new Date().toISOString()};
       const videos=videosOf((st.practiceVideos||{})[lv.id]).slice();
       videos[slot]=video;
       st.practiceVideos=Object.assign({},st.practiceVideos,{[lv.id]:videos});
-      await writeJSON(PREFIX+'settings.json',st);
+      await writeJSON(PREFIX+'settings.json',st,lv.id);
       return {ok:true,video,size};
     }catch(e){return {error:e.message};}
   }

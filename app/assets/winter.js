@@ -1,14 +1,9 @@
 (() => {
   'use strict';
 
-  // Add the approved public video URL for each lesson when it is ready.
-  const lessons = [
-    { title: '平台通识与基础账号运营', trainer: '慧欣', video: '' },
-    { title: '账号起号', trainer: '力丹', video: '' },
-    { title: '图文爆款 + 截流系统打法', trainer: '孝莺', video: '' },
-    { title: '抖音百万引流爆款视频', trainer: '璐瑶', video: '' },
-    { title: '导流', trainer: '孝莺', video: '' },
-  ];
+  const lessons = WinterCatalog.lessons.map(lesson => ({...lesson, video: ''}));
+  let loading = true;
+  let unavailable = false;
   const storageKey = 'xinghe:winter:2026:completed';
   let completed = 0;
   try {
@@ -24,6 +19,7 @@
   const heading = document.getElementById('winter-playing');
   const video = document.getElementById('winter-video');
   const status = document.getElementById('winter-status');
+  const retry = document.getElementById('winter-retry');
 
   function render() {
     progress.textContent = '已完成 ' + completed + ' / ' + lessons.length + ' 堂';
@@ -39,7 +35,7 @@
       let label = '可观看';
       if (locked) label = '待解锁 · 看完上一堂后开放';
       else if (index < completed) label = '已完成';
-      else if (!lesson.video) label = '视频待上线';
+      else if (!lesson.video) label = unavailable ? '视频列表加载失败' : loading ? '正在读取视频' : '视频待上线';
       detail.textContent = '培训师：' + lesson.trainer + ' · ' + label;
       item.append(title, detail);
       if (!locked && lesson.video) {
@@ -85,5 +81,22 @@
     render();
   });
 
-  render();
+  async function loadVideos() {
+    loading = true;
+    unavailable = false;
+    retry.hidden = true;
+    render();
+    try {
+      const videos = await WinterCatalog.list();
+      lessons.forEach((lesson, index) => { lesson.video = videos[index]?.url || ''; });
+    } catch {
+      unavailable = true;
+      retry.hidden = false;
+    } finally {
+      loading = false;
+      render();
+    }
+  }
+  retry.addEventListener('click', loadVideos);
+  loadVideos();
 })();

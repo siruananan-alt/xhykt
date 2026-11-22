@@ -407,9 +407,13 @@ async function liveUploadVideo(cid, chid, file, onProgress, options = {}){
 
   let init = null, done = 0, next = 1, firstError = null, completing = false;
   const practice = cid === '__practice__';
-  if(practice && file.size > 2*1024**3){activeVideoUploads.delete(key);throw new Error('教学视频不能超过 2GB');}
-  const uploadApi = (action,body)=>liveApi(practice ? ({uploadInit:'practiceVideoInit',uploadSign:'practiceVideoSign',uploadComplete:'practiceVideoComplete',uploadClear:'practiceVideoAbort'})[action] : action,
-    practice ? Object.assign({},body,{levelId:chid,slot:options.slot==null?0:options.slot,key:init&&init.key,uploadId:init&&init.uploadId,name:file.name,size:file.size}) : body);
+  const winter = cid === '__winter__';
+  if((practice || winter) && file.size > 2*1024**3){activeVideoUploads.delete(key);throw new Error('视频不能超过 2GB');}
+  const scoped = practice || winter;
+  const prefix = winter ? 'winterVideo' : 'practiceVideo';
+  const suffixes = {uploadInit:'Init',uploadSign:'Sign',uploadComplete:'Complete',uploadClear:'Abort'};
+  const uploadApi = (action,body)=>liveApi(scoped ? prefix+suffixes[action] : action,
+    scoped ? Object.assign({},body,{levelId:chid,slot:options.slot==null?0:options.slot,key:init&&init.key,uploadId:init&&init.uploadId,name:file.name,size:file.size}) : body);
   try{
     init = await uploadApi('uploadInit', { cid, chid });
     if(!init || !init.uploadId) throw new Error('上传初始化未返回 uploadId');

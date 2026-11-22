@@ -33,6 +33,7 @@
     .winter-lesson button { margin-top: .75rem; }
     .winter-player { padding: 1rem; border: 1px solid #dee9e2; border-radius: 1rem; background: #fff; }
     .winter-player video { display: block; width: 100%; max-height: 65vh; margin-top: .75rem; background: #111; border-radius: .5rem; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body data-public="1">
@@ -50,6 +51,7 @@
       <h2 id="winter-courses-title">寒假课程</h2>
       <p class="winter-progress" id="winter-progress" role="status"></p>
       <ol class="winter-list" id="winter-list"></ol>
+      <button class="btn ghost" id="winter-retry" type="button" hidden>重试加载视频</button>
       <section class="winter-player" id="winter-player" aria-labelledby="winter-playing" hidden>
         <h3 id="winter-playing" tabindex="-1"></h3>
         <video id="winter-video" controls playsinline preload="metadata"></video>
@@ -58,6 +60,7 @@
       <noscript>请启用 JavaScript 以查看课程目录和记录观看进度。</noscript>
     </section>
   </main>
-  <script src="app/assets/winter.js?v=1122lessons1" defer></script>
+  <script src="app/assets/winter-catalog.js?v=wintervideo1" defer></script>
+  <script src="app/assets/winter.js?v=wintervideo1" defer></script>
 </body>
 </html>
